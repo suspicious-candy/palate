@@ -9,6 +9,7 @@ export default function SignupPage(){
     const [user,setuser]= React.useState({
         email: "",
         password: "",
+        ConfirmPassword: "",
         username: "",
     });
 
@@ -51,6 +52,15 @@ export default function SignupPage(){
                     className="signup-input"
                     value={user.password}
                     onChange={(e) => setuser({...user, password: e.target.value})}
+                />
+                <label htmlFor="confirmPassword" className="signup-label">Confirm Password</label>
+                <input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="signup-input"
+                    value={user.ConfirmPassword}
+                    onChange={(e) => setuser({...user, ConfirmPassword: e.target.value})}
                 />
 
                 <button type="button" className="signup-button" onClick={onSignup}>Sign Up</button>
