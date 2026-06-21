@@ -1,19 +1,5 @@
 import mongoose from "mongoose";
 
-// Embedded sub-document for a user's saved addresses.
-const addressSchema = new mongoose.Schema(
-    {
-        label: { type: String, default: "" }, // "Home", "Work", etc.
-        line1: { type: String, required: true },
-        line2: { type: String, default: "" },
-        city: { type: String, default: "" },
-        state: { type: String, default: "" },
-        postcode: { type: String, default: "" },
-        country: { type: String, default: "" },
-    },
-    { _id: false }
-);
-
 const userSchema = new mongoose.Schema({
 
     username: {
