@@ -42,7 +42,10 @@ const userSchema = new mongoose.Schema({
         trim: true,
     },
     phone: {
-        type: Number,
+        // String (not Number) so it can hold "+", spaces, parentheses, and any
+        // leading zeros in international/formatted numbers.
+        type: String,
+        trim: true,
     },
     dob: {
         type: Date,

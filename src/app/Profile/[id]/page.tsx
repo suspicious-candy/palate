@@ -1,35 +1,54 @@
 // ---------- Data shapes ----------
-// Each restaurant/reservation carries its own unique `id` (table numbers repeat,
-// so they can't be used as React keys).
+// These mirror the Mongoose models in src/models. References (reservations,
+// restaurants, addresses) are assumed to be **populated** by the time they reach
+// this page, so we type them as embedded objects rather than ObjectId strings.
+
+// Mirrors the bits of src/models/restaurantModel.js the profile needs from a
+// populated restaurant reference.
+type RestaurantRef = {
+    _id: string;
+    name: string;
+    rating?: number; // 0 - 10
+    price?: number; // 1 ($) - 4 ($$$$)
+    cuisine?: string[];
+    categories?: { name?: string }[];
+    location?: { locality?: string; region?: string };
+};
+
+// Mirrors src/models/reservationModel.js. `restaurant` is a populated ref.
+type ReservationStatus = "pending" | "confirmed" | "cancelled" | "completed";
 
 type Reservation = {
-    id: string;
-    name: string;
-    rating: number;
-    resDate: Date;
-    numGuests: number;
-    tableNum: number;
-    numVisits: number;
+    _id: string;
+    restaurant: RestaurantRef;
+    date: Date; // booked date + time
+    partySize: number;
+    status: ReservationStatus;
+    notes?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 };
 
+// Mirrors src/models/addressModel.js — `address` is a structured sub-object,
+// not a single string.
 type Address = {
-    id: string;
-    label: string;   // e.g. "Home", "Office"
-    address: string;
+    _id: string;
+    label?: "Home" | "Office";
+    address: {
+        aptNumber?: string;
+        streetAddress: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode?: number;
+    };
 };
 
-type HistoryItem = {
-    id: string;
-    name: string;
-    date: Date;
-    numGuests: number;
-    status: "Completed" | "Cancelled" | "Upcoming";
-};
-
-// Optional fields use `?` so a brand-new user (who hasn't filled everything in)
-// still renders — we show placeholders and collect more info later.
+// Mirrors src/models/userModel.js. Optional fields use `?` so a brand-new user
+// (who hasn't filled everything in) still renders — we show placeholders.
 type UserProfile = {
-    id: string;
+    _id: string;
+    username: string;
     profilePic?: string;
     firstName?: string;
     lastName?: string;
@@ -37,16 +56,16 @@ type UserProfile = {
     firstOrderDate?: Date;
     numVisits?: number;
     favDish?: string;
-    email?: string;
+    email: string;
     phone?: string;
     dob?: Date;
     reservations: Reservation[];
-    visitedResturants: Reservation[];
+    visitedResturants: RestaurantRef[];
     savedAddresses: Address[];
-    reservationHistory: HistoryItem[];
+    reservationHistory: Reservation[];
 };
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 // ---------- Helpers ----------
 function formatMonthYear(date: Date): string {
@@ -72,14 +91,26 @@ function fullName(u: UserProfile): string {
 function initials(u: UserProfile): string {
     const f = u.firstName?.[0] ?? "";
     const l = u.lastName?.[0] ?? "";
-    return (f + l).toUpperCase() || "?";
+    return (f + l).toUpperCase() || u.username?.[0]?.toUpperCase() || "?";
 }
 
-// TODO: replace with a real fetch (dbConfig / API) keyed by `id`.
-// Hardcoded so the frontend renders for now.
+// rating is 0-10 in the restaurant model; show one decimal.
+function ratingLabel(rating?: number): string {
+    return typeof rating === "number" ? rating.toFixed(1) : "";
+}
+
+// Flatten the structured address sub-object into one readable line.
+function formatAddress(a: Address["address"]): string {
+    const street = [a.aptNumber, a.streetAddress].filter(Boolean).join(" ");
+    return [street, a.city, a.state, a.country, a.pincode].filter(Boolean).join(", ");
+}
+
+// TODO: replace with a real fetch (dbConfig / User model, with reservations,
+// restaurants and addresses populated) keyed by `id`. Hardcoded for now.
 function getUser(id: string): UserProfile {
     return {
-        id,
+        _id: id,
+        username: "eleanor.v",
         profilePic: "",
         firstName: "Eleanor",
         lastName: "Vance",
@@ -92,28 +123,42 @@ function getUser(id: string): UserProfile {
         dob: new Date("1985-10-01"),
         reservations: [
             {
-                id: "r1",
-                name: "Osteria Rustica",
-                rating: 4.8,
-                resDate: new Date("2026-06-26T20:00:00"),
-                numGuests: 2,
-                tableNum: 5,
-                numVisits: 3,
+                _id: "r1",
+                restaurant: {
+                    _id: "rest1",
+                    name: "Osteria Rustica",
+                    rating: 9.6,
+                    price: 3,
+                    cuisine: ["Italian"],
+                    location: { locality: "Chicago", region: "IL" },
+                },
+                date: new Date("2026-06-26T20:00:00"),
+                partySize: 2,
+                status: "confirmed",
+                notes: "Window seat",
             },
         ],
         visitedResturants: [
-            { id: "v1", name: "Pizano Heritage", rating: 4.9, resDate: new Date("2024-05-12"), numGuests: 4, tableNum: 2, numVisits: 9 },
-            { id: "v2", name: "Trattoria Roma", rating: 4.6, resDate: new Date("2024-04-28"), numGuests: 2, tableNum: 7, numVisits: 6 },
-            { id: "v3", name: "Osteria Rustica", rating: 4.8, resDate: new Date("2024-03-15"), numGuests: 2, tableNum: 5, numVisits: 3 },
-            { id: "v4", name: "Bella Napoli", rating: 4.5, resDate: new Date("2024-02-02"), numGuests: 3, tableNum: 1, numVisits: 2 },
+            { _id: "v1", name: "Pizano Heritage", rating: 9.8, price: 2, cuisine: ["Pizza"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v2", name: "Trattoria Roma", rating: 9.2, price: 3, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v3", name: "Osteria Rustica", rating: 9.6, price: 3, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v4", name: "Bella Napoli", rating: 9.0, price: 2, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
         ],
         savedAddresses: [
-            { id: "a1", label: "Home", address: "221B Baker St, London, NW1 6XE" },
-            { id: "a2", label: "Office", address: "100 City Rd, Shoreditch, EC1Y 2BP" },
+            {
+                _id: "a1",
+                label: "Home",
+                address: { streetAddress: "221B Baker St", city: "London", state: "London", country: "UK", pincode: 1066 },
+            },
+            {
+                _id: "a2",
+                label: "Office",
+                address: { aptNumber: "Ste 400", streetAddress: "100 City Rd", city: "London", state: "London", country: "UK", pincode: 1099 },
+            },
         ],
         reservationHistory: [
-            { id: "h1", name: "Pizano Heritage", date: new Date("2024-05-12"), numGuests: 4, status: "Completed" },
-            { id: "h2", name: "Trattoria Roma", date: new Date("2024-04-28"), numGuests: 2, status: "Completed" },
+            { _id: "h1", restaurant: { _id: "v1", name: "Pizano Heritage", rating: 9.8 }, date: new Date("2024-05-12"), partySize: 4, status: "completed" },
+            { _id: "h2", restaurant: { _id: "v2", name: "Trattoria Roma", rating: 9.2 }, date: new Date("2024-04-28"), partySize: 2, status: "completed" },
         ],
     };
 }
@@ -124,8 +169,14 @@ function Placeholder({ text }: { text: string }) {
 }
 
 // ---------- Page ----------
-export default function UserProfile({ params }: Props) {
-    const user = getUser(params.id);
+// `params` is a Promise in this version of Next.js (sync access is deprecated),
+// so the page is async and awaits it.
+export default async function UserProfile({ params }: Props) {
+    const { id } = await params;
+    const user = getUser(id);
+
+    const now = new Date();
+    const upcoming = user.reservations.filter((r) => r.date >= now && r.status !== "cancelled");
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -173,6 +224,7 @@ export default function UserProfile({ params }: Props) {
                                     </span>
                                 )}
                             </div>
+                            <p className="mt-0.5 text-sm text-gray-400">@{user.username}</p>
                             <p className="mt-1 text-sm text-gray-500">
                                 {user.favDish ? `Dedicated ${user.favDish} enthusiast` : "Food lover"}
                                 {user.firstOrderDate && ` and member since ${formatMonthYear(user.firstOrderDate)}`}
@@ -196,22 +248,20 @@ export default function UserProfile({ params }: Props) {
                     <section className="rounded-2xl bg-white p-6 shadow-sm">
                         <p className="text-xs font-semibold tracking-wide text-gray-400">NEXT VISIT</p>
                         <h2 className="mb-4 text-lg font-bold">Upcoming Reservations</h2>
-                        {user.reservations.filter((r) => r.resDate >= new Date()).length === 0 ? (
+                        {upcoming.length === 0 ? (
                             <p className="text-sm text-gray-400">
                                 No upcoming reservations yet — book a table to get started.
                             </p>
                         ) : (
                             <div className="space-y-3">
-                                {user.reservations
-                                    .filter((r) => r.resDate >= new Date())
-                                    .map((r) => (
-                                        <RestaurantCard key={r.id} restaurant={r} />
-                                    ))}
+                                {upcoming.map((r) => (
+                                    <ReservationCard key={r._id} reservation={r} />
+                                ))}
                             </div>
                         )}
                     </section>
 
-                    {/* Favourites — top 3 most visited */}
+                    {/* Favourites — top 3 highest rated places they've visited */}
                     <section className="rounded-2xl bg-white p-6 shadow-sm">
                         <p className="text-xs font-semibold tracking-wide text-gray-400">PERSONALIZED</p>
                         <h2 className="mb-4 text-lg font-bold">Favourites</h2>
@@ -223,10 +273,10 @@ export default function UserProfile({ params }: Props) {
                             <div className="space-y-3">
                                 {user.visitedResturants
                                     .slice()
-                                    .sort((a, b) => b.numVisits - a.numVisits)
+                                    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
                                     .slice(0, 3)
                                     .map((r) => (
-                                        <FavouriteCard key={r.id} restaurant={r} />
+                                        <FavouriteCard key={r._id} restaurant={r} />
                                     ))}
                             </div>
                         )}
@@ -238,9 +288,11 @@ export default function UserProfile({ params }: Props) {
                     <h2 className="mb-4 text-lg font-bold">Personal Information</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field label="Full Name" value={fullName(user)} />
+                        <Field label="Username" value={user.username} />
                         <Field label="Email Address" value={user.email} />
                         <Field label="Phone Number" value={user.phone} />
                         <Field label="Date of Birth" value={user.dob ? formatLongDate(user.dob) : ""} />
+                        <Field label="Favourite Dish" value={user.favDish} />
                     </div>
                 </section>
 
@@ -259,10 +311,12 @@ export default function UserProfile({ params }: Props) {
                     ) : (
                         <div className="space-y-3">
                             {user.savedAddresses.map((a) => (
-                                <div key={a.id} className="flex items-start justify-between rounded-lg border border-gray-100 p-3">
+                                <div key={a._id} className="flex items-start justify-between rounded-lg border border-gray-100 p-3">
                                     <div>
-                                        <p className="text-sm font-semibold">{a.label}</p>
-                                        <p className="text-sm text-gray-500">{a.address}</p>
+                                        <p className="text-sm font-semibold">
+                                            {a.label ?? <Placeholder text="Address" />}
+                                        </p>
+                                        <p className="text-sm text-gray-500">{formatAddress(a.address)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -295,14 +349,12 @@ export default function UserProfile({ params }: Props) {
                                 </thead>
                                 <tbody>
                                     {user.reservationHistory.map((h) => (
-                                        <tr key={h.id} className="border-t border-gray-100">
-                                            <td className="py-3 font-medium">{h.name}</td>
+                                        <tr key={h._id} className="border-t border-gray-100">
+                                            <td className="py-3 font-medium">{h.restaurant.name}</td>
                                             <td className="py-3 text-gray-500">{formatLongDate(h.date)}</td>
-                                            <td className="py-3 text-gray-500">{h.numGuests} Guests</td>
+                                            <td className="py-3 text-gray-500">{h.partySize} Guests</td>
                                             <td className="py-3">
-                                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                                                    {h.status}
-                                                </span>
+                                                <StatusBadge status={h.status} />
                                             </td>
                                         </tr>
                                     ))}
@@ -313,7 +365,7 @@ export default function UserProfile({ params }: Props) {
                 </section>
 
                 <footer className="py-6 text-center text-xs text-gray-400">
-                    © {new Date().getFullYear()} Pizano Restaurant Heritage. All rights reserved.
+                    © {new Date().getFullYear()} Palate. All rights reserved.
                 </footer>
             </main>
         </div>
@@ -332,38 +384,63 @@ function Field({ label, value }: { label: string; value?: string }) {
     );
 }
 
-// Favourites / Personalized card — shows name, rating and how many times visited.
-function FavouriteCard({ restaurant }: { restaurant: Reservation }) {
+// Colored pill for a reservation status (matches the model's enum).
+function StatusBadge({ status }: { status: ReservationStatus }) {
+    const styles: Record<ReservationStatus, string> = {
+        completed: "bg-green-100 text-green-700",
+        confirmed: "bg-blue-100 text-blue-700",
+        pending: "bg-yellow-100 text-yellow-700",
+        cancelled: "bg-red-100 text-red-700",
+    };
+    return (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${styles[status]}`}>
+            {status}
+        </span>
+    );
+}
+
+// Favourites / Personalized card — shows the restaurant name, rating and a hint
+// of cuisine / location.
+function FavouriteCard({ restaurant }: { restaurant: RestaurantRef }) {
+    const sub =
+        restaurant.cuisine?.[0] ||
+        restaurant.categories?.[0]?.name ||
+        [restaurant.location?.locality, restaurant.location?.region].filter(Boolean).join(", ");
     return (
         <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
             <div className="flex items-center gap-2">
                 <h3 className="font-semibold">{restaurant.name}</h3>
-                <span className="text-sm text-gray-400">— {restaurant.rating} ⭐</span>
+                {typeof restaurant.rating === "number" && (
+                    <span className="text-sm text-gray-400">— {ratingLabel(restaurant.rating)} ⭐</span>
+                )}
             </div>
-            <span className="text-sm text-gray-500">
-                {restaurant.numVisits} {restaurant.numVisits === 1 ? "visit" : "visits"}
-            </span>
+            {sub && <span className="text-sm text-gray-500">{sub}</span>}
         </div>
     );
 }
 
-function RestaurantCard({ restaurant }: { restaurant: Reservation }) {
+// Upcoming reservation card — restaurant + when + party size + status.
+function ReservationCard({ reservation }: { reservation: Reservation }) {
+    const { restaurant } = reservation;
     return (
         <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
             <div>
                 <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{restaurant.name}</h3>
-                    <span className="text-sm text-gray-400">{restaurant.rating} ⭐</span>
+                    {typeof restaurant.rating === "number" && (
+                        <span className="text-sm text-gray-400">{ratingLabel(restaurant.rating)} ⭐</span>
+                    )}
                 </div>
-                {restaurant.resDate && (
-                    <p className="text-sm text-gray-500">
-                        {formatLongDate(restaurant.resDate)} at {formatTime(restaurant.resDate)}
-                    </p>
-                )}
+                <p className="text-sm text-gray-500">
+                    {formatLongDate(reservation.date)} at {formatTime(reservation.date)}
+                </p>
+                {reservation.notes && <p className="mt-0.5 text-xs text-gray-400">{reservation.notes}</p>}
             </div>
             <div className="text-right text-sm text-gray-500">
-                <p>{restaurant.numGuests} Guests</p>
-                <p>Table #{restaurant.tableNum}</p>
+                <p>{reservation.partySize} Guests</p>
+                <div className="mt-1">
+                    <StatusBadge status={reservation.status} />
+                </div>
             </div>
         </div>
     );
