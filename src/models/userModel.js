@@ -8,6 +8,15 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
     },
+    email:{
+        type:String,
+        unique:true,
+        required:true,
+    },
+    password:{
+        type:String,
+        required:true,
+    },
     profilePic: {
         type: String,
         default: "",
@@ -68,7 +77,27 @@ const userSchema = new mongoose.Schema({
     reservationHistory: [
         { type: mongoose.Schema.Types.ObjectId, ref: "reservations" },
     ],
+    isVerified:{
+        type:Boolean,
+        default:false,
+    },
+    Role:{
+        type:String,
+        enum:['user','admin'],
+        default:user,
+    },
+    forgotPasswordToken:String,
+    forgotPasswordTokenExpiry:Date,
+    verifyToken:String,
+    verifyTokenExpiry:Date,
 
+    prefernces:{
+        type:{
+            LikedCuisines:[String],
+            Disliked:[String],
+            Allergines:[String]
+        }
+    }
 });
 
 const User = mongoose.models.users || mongoose.model("users", userSchema);
