@@ -1,11 +1,14 @@
 "use client"
 
 import Link from "next/link";
-import React from "react";
+import React, { useEffect } from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios"
 
 export default function SignupPage(){
+
+    const router = useRouter();
+    const[buttonDisabled,setbuttonDisabled] = React.useState(true);
     const [user,setuser]= React.useState({
         email: "",
         password: "",
@@ -15,7 +18,19 @@ export default function SignupPage(){
 
     const onSignup = async ()=>{
 
+
+
     }
+
+    useEffect(()=>{
+        const isValid =
+        user.email.length > 0 &&
+        user.password.length > 7 &&
+        user.username.length > 2 &&
+        user.password === user.ConfirmPassword;
+
+        setbuttonDisabled(!isValid);
+    },[user])
 
     return(
         <div className="signup-screen">
