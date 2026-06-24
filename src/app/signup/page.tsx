@@ -5,7 +5,7 @@ import React from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./signup.module.css";
-import toast from "react-hot-toast";
+import {toast, Toaster } from "react-hot-toast";
 
 export default function SignupPage(){
 
@@ -31,16 +31,18 @@ export default function SignupPage(){
         try{
 
             setloading(true);
-            const res = await axios.post("api/user/signup",user);
-            console.log("signup Successfully", res.data);
+            await toast.promise(axios.post("/api/user/signup", user), {
+                loading: "Creating your account...",
+                success: "Account created! Redirecting...",
+                error: (err) => err.response?.data?.error ?? "Signup failed",
+            });
             router.push("/login");
         } catch(error:any){
             console.log("signup failed, " + error.message)
 
-            toast.error(error.message)
-
+            toast.error(error.response?.data?.error ?? error.message);
         }finally{
-
+            setloading(false);
         }
 
     }
@@ -125,6 +127,7 @@ export default function SignupPage(){
 
     return(
         <div className={styles.screen}>
+            <Toaster position="top-center" />
             {loading ? notloaded() : loaded()}
         </div>
     )
