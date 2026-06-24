@@ -1,0 +1,187 @@
+.screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1c0d09;
+    background-image: url("/resturant.jpg");
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding: 24px 16px;
+}
+
+.card {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    padding: 28px 26px 26px;
+    box-sizing: border-box;
+}
+
+.brand {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    color: #c1272d;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 22px 0 6px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #777;
+    margin: 0 0 24px;
+}
+
+.label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #3a3a3a;
+    margin-bottom: 6px;
+}
+
+.input {
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fafafa;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+    color: #b0b0b0;
+}
+
+.input:focus {
+    border-color: #c1272d;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(193, 39, 45, 0.15);
+}
+
+.button {
+    height: 52px;
+    margin-top: 8px;
+    border: none;
+    border-radius: 14px;
+    background: #a41e22;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+}
+
+.button:hover {
+    background: #8e1a1d;
+}
+
+.button:active {
+    transform: scale(0.99);
+}
+
+.button:disabled {
+    background: #5b5858;
+    color: #bb2020;
+    cursor: not-allowed;
+}
+
+.button:disabled:hover {
+    background: #5b5858;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 22px 0;
+    color: #9a9a9a;
+    font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #ececec;
+}
+
+.social {
+    height: 50px;
+    border: 1px solid #e3e3e3;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #3a3a3a;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: background 0.15s;
+}
+
+.social:hover {
+    background: #fafafa;
+}
+
+.footer {
+    text-align: center;
+    font-size: 13px;
+    color: #777;
+    margin: 16px 0 0;
+}
+
+.link {
+    color: #c1272d;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+.loadingCard {
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    min-height: 220px;
+    text-align: center;
+}
+
+.loadingTitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #555;
+    margin: 0;
+}
+
+.spinner {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 4px solid #f0e3e3;
+    border-top-color: #c1272d;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
