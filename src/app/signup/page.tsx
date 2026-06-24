@@ -5,7 +5,7 @@ import React from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./signup.module.css";
-import {toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 export default function SignupPage(){
 
@@ -38,9 +38,8 @@ export default function SignupPage(){
             });
             router.push("/login");
         } catch(error:any){
+            // toast.promise already showed the error toast; just log here.
             console.log("signup failed, " + error.message)
-
-            toast.error(error.response?.data?.error ?? error.message);
         }finally{
             setloading(false);
         }
@@ -127,7 +126,6 @@ export default function SignupPage(){
 
     return(
         <div className={styles.screen}>
-            <Toaster position="top-center" />
             {loading ? notloaded() : loaded()}
         </div>
     )

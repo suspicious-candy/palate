@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-connect();
-
 export const signupSchema = z.object({
   username: z.string().min(3),
   email: z.string().email(),
@@ -15,6 +13,8 @@ export const signupSchema = z.object({
 export async function POST(request: NextRequest) {
     
     try{
+
+        await connect();
 
         const reqBody = await request.json();
 
@@ -37,9 +37,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const salt = await bcrypt.genSalt(10)
-        const hashedPassword = await bcrypt.hash
-        (password,salt)
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = new User({
             username,
@@ -50,7 +49,10 @@ export async function POST(request: NextRequest) {
         const savedUser = await newUser.save();
         console.log(savedUser);
 
-
+        return NextResponse.json(
+            { message: "User created successfully", success: true },
+            { status: 201 }
+        );
     }
 
     catch(error:any){
