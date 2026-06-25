@@ -91,14 +91,12 @@ const userSchema = new mongoose.Schema({
     verifyToken:String,
     verifyTokenExpiry:Date,
 
-    prefernces:{
+    preferences:{
         type:{
-            likedCuisines:{
-                type:{
-                    fsqid:Number,
-                    name:String
-                }
-            },
+            likedCuisines:[{
+                fsqid:Number,
+                name:String
+            }],
             disliked:[String],
             allergines:{
               type: [String],

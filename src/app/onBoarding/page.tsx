@@ -10,6 +10,8 @@ import { FOOD_CATEGORIES } from "@/app/lists/foodCategories";
 
 export default function onBoarding(){
 
+    const router = useRouter();
+
     const DIETS = [
     "Vegetarian", "Vegan", "Pescatarian", "Flexitarian",
     "Halal", "Kosher", "Jain",
@@ -26,6 +28,42 @@ export default function onBoarding(){
     const [userDiet, setuserDiet] = React.useState<string[]>([]);
     const [userAllergen, setuserAllergen] = React.useState<string[]>([]);
     const [userfood, setuserfood] = React.useState<{fsqid:number;name:string}[]>([]);
+    const [saving, setSaving] = React.useState(false);
+
+    const savePreferences = async () => {
+        const userId =
+            typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+
+        if (!userId) {
+            toast.error("Please sign up first");
+            router.push("/signup");
+            return;
+        }
+
+        try {
+            setSaving(true);
+            await toast.promise(
+                axios.patch("/api/user/preferences", {
+                    userId,
+                    diet: userDiet,
+                    allergines: userAllergen,
+                    likedCuisines: userfood,
+                }),
+                {
+                    loading: "Saving your preferences...",
+                    success: "Preferences saved!",
+                    error: (err) =>
+                        err.response?.data?.error ?? "Could not save preferences",
+                }
+            );
+            router.push("/dashboard");
+        } catch (error: any) {
+            // toast.promise already surfaced the error; just log here.
+            console.log("save preferences failed, " + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     function toggleDiet(s: string) {
         setuserDiet(prev =>
@@ -108,6 +146,15 @@ export default function onBoarding(){
                         ))}
                     </div>
                 </div>
+
+                <button
+                    type="button"
+                    className={styles.save}
+                    onClick={savePreferences}
+                    disabled={saving}
+                >
+                    {saving ? "Saving..." : "Save & Continue"}
+                </button>
 
                 <Link href="/dashboard" className={styles.skip}>Skip for now</Link>
             </div>

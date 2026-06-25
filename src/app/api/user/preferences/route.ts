@@ -1,30 +1,37 @@
 import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { success, z } from "zod";
+import { z } from "zod";
 
 connect();
 
 export const prefSchema = z.object({
-  likedCuisines: [z.object({
-    fsqid:z.number(),
-    name:z.string(),
-  })],
-  disliked: [z.string()],
-  allergines: [z.string()],
-  diet:[z.string()],
+  likedCuisines: z.array(z.object({
+    fsqid: z.number(),
+    name: z.string(),
+  })).default([]),
+  disliked: z.array(z.string()).default([]),
+  allergines: z.array(z.string()).default([]),
+  diet: z.array(z.string()).default([]),
 });
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }  ) {
-    
+export async function PATCH(request: NextRequest) {
+
     try{
 
         await connect();
 
-         const { id } = await params;   
         const reqBody = await request.json();
+        const { userId } = reqBody;
 
+        if (!userId) {
+            return NextResponse.json(
+                { error: "Missing userId" },
+                { status: 400 }
+            );
+        }
+
+        // z.object() strips unknown keys, so userId is dropped from result.data.
         const result = prefSchema.safeParse(reqBody);
         if (!result.success) {
         return NextResponse.json(
@@ -32,14 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             { status: 400 }
         );
         }
-        const { likedCuisines, disliked, allergines } = result.data;
-
-        console.log(reqBody);
 
         const updateUser = await User.findByIdAndUpdate(
-            id,
-            { $set: { preferences: result.data } },    
-            { new: true, runValidators: true }        
+            userId,
+            { $set: { preferences: result.data } },
+            { new: true, runValidators: true }
         ).select("-password");
 
         if(!updateUser){

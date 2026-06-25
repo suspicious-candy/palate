@@ -31,12 +31,15 @@ export default function SignupPage(){
         try{
 
             setloading(true);
-            await toast.promise(axios.post("/api/user/signup", user), {
+            const res = await toast.promise(axios.post("/api/user/signup", user), {
                 loading: "Creating your account...",
                 success: "Account created! Redirecting...",
                 error: (err) => err.response?.data?.error ?? "Signup failed",
             });
-            router.push("/login");
+            // No auth/session yet — stash the new user's id so the onboarding
+            // page can attach preferences to the right account.
+            localStorage.setItem("userId", res.data.userId);
+            router.push("/onBoarding");
         } catch(error:any){
             // toast.promise already showed the error toast; just log here.
             console.log("signup failed, " + error.message)

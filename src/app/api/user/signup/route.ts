@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         console.log(savedUser);
 
         return NextResponse.json(
-            { message: "User created successfully", success: true },
+            { message: "User created successfully", success: true, userId: savedUser._id },
             { status: 201 }
         );
     }
