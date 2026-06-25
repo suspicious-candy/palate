@@ -93,9 +93,12 @@ const userSchema = new mongoose.Schema({
 
     prefernces:{
         type:{
-            LikedCuisines:[String],
-            Disliked:[String],
-            Allergines:[String]
+            likedCuisines:[String],
+            disliked:[String],
+            allergines:{
+              type: [String],
+              default:[]
+            }
         }
     }
 });
