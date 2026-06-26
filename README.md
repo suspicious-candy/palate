@@ -35,16 +35,18 @@
 
 ## Project Status
 
-> ⚠️ **Early stage / work in progress.** The data layer and UI are being built out; several screens currently render **hardcoded mock data** and the backend wiring is incomplete.
+> ⚠️ **Early stage / work in progress.** Auth and the data layer are now wired up; several content screens still render **hardcoded mock data** and the discovery features are incomplete.
 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Mongoose data models | ✅ Implemented | `User`, `Restaurant`, `Reservation`, `Address` |
+| Database connection | ✅ Implemented | `src/dbConfig/dbConfig.ts` — cached connection, fail-fast timeout |
+| Auth API (signup / login) | ✅ Implemented | bcrypt hashing, Zod validation, JWT issued in an httpOnly `token` cookie |
+| Preferences API | ✅ Implemented | `PATCH /api/user/preferences`, authenticated via the JWT cookie |
+| Login / Signup pages | ✅ Wired | Post to the auth API, then redirect (signup → onboarding) |
+| Onboarding (preferences) | ✅ Implemented | `src/app/onBoarding/page.tsx` — diet / allergens / cuisines |
 | Restaurant detail page | 🟡 UI complete, mock data | `getResturant()` returns hardcoded data — `TODO` real fetch |
 | User profile page | 🟡 UI complete, mock data | `getUser()` returns hardcoded data — `TODO` real fetch |
-| Login / Signup pages | 🟡 UI only | `onLogin()` / `onSignup()` handlers are empty stubs |
-| Database connection | 🔴 Not implemented | `src/dbConfig/dbConfig.ts` is empty |
-| API routes | 🔴 Not implemented | No `src/app/api` yet |
 | Group matching | 🔴 Scaffold | `src/app/matching/group/page.tsx` is empty |
 | Dashboard | 🔴 Scaffold | `src/app/dashboard/page.tsx` is empty |
 | Home page | 🔴 Default starter | Still the `create-next-app` landing page |
@@ -55,11 +57,12 @@ This README documents both what exists today and the intended direction, so a ne
 
 ## Features
 
-**Available now (UI):**
+**Available now:**
 
-- 🔐 **Auth screens** — branded login and signup pages (email/password, plus placeholder "Continue with Google / Apple" buttons).
-- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and a reservation‑history table.
-- 🏚️ **Restaurant detail** — photo gallery, rating & price, description, crowd "tastes" tags, amenities, tips, contact card, social links, location, and opening hours (with an "Open now" indicator).
+- 🔐 **Authentication** — working signup and login: passwords hashed with bcrypt, requests validated with Zod, and a signed JWT stored in an httpOnly `token` cookie. Login accepts either an email or a username as the identifier. (Plus placeholder "Continue with Google / Apple" buttons.)
+- 🎯 **Taste onboarding** — after signup, users pick dietary needs, allergens, and favourite cuisines; preferences are saved to their account through a cookie-authenticated API.
+- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and a reservation‑history table (UI, mock data).
+- 🏚️ **Restaurant detail** — photo gallery, rating & price, description, crowd "tastes" tags, amenities, tips, contact card, social links, location, and opening hours with an "Open now" indicator (UI, mock data).
 
 **Planned:**
 
@@ -80,7 +83,8 @@ This README documents both what exists today and the intended direction, so a ne
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) via `@tailwindcss/postcss`, plus scoped `styled-jsx` on auth pages |
 | Fonts | [Geist Sans & Geist Mono](https://vercel.com/font) via `next/font` |
 | Database | [MongoDB](https://www.mongodb.com/) with [Mongoose 9](https://mongoosejs.com/) |
-| Auth (planned) | [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) + [bcryptjs](https://github.com/dcodeIO/bcrypt.js) |
+| Auth | [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) (httpOnly cookie) + [bcryptjs](https://github.com/dcodeIO/bcrypt.js) |
+| Validation | [Zod](https://zod.dev/) on every API route |
 | Email (planned) | [nodemailer](https://nodemailer.com/) |
 | Notifications | [react-hot-toast](https://react-hot-toast.com/) |
 | Linting | ESLint 9 + `eslint-config-next` |
@@ -95,18 +99,22 @@ This README documents both what exists today and the intended direction, so a ne
 
 ```
 Browser
-  │
+  │  (httpOnly `token` cookie rides along with requests)
   ▼
 Next.js App Router (src/app)
-  ├─ Server Components ──────────► Mongoose models (src/models) ──► MongoDB
+  ├─ Route Handlers ────────────► Mongoose models (src/models) ──► MongoDB
+  │   (api/user/signup, login,                 ▲
+  │    preferences)                            │
+  ├─ Server Components ─────────────────► dbConfig (cached shared connection)
   │   (e.g. profile/[id], resturant/[id])      ▲
   │                                            │
-  └─ Client Components                    dbConfig (planned:
-      (login, signup, registry)           single shared connection)
+  └─ Client Components ── fetch /api ──────────┘
+      (login, signup, onBoarding, registry)
 ```
 
-- **Rendering:** pages are React Server Components by default; interactive screens (auth) opt into the client with `"use client"`.
-- **Data access (planned):** server components/route handlers will call a shared Mongoose connection (`src/dbConfig/dbConfig.ts`) and read/write through the models in `src/models`.
+- **Rendering:** pages are React Server Components by default; interactive screens (auth, onboarding) opt into the client with `"use client"`.
+- **Data access:** route handlers under `src/app/api` call the shared, hot-reload-safe Mongoose connection (`src/dbConfig/dbConfig.ts`) and read/write through the models in `src/models`.
+- **Auth:** signup/login hash with bcrypt and issue a JWT (`jsonwebtoken`) set as an httpOnly `token` cookie. Protected routes (e.g. preferences) read and verify that cookie server-side rather than trusting any client-supplied id.
 - **Styling:** Tailwind utility classes app‑wide; `src/app/registry.tsx` wires up a `styled-jsx` registry so the scoped styles on the auth pages render correctly with SSR.
 
 ---
@@ -122,8 +130,14 @@ palate/
 │  │  ├─ page.tsx              # Home (default starter — TODO replace)
 │  │  ├─ globals.css           # Tailwind import + CSS theme variables
 │  │  ├─ registry.tsx          # styled-jsx SSR registry (client component)
-│  │  ├─ login/page.tsx        # Login screen (UI only)
-│  │  ├─ signup/page.tsx       # Signup screen (UI only)
+│  │  ├─ api/
+│  │  │  └─ user/
+│  │  │     ├─ signup/route.ts      # POST — create account, set JWT cookie
+│  │  │     ├─ login/route.ts       # POST — authenticate, set JWT cookie
+│  │  │     └─ preferences/route.ts # PATCH — save prefs (JWT-authenticated)
+│  │  ├─ login/page.tsx        # Login screen (wired to API)
+│  │  ├─ signup/page.tsx       # Signup screen (wired to API)
+│  │  ├─ onBoarding/page.tsx   # Taste onboarding (diet/allergens/cuisines)
 │  │  ├─ dashboard/page.tsx    # Dashboard (empty scaffold)
 │  │  ├─ matching/group/page.tsx  # Group matching (empty scaffold)
 │  │  ├─ profile/
@@ -132,7 +146,7 @@ palate/
 │  │  └─ resturant/
 │  │     └─ [id]/page.tsx      # Restaurant detail (mock data)
 │  ├─ dbConfig/
-│  │  └─ dbConfig.ts           # DB connection (TODO: implement)
+│  │  └─ dbConfig.ts           # Shared, cached Mongoose connection
 │  └─ models/                  # Mongoose schemas
 │     ├─ userModel.js
 │     ├─ restaurantModel.js
@@ -166,6 +180,9 @@ Diner profile and relationships.
 | `dob`, `firstOrderDate` | Date | |
 | `StarmembershipStatus` | Boolean | loyalty flag |
 | `numVisits` | Number | |
+| `Role` | enum | `user` \| `admin` (default `user`) — included in the JWT payload |
+| `isVerified` | Boolean | email-verification flag (default `false`) |
+| `preferences` | Object | `likedCuisines[]` (`fsqid`, `name`), `disliked[]`, `allergines[]`, `diet[]` — set via onboarding |
 | `reservations` | `[ObjectId → reservations]` | active/upcoming |
 | `reservationHistory` | `[ObjectId → reservations]` | past |
 | `visitedResturants` | `[ObjectId → restaurants]` | |
@@ -198,16 +215,27 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 
 ## Routes
 
+### Pages
+
 | Path | Type | Description | State |
 | --- | --- | --- | --- |
 | `/` | Page | Home / landing | Default starter |
-| `/login` | Page | Sign in | UI only |
-| `/signup` | Page | Create account | UI only |
+| `/login` | Page | Sign in | Wired to API |
+| `/signup` | Page | Create account | Wired to API |
+| `/onBoarding` | Page | Taste onboarding | Implemented |
 | `/dashboard` | Page | Personalized home | Empty |
 | `/matching/group` | Page | Group restaurant matching | Empty |
 | `/profile` | Page | Profile index | Placeholder |
 | `/profile/[id]` | Page | A user's dining profile | UI + mock data |
 | `/resturant/[id]` | Page | Restaurant detail | UI + mock data |
+
+### API (Route Handlers)
+
+| Method & Path | Description | Auth |
+| --- | --- | --- |
+| `POST /api/user/signup` | Create an account; returns `userId` and sets the `token` cookie | Public |
+| `POST /api/user/login` | Authenticate by email **or** username; sets the `token` cookie | Public |
+| `PATCH /api/user/preferences` | Save dietary needs, allergens, and favourite cuisines | JWT cookie |
 
 ---
 
@@ -261,12 +289,14 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 | Variable | Required | Description |
 | --- | --- | --- |
 | `mongo_url` | ✅ | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/palate` or an Atlas SRV URI. |
+| `TOKEN_SECRET` | ✅ | Secret used to sign and verify auth JWTs. Required for signup, login, and cookie-protected routes. Generate a long random value, e.g. `openssl rand -hex 32`. |
 
-**Planned** (as auth, email, and external data sync land):
+> **Note:** the JWT secret is read as `TOKEN_SECRET` (not `JWT_SECRET`). Without it, signup/login/preferences return `500 Server misconfigured`.
+
+**Planned** (as email and external data sync land):
 
 | Variable | Purpose |
 | --- | --- |
-| `JWT_SECRET` | Sign/verify auth tokens (`jsonwebtoken`) |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Transactional email (`nodemailer`) |
 | `FOURSQUARE_API_KEY` | Sync restaurant data from Foursquare Places |
 
@@ -287,8 +317,10 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 
 ## Roadmap
 
-- [ ] Implement the shared Mongoose connection in `src/dbConfig/dbConfig.ts`
-- [ ] Build auth API routes + wire up `onLogin` / `onSignup` (bcrypt hashing, JWT sessions)
+- [x] Implement the shared Mongoose connection in `src/dbConfig/dbConfig.ts`
+- [x] Build auth API routes + wire up `onLogin` / `onSignup` (bcrypt hashing, JWT cookie sessions)
+- [x] Taste onboarding + cookie-authenticated preferences API
+- [ ] Auth middleware / `/api/user/me` so the client can check session state and protect pages
 - [ ] Replace mock `getUser` / `getResturant` with real DB reads (with populated refs)
 - [ ] Reservation create/manage flow
 - [ ] Group matching algorithm and `/matching/group` UI
