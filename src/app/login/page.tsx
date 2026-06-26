@@ -9,31 +9,32 @@ import { toast } from "react-hot-toast";
 
 export default function LoginPage(){
 
+    const router = useRouter();
     const [user,setuser]= React.useState({
-        id: "",
+        identifier: "",
         password: "",
     });
 
     const buttonDisabled = !(
-        user.id.length > 2 &&
+        user.identifier.length > 2 &&
         user.password.length > 7
     );
 
     const [loading,setloading]= React.useState(false);
-    
+
 
     const onLogin = async ()=>{
 
         try{
-        
+
             setloading(true);
             const res = await toast.promise(axios.post("/api/user/login", user), {
-                    loading: "Logining in your account...",
+                    loading: "Logging in to your account...",
                     success: "Login Successful!! Redirecting...",
                     error: (err) => err.response?.data?.error ?? "Login failed",
                 });
                     localStorage.setItem("userId", res.data.userId);
-                    router.push("/onBoarding");
+                    router.push("/dashboard");
                 } catch(error:any){
                     console.log("Login failed, " + error.message)
                 }finally{
@@ -46,18 +47,18 @@ export default function LoginPage(){
             return(
                  <div className={styles.card}>
                 <span className={styles.brand}>Palate</span>
-                <h1 className={styles.title}>Login in your account</h1>
-                <p className={styles.subtitle}>Join Palate to start deciding together</p>
+                <h1 className={styles.title}>Log in to your account</h1>
+                <p className={styles.subtitle}>Welcome back to Palate</p>
 
 
-                <label htmlFor="id" className={styles.label}>Email</label>
+                <label htmlFor="identifier" className={styles.label}>Email or username</label>
                 <input
-                    id="id"
+                    id="identifier"
                     type="text"
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or yourname"
                     className={styles.input}
-                    value={user.id}
-                    onChange={(e) => setuser({...user, id: e.target.value})}
+                    value={user.identifier}
+                    onChange={(e) => setuser({...user, identifier: e.target.value})}
                 />
 
                 <label htmlFor="password" className={styles.label}>Password</label>
@@ -70,7 +71,14 @@ export default function LoginPage(){
                     onChange={(e) => setuser({...user, password: e.target.value})}
                 />
 
-                <button type="button" className={styles.button} onClick={onLogin}>Sign Up</button>
+                <button
+                    type="button"
+                    className={styles.button}
+                    onClick={onLogin}
+                    disabled={buttonDisabled}
+                >
+                    {buttonDisabled ? "Enter your details" : "Log in"}
+                </button>
 
                 <div className={styles.divider}>
                     <span>or</span>

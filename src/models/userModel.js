@@ -8,10 +8,11 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
     },
-    email:{
-        type:String,
-        unique:true,
-        required:true,
+    email: {
+        type: String,
+        required: [true, "Please provide a valid EmailID"],
+        unique: true,
+        trim: true,
     },
     password:{
         type:String,
@@ -43,12 +44,6 @@ const userSchema = new mongoose.Schema({
     favDish: {
         type: String,
         default: "",
-    },
-    email: {
-        type: String,
-        required: [true, "Please provide a valid EmailID"],
-        unique: true,
-        trim: true,
     },
     phone: {
         // String (not Number) so it can hold "+", spaces, parentheses, and any
