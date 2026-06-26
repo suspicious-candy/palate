@@ -2,6 +2,7 @@ import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import  jwt  from "jsonwebtoken";
 import { z } from "zod";
 
 export const signupSchema = z.object({
@@ -27,7 +28,9 @@ export async function POST(request: NextRequest) {
         }
         const { username, email, password } = result.data;
 
-        console.log(reqBody);
+        if (!process.env.TOKEN_SECRET) {
+            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+        }
 
         const user =  await User.findOne({email});
 
@@ -47,12 +50,30 @@ export async function POST(request: NextRequest) {
         });
 
         const savedUser = await newUser.save();
-        console.log(savedUser);
 
-        return NextResponse.json(
-            { message: "User created successfully", success: true, userId: savedUser._id },
-            { status: 201 }
-        );
+        const tokenData = {
+            id: savedUser._id,
+            username: savedUser.username,
+            role: savedUser.Role,
+            email: savedUser.email,
+        };
+        const token = await jwt.sign(tokenData,process.env.TOKEN_SECRET, {expiresIn:"1d"} )
+
+         const response = NextResponse.json({
+            message: "Signup successful",
+            success: true,
+            userId: savedUser._id,
+        })
+
+        response.cookies.set("token",token,{
+            httpOnly:true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24, // 1 day, matches the JWT expiry
+        })
+        
+        return response;
     }
 
     catch(error:any){

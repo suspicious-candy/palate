@@ -33,7 +33,9 @@ export default function LoginPage(){
                     success: "Login Successful!! Redirecting...",
                     error: (err) => err.response?.data?.error ?? "Login failed",
                 });
-                    localStorage.setItem("userId", res.data.userId);
+                    if (res.data?.userId) {
+                        localStorage.setItem("userId", res.data.userId);
+                    }
                     router.push("/dashboard");
                 } catch(error:any){
                     console.log("Login failed, " + error.message)

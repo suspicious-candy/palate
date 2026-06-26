@@ -1,6 +1,7 @@
 import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 connect();
@@ -21,17 +22,28 @@ export async function PATCH(request: NextRequest) {
 
         await connect();
 
-        const reqBody = await request.json();
-        const { userId } = reqBody;
-
-        if (!userId) {
-            return NextResponse.json(
-                { error: "Missing userId" },
-                { status: 400 }
-            );
+        if (!process.env.TOKEN_SECRET) {
+            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
         }
 
-        // z.object() strips unknown keys, so userId is dropped from result.data.
+        // Identify the user from the verified JWT cookie, never from the body —
+        // otherwise anyone could write preferences for any account.
+        const token = request.cookies.get("token")?.value;
+        if (!token) {
+            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+
+        let userId: string;
+        try {
+            const decoded = jwt.verify(token, process.env.TOKEN_SECRET) as { id: string };
+            userId = decoded.id;
+        } catch {
+            return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+        }
+
+        const reqBody = await request.json();
+
+        // z.object() strips unknown keys, so any stray fields are dropped.
         const result = prefSchema.safeParse(reqBody);
         if (!result.success) {
         return NextResponse.json(

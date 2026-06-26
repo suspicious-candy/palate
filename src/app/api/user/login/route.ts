@@ -3,6 +3,7 @@ import User from "@/models/userModel.js"
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import  jwt  from "jsonwebtoken";
 
 export const loginSchema = z.object({
   identifier: z.string().min(3),
@@ -46,12 +47,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
-        return NextResponse.json({
+        if (!process.env.TOKEN_SECRET) {
+            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+
+        const tokenData = {
+            id:user._id,
+            username:user.username,
+            role:user.Role,
+            email: user.email
+        };
+
+        const token = await jwt.sign(tokenData,process.env.TOKEN_SECRET, {expiresIn:"1d"} )
+
+        const response = NextResponse.json({
             message: "Login successful",
             success: true,
             userId: user._id,
-            user: { id: user._id, username: user.username, email: user.email },
         })
+
+        response.cookies.set("token",token,{
+            httpOnly:true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24, // 1 day, matches the JWT expiry
+        })
+
+        return response;
 
     }
 

@@ -125,8 +125,6 @@ function socialUrl(network: "instagram" | "twitter" | "facebook", handle: string
     }
 }
 
-// Walk the flexible `features` amenities object and collect the labels whose
-// leaf value is `true` (e.g. { payment: { creditCards: true } } -> "payment / creditCards").
 function enabledFeatures(features?: Record<string, unknown>, prefix = ""): string[] {
     if (!features) return [];
     const out: string[] = [];
@@ -205,7 +203,6 @@ function getResturant(id: string): Restaurant {
     };
 }
 
-// Small reusable placeholder for a missing value.
 function Placeholder({ text }: { text: string }) {
     return <span className="italic text-gray-400">{text}</span>;
 }
@@ -217,8 +214,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
     const { id } = await params;
     const rest = getResturant(id);
 
-    // Always render at least one image; fall back to the placeholder when the
-    // restaurant has no synced photos.
     const photos = rest.photos ?? [];
     const gallery = photos.length > 0 ? photos.map((p) => photoUrl(p, "600x400")) : ["/placeholder.jpg"];
 
@@ -257,7 +252,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                     ))}
                 </section>
 
-                {/* Header: name, cuisine, price, rating */}
                 <header className="rounded-2xl bg-white p-6 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                         <div>
@@ -279,7 +273,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                     </p>
                 </header>
 
-                {/* Body: main content + contact sidebar */}
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="space-y-6 lg:col-span-2">
                         {/* Tastes / crowd tags */}
@@ -301,7 +294,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                             )}
                         </section>
 
-                        {/* Amenities / features */}
                         <section className="rounded-2xl bg-white p-6 shadow-sm">
                             <h2 className="mb-4 text-lg font-bold">Amenities</h2>
                             {features.length > 0 ? (
@@ -320,7 +312,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                             )}
                         </section>
 
-                        {/* Tips */}
                         <section className="rounded-2xl bg-white p-6 shadow-sm">
                             <h2 className="mb-4 text-lg font-bold">Tips</h2>
                             {rest.tips && rest.tips.length > 0 ? (
@@ -343,7 +334,6 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                         </section>
                     </div>
 
-                    {/* Contact, socials & hours — replaces the reservation widget */}
                     <aside className="space-y-6 rounded-2xl bg-white p-6 shadow-sm">
                         <div>
                             <h2 className="mb-3 text-lg font-bold">Contact</h2>

@@ -34,7 +34,9 @@ export default function onBoarding(){
         const userId =
             typeof window !== "undefined" ? localStorage.getItem("userId") : null;
 
-        if (!userId) {
+        // Guard against the literal strings "undefined"/"null" that a bad
+        // localStorage.setItem call can leave behind.
+        if (!userId || userId === "undefined" || userId === "null") {
             toast.error("Please sign up first");
             router.push("/signup");
             return;
@@ -43,8 +45,9 @@ export default function onBoarding(){
         try {
             setSaving(true);
             await toast.promise(
+                // The server identifies the user from the JWT cookie, so we
+                // don't send userId — it would just be ignored.
                 axios.patch("/api/user/preferences", {
-                    userId,
                     diet: userDiet,
                     allergines: userAllergen,
                     likedCuisines: userfood,

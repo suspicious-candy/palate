@@ -38,7 +38,9 @@ export default function SignupPage(){
             });
             // No auth/session yet — stash the new user's id so the onboarding
             // page can attach preferences to the right account.
-            localStorage.setItem("userId", res.data.userId);
+            if (res.data?.userId) {
+                localStorage.setItem("userId", res.data.userId);
+            }
             router.push("/onBoarding");
         } catch(error:any){
             // toast.promise already showed the error toast; just log here.
