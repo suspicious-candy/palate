@@ -1,0 +1,16 @@
+export const SEARCH_FIELDS = [
+  "fsq_place_id",
+  "name",
+  "categories",
+  "location",
+  "latitude",
+  "longitude",
+  "tel",
+  "website",
+  "rating",
+  "price",
+  "popularity",
+  "hours",
+  "photos",
+  "tastes",
+].join(",");
