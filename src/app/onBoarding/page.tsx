@@ -6,7 +6,7 @@ import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./onBoarding.module.css";
 import { toast } from "react-hot-toast";
-import { FOOD_CATEGORIES } from "@/app/lists/foodCategories";
+import { FOOD_CATEGORIES } from "../../lists/foodCategories";
 
 export default function onBoarding(){
 
