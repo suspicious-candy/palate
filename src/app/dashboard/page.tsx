@@ -1,32 +1,36 @@
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+"use client";
 
-export default async function Dashboard() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+import Link from "next/link";
+import React from "react";
+import {useRouter} from "next/navigation";
+import axios from "axios"
+import { toast } from "react-hot-toast";
 
-    let userId: string | undefined;
 
-    if (token && process.env.TOKEN_SECRET) {
-        try {
-            const decoded = jwt.verify(token, process.env.TOKEN_SECRET) as {
-                id: string;
-                username: string;
-                role: string;
-                email: string;
-            };
-            userId = decoded.id;
-        } catch (error : any) {
-            console.log(error.message);
-        }
-    }
+type LikedCuisine = { fsqid: number; name: string };
 
-    console.log("[dashboard] userId:", userId);
+export default function Dashboard() {
+    
+    const [likedCuisines, setLikedCuisines] = React.useState<LikedCuisine[]>([]);
+    React.useEffect(() => {
+        toast.promise(axios.get("/api/user/dashboard"), {
+                loading: "Fetching preferences",
+                success: "Preference fetch successful",
+                error: (err) => err.response?.data?.error ?? "fetch failed",
+            })
+            .then((res) => {
+                setLikedCuisines(res.data.preferences?.likedCuisines ?? []);
+            })
+            .catch(() => {
+            });
+    }, []);
 
     return (
         <div>
             <h1>Dashboard</h1>
-            <p>userId: {userId ?? "not logged in"}</p>
+            {likedCuisines.map((c) => (
+                <h2 key={c.fsqid}>{c.name}</h2>
+            ))}
         </div>
     );
 }
