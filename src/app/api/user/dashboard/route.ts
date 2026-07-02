@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
         const response = NextResponse.json({
                 message: "Prefrence Fetch successful",
                 success: true,
-                preferences: getPref,
-                wishlist:getwishlist,
+                user:authUser,
         })
 
         return response;

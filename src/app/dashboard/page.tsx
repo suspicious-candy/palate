@@ -1,83 +1,110 @@
 "use client";
 
-import Link from "next/link";
 import React from "react";
-import {useRouter} from "next/navigation";
-import axios from "axios"
+import axios from "axios";
 import { toast } from "react-hot-toast";
 
-
-
-type LikedCuisine = { fsqid: number; name: string };
-type tip = {fsqTipId:string,text:string};
+type tip = { fsqTipId: string; text: string };
 type category = {
-    fsqCategoryId: string,
-    name: string, 
-    icon: {
-      prefix: string,
-      suffix: string,
-    },
-}
+    fsqCategoryId: string;
+    name: string;
+    icon: { prefix: string; suffix: string };
+};
 type photo = {
-    fsqPhotoId: string,
-    prefix: string,
-    suffix: string,
-    width: number,
-    height: number,
-}
+    fsqPhotoId: string;
+    prefix: string;
+    suffix: string;
+    width: number;
+    height: number;
+};
 
 type Restaurant = {
+    fsqId: string;
+    name: string;
+    categories: category[];
+    geocodes: { latitude: number; longitude: number };
+    geo: { type: string; coordinates: number[] };
+    rating: number;
+    price: number;
+    tips: tip[];
+    photos: photo[];
+};
 
-    fsqId:number,
-    name:string,
-    category:category,
-    geocodes:{
-        latitude:string,
-        longitude:string
-    },
-     geo: {
-      type: { type: string, enum: ["Point"], default: "Point" },
-      coordinates: { type: [number] }, // [lng, lat]
-    },
-    rating:number,
-    price:number,
-    tips:[tip],
-    photo:[photo]
-
+type User = {
+    profilePic: string;
+    firstName: string;
+    lastName: string;
+    visitedResturants: Restaurant[];
+    wishlist: Restaurant[];
+    preferences: {
+        likedCuisines: { fsqid: number; name: string }[];
+        disliked: string[];
+        allergines: string[];
+        diet: string[];
+    };
+    isInMatching?: boolean;
+    lists:[Restaurant[]]
 };
 
 export default function Dashboard() {
-    
-    const [likedCuisines, setLikedCuisines] = React.useState<LikedCuisine[]>([]);
+    const [user, setUser] = React.useState<User | null>(null);
+    const [loading, setLoading] = React.useState(true);
 
+    const formattedDate = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
 
     React.useEffect(() => {
-        toast.promise(axios.get("/api/user/dashboard"), {
-                loading: "Fetching preferences",
-                success: "Preference fetch successful",
+        toast
+            .promise(axios.get("/api/user/dashboard"), {
+                loading: "Fetching user",
+                success: "User fetch successful",
                 error: (err) => err.response?.data?.error ?? "fetch failed",
             })
-            .then((res) => {
-                setLikedCuisines(res.data.preferences?.likedCuisines ?? []);
-            })
-            .catch(() => {
-            });
+            .then((res) => setUser(res.data.user ?? null))
+            .catch(() => {})
+            .finally(() => setLoading(false));
     }, []);
 
-    return (
+    const loaded = () => (
         <div>
-            <h1>Dashboard</h1>
-            <div>
-                <h1>Filters</h1>
-                <h2>Sort By</h2>
+            <h2>{"Tonight's Table"}</h2>
+            <h1>Where Shall we eat?</h1>
+            <h2>
+                {formattedDate}. {user?.firstName} {"& the crew"}
+            </h2>
+            {user?.isInMatching ? (
                 <div>
-                    <button>Recommanded</button>
-                    
+                    <p>{"I. Tonight's Feature"}</p>
+                    <h1>Start a group Dinner</h1>
+                    <p>
+                        Share a QR, everyone swipes the same shortlist, Palate
+                        serves the winner.
+                    </p>
+                    <button>Begin</button>
                 </div>
-            </div>
-            {likedCuisines.map((c) => (
-                <h2 key={c.fsqid}>{c.name}</h2>
-            ))}
+            ) : (
+                <div>
+                    <p>I. Already on the Table</p>
+                    <h1>Start a group Dinner</h1>
+                    <p>
+                        Share a QR, everyone swipes the same shortlist, Palate
+                        serves the winner.
+                    </p>
+                    <button>Begin</button>
+                </div>
+            )}
         </div>
     );
+
+    const notloaded = () => (
+        <div>
+            <p>notloaded</p>
+        </div>
+    );
+
+    return <div>{loading ? notloaded() : loaded()}</div>;
 }
