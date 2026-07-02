@@ -1,10 +1,5 @@
 import mongoose from "mongoose";
 
-/*
-  Mirrors the Foursquare Places API response shape.
-  Sub-schemas use { _id: false } so Mongoose doesn't add an ObjectId
-  to every nested object — the top-level document still gets its own _id.
-*/
 
 const categorySchema = new mongoose.Schema(
   {
@@ -56,8 +51,6 @@ const hoursSchema = new mongoose.Schema(
 
 const restaurantSchema = new mongoose.Schema(
   {
-    // Foursquare's own id — unique so the same place isn't stored twice.
-    // (Your MongoDB _id is still generated automatically and separately.)
     fsqId: {
       type: String,
       required: true,

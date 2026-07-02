@@ -33,11 +33,12 @@ export async function GET(request: NextRequest) {
                 );
         }
         const getPref = authUser.preferences;
+        const getwishlist=authUser.wishlist;
         const response = NextResponse.json({
-
                 message: "Prefrence Fetch successful",
                 success: true,
                 preferences: getPref,
+                wishlist:getwishlist,
         })
 
         return response;

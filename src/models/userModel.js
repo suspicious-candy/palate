@@ -85,6 +85,10 @@ const userSchema = new mongoose.Schema({
     forgotPasswordTokenExpiry:Date,
     verifyToken:String,
     verifyTokenExpiry:Date,
+    wishlist:{
+        type:[ { type: mongoose.Schema.Types.ObjectId, ref: "restaurants" }],
+        default:[],
+    },
 
     preferences:{
         type:{
