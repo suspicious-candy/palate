@@ -3,6 +3,12 @@
 import React from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import styles from "./dashboard.module.css";
+
+// First-name + last-name initials, e.g. "Maya Kapoor" -> "MK".
+function initials(first?: string, last?: string): string {
+    return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
+}
 
 type tip = { fsqTipId: string; text: string };
 type participant = {
@@ -60,6 +66,7 @@ type User = {
         group:matching;
         isInMatching:boolean
     };
+    friendlist:User[];
     lists:[Restaurant[]]
 };
 
@@ -132,57 +139,150 @@ export default function Dashboard() {
     }, []);
 
     const loaded = () => (
-        <div>
-            <h2>{"Tonight's Table"}</h2>
-            <h1>Where Shall we eat?</h1>
-            <h2>
-                {formattedDate}. {user?.firstName} {"& the crew"}
-            </h2>
-            {!user?.matchingGroup.isInMatching ? (
-                <div>
-                    <p>{"I. Tonight's Feature"}</p>
-                    <h1>Start a group Dinner</h1>
-                    <p>
-                        Share a QR, everyone swipes the same shortlist, Palate
-                        serves the winner.
-                    </p>
-                    <button>Begin</button>
+        <div className={styles.page}>
+            <nav className={styles.nav}>
+                <div className={styles.navInner}>
+                    <span className={styles.brand}>Palate</span>
+                    <div className={styles.navLinks}>
+                        <span className={`${styles.navLink} ${styles.navLinkActive}`}>Home</span>
+                        <span className={styles.navLink}>Discover</span>
+                        <span className={styles.navLink}>Groups</span>
+                        <span className={styles.navLink}>Activity</span>
+                        <span className={styles.navLink}>Lists</span>
+                    </div>
+                    <div className={styles.navSpacer} />
+                    <div className={styles.navAvatar}>
+                        {initials(user?.firstName, user?.lastName)}
+                    </div>
                 </div>
-            ) : (
-                <div>
-                    <p>I. Already on the Table</p>
-                    <h1>{user?.matchingGroup.group.name}</h1>
-                    {user?.matchingGroup?.group?.status === "open" ? (
-                        <div>
-                            <p>- Ready to vote</p>
-                            <h2>{castedVotes(user?.matchingGroup?.group)} of {user?.matchingGroup?.group?.participants.length}</h2>
-                            <h2>. {remaining}</h2>
-                            <button>Begin the Voting</button>
+            </nav>
+
+            <div className={styles.layout}>
+                <div className={styles.menuCard}>
+                    <div className={styles.menuHeader}>
+                        <p className={styles.eyebrow}>{"Tonight's Table"}</p>
+                        <h1 className={styles.menuTitle}>Where shall we eat?</h1>
+                        <p className={styles.menuSubtitle}>
+                            {formattedDate} · curated for {user?.firstName} &amp; the crew
+                        </p>
+                    </div>
+
+                    {!user?.matchingGroup.isInMatching ? (
+                        <div className={styles.featureCard}>
+                            <div className={styles.featureIcon}>⌗</div>
+                            <div className={styles.featureBody}>
+                                <p className={styles.eyebrow}>{"Tonight's Feature"}</p>
+                                <h2 className={styles.featureName}>Start a Group Dinner</h2>
+                                <p className={styles.featureDesc}>
+                                    Share a QR, everyone swipes the same shortlist, Palate
+                                    serves the winner.
+                                </p>
+                            </div>
+                            <button className={styles.beginBtn}>Begin →</button>
                         </div>
-                    ) : null}
-                    {user?.matchingGroup?.group?.status === "voting" ? (
-                        <div>
-                            <p>- a live vote</p>
-                            <h2>{user?.matchingGroup?.group?.winner?.name}</h2>
-                            <h2>. {castedVotes(user?.matchingGroup?.group)} of {user?.matchingGroup?.group?.participants.length}</h2>
-                            <h2>. {remaining}</h2>
-                            <button>Cast your Vote</button>
+                    ) : (
+                        <div className={styles.section}>
+                            <div className={styles.sectionHead}>
+                                <span className={styles.numeral}>I.</span>
+                                <h2 className={styles.sectionTitle}>Already on the table</h2>
+                                <span className={styles.rule} />
+                            </div>
+
+                            {user?.matchingGroup?.group?.status === "open" ? (
+                                <div className={styles.itemRow}>
+                                    <div className={styles.itemMain}>
+                                        <p className={styles.itemName}>
+                                            {user?.matchingGroup.group.name}
+                                            <span className={styles.itemTag}>— ready to vote</span>
+                                        </p>
+                                        <p className={styles.itemMeta}>
+                                            {castedVotes(user?.matchingGroup?.group)} of{" "}
+                                            {user?.matchingGroup?.group?.participants.length} have voted
+                                            <span className={styles.dot}>·</span> {remaining}
+                                        </p>
+                                    </div>
+                                    <button className={styles.ghostBtn}>Begin the voting</button>
+                                </div>
+                            ) : null}
+
+                            {user?.matchingGroup?.group?.status === "voting" ? (
+                                <div className={styles.itemRow}>
+                                    <div className={styles.itemMain}>
+                                        <p className={styles.itemName}>
+                                            {user?.matchingGroup.group.name}
+                                            <span className={styles.itemTag}>— a live vote</span>
+                                        </p>
+                                        <p className={styles.itemMeta}>
+                                            <strong>{user?.matchingGroup?.group?.winner?.name}</strong> leads
+                                            <span className={styles.dot}>·</span>
+                                            {castedVotes(user?.matchingGroup?.group)} of{" "}
+                                            {user?.matchingGroup?.group?.participants.length} have voted
+                                            <span className={styles.dot}>·</span> {remaining}
+                                        </p>
+                                    </div>
+                                    <button className={styles.ghostBtn}>Cast your vote</button>
+                                </div>
+                            ) : null}
+
+                            {user?.matchingGroup?.group?.status === "closed" ? (
+                                <div className={styles.itemRow}>
+                                    <div className={styles.itemMain}>
+                                        <p className={styles.itemName}>
+                                            {user?.matchingGroup.group.name}
+                                            <span className={styles.itemTag}>— you found the restaurant!</span>
+                                        </p>
+                                    </div>
+                                    <button className={styles.ghostBtn}>Cast your vote</button>
+                                </div>
+                            ) : null}
                         </div>
-                    ) : null}
-                    {user?.matchingGroup?.group?.status === "closed" ? (
-                        <div>
-                            <p>- you found the Restaurant!!!</p>
-                            <button>Cast your Vote</button>
-                        </div>
-                    ) : null}
+                    )}
                 </div>
-            )}
+
+                <aside>
+                    <div className={styles.sideCard}>
+                        <h3 className={styles.sideTitle}>At the table tonight</h3>
+                        <p className={styles.sideSub}>
+                            {user?.friendlist?.length ?? 0} friends available
+                        </p>
+                        {user?.friendlist?.map((f, index) => (
+                            <div className={styles.friendRow} key={index}>
+                                {f.profilePic ? (
+                                    <img
+                                        className={styles.friendAvatar}
+                                        src={f.profilePic}
+                                        alt={`${f.firstName} ${f.lastName}`}
+                                    />
+                                ) : (
+                                    <span className={styles.friendAvatar}>
+                                        {initials(f.firstName, f.lastName)}
+                                    </span>
+                                )}
+                                <p className={styles.friendName}>
+                                    {f.firstName} {f.lastName}
+                                </p>
+                            </div>
+                        ))}
+                        <button className={styles.inviteBtn}>+ Invite more</button>
+                    </div>
+
+                    <div className={styles.sideCard}>
+                        <h3 className={styles.sideTitle}>Narrow it down</h3>
+                        <div className={styles.chips}>
+                            <button className={`${styles.chip} ${styles.chipActive}`}>Books tonight</button>
+                            <button className={styles.chip}>Walkable</button>
+                            <button className={styles.chip}>Veg-friendly</button>
+                            <button className={styles.chip}>Under $$</button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
         </div>
     );
 
     const notloaded = () => (
-        <div>
-            <p>notloaded</p>
+        <div className={styles.loading}>
+            <p>Setting the table…</p>
         </div>
     );
 

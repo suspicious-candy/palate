@@ -1,0 +1,418 @@
+/* "Bill of Fare" (1c) — the dashboard styled as an elegant restaurant menu */
+
+.page {
+    --ink: #2a211d;
+    --muted: #92847a;
+    --faint: #b7a999;
+    --red: #b02a2e;
+    --red-deep: #8f1f22;
+    --cream: #fbf6ec;
+    --cream-line: #ece0cf;
+    --blush: #f9ece7;
+    --serif: "Playfair Display", "Iowan Old Style", Georgia, "Times New Roman", serif;
+
+    min-height: 100vh;
+    background: var(--blush);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    padding-bottom: 60px;
+}
+
+/* ---------- top nav ---------- */
+.nav {
+    background: #fffdfa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.navInner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 34px;
+}
+
+.brand {
+    font-family: var(--serif);
+    font-size: 25px;
+    font-weight: 800;
+    color: var(--red);
+    letter-spacing: -0.3px;
+}
+
+.navLinks {
+    display: flex;
+    gap: 26px;
+    font-size: 15px;
+    color: #4a423d;
+}
+
+.navLink {
+    cursor: pointer;
+}
+
+.navLinkActive {
+    color: var(--red);
+    font-weight: 600;
+}
+
+.navSpacer {
+    flex: 1;
+}
+
+.navAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---------- page layout ---------- */
+.layout {
+    max-width: 1120px;
+    margin: 30px auto 0;
+    padding: 0 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 26px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- the menu card ---------- */
+.menuCard {
+    background: var(--cream);
+    border: 1px solid var(--cream-line);
+    border-radius: 20px;
+    padding: 46px 54px 52px;
+    box-shadow: 0 10px 30px rgba(120, 60, 20, 0.05);
+}
+
+.menuHeader {
+    text-align: center;
+    margin-bottom: 34px;
+}
+
+.eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin: 0 0 14px;
+}
+
+.menuTitle {
+    font-family: var(--serif);
+    font-size: 44px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    line-height: 1.1;
+}
+
+.menuTitle::before,
+.menuTitle::after {
+    content: "";
+    width: 66px;
+    height: 1px;
+    background: var(--faint);
+}
+
+.menuSubtitle {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--muted);
+    margin: 0;
+}
+
+/* ---------- tonight's feature ---------- */
+.featureCard {
+    background: #fffdfa;
+    border: 1px solid var(--cream-line);
+    border-radius: 16px;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    box-shadow: 0 4px 14px rgba(120, 60, 20, 0.04);
+}
+
+.featureIcon {
+    flex: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: #fbe9e6;
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+
+.featureBody {
+    flex: 1;
+}
+
+.featureName {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 4px 0 4px;
+}
+
+.featureDesc {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+}
+
+/* ---------- sections ---------- */
+.section {
+    margin-bottom: 30px;
+}
+
+.sectionHead {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.numeral {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    color: var(--red);
+}
+
+.sectionTitle {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.rule {
+    flex: 1;
+    border-bottom: 1px dotted var(--faint);
+    transform: translateY(-5px);
+}
+
+/* ---------- a menu line (vote / match state) ---------- */
+.itemRow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 2px 18px;
+}
+
+.itemMain {
+    flex: 1;
+}
+
+.itemName {
+    font-family: var(--serif);
+    font-size: 20px;
+    color: var(--ink);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.itemTag {
+    font-family: system-ui, sans-serif;
+    font-style: normal;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.itemMeta {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dot {
+    color: var(--red);
+}
+
+/* ---------- buttons ---------- */
+.beginBtn {
+    flex: none;
+    border: none;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+}
+
+.beginBtn:hover {
+    background: var(--red-deep);
+}
+
+.beginBtn:active {
+    transform: scale(0.98);
+}
+
+.ghostBtn {
+    flex: none;
+    border: 1px solid var(--red);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--red);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.ghostBtn:hover {
+    background: #fbeceb;
+}
+
+/* ---------- sidebar ---------- */
+.sideCard {
+    background: #fffdfa;
+    border: 1px solid var(--cream-line);
+    border-radius: 18px;
+    padding: 22px 22px 24px;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 14px rgba(120, 60, 20, 0.04);
+}
+
+.sideTitle {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 3px;
+}
+
+.sideSub {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0 0 16px;
+}
+
+.friendRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.friendAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #ead9cf;
+    color: #6b5a4d;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.friendName {
+    font-size: 15px;
+    color: var(--ink);
+    margin: 0;
+}
+
+.inviteBtn {
+    width: 100%;
+    margin-top: 12px;
+    border: 1px dashed var(--red);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--red);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 0;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.inviteBtn:hover {
+    background: #fbeceb;
+}
+
+/* ---------- narrow it down chips ---------- */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.chip {
+    border: 1px solid var(--cream-line);
+    border-radius: 999px;
+    background: #fdf9f2;
+    color: #5a5049;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.chip:hover {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.chipActive {
+    background: #fbe5e4;
+    border-color: transparent;
+    color: var(--red);
+    font-weight: 600;
+}
+
+/* ---------- loading ---------- */
+.loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--blush, #f9ece7);
+    font-family: "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-size: 20px;
+    color: #92847a;
+}
