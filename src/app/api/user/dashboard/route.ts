@@ -24,9 +24,17 @@ export async function GET(request: NextRequest) {
         }
         const userId = user.id;
 
-        const authUser = await User.findById(
-            userId
-        ).select("-password");
+        const authUser = await User.findById(userId)
+            .select("-password")
+            .populate({
+                path: "matchingGroup.group",
+                populate: [
+                    { path: "participants.user" },
+                    { path: "participants.rankedVotes" },
+                    { path: "restaurants" },
+                    { path: "winner" },
+                ],
+            });
         if(!authUser){
                 return NextResponse.json(
                     {error:"Invalid credentials"},{status:401}
