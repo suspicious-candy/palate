@@ -5,6 +5,20 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 
 type tip = { fsqTipId: string; text: string };
+type participant = {
+    user:User,
+    hasVoted:boolean,
+    rankedVotes: Restaurant[],
+    votedAt:Date,
+};
+type matching = {
+    name:string,
+    participants:participant[],
+    restaurants:Restaurant[],
+    date:Date,
+    status:string,
+    winner:Restaurant,
+};
 type category = {
     fsqCategoryId: string;
     name: string;
@@ -42,7 +56,10 @@ type User = {
         allergines: string[];
         diet: string[];
     };
-    isInMatching?: boolean;
+    matchingGroup:{
+        group:matching;
+        isInMatching:boolean
+    };
     lists:[Restaurant[]]
 };
 
@@ -76,7 +93,7 @@ export default function Dashboard() {
             <h2>
                 {formattedDate}. {user?.firstName} {"& the crew"}
             </h2>
-            {user?.isInMatching ? (
+            {user?.matchingGroup.isInMatching ? (
                 <div>
                     <p>{"I. Tonight's Feature"}</p>
                     <h1>Start a group Dinner</h1>

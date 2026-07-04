@@ -86,10 +86,19 @@ const userSchema = new mongoose.Schema({
     verifyToken:String,
     verifyTokenExpiry:Date,
 
-    isInMatching:{
-        type:Boolean,
-        default:false,
+    matchingGroup:{
+        type:{
+            group:{ 
+                type: mongoose.Schema.Types.ObjectId, ref: "matching" ,
+                default:{}
+            },
+            isInMatching:{
+                type:Boolean,
+                default:false,
+            },
+        }
     },
+
     wishlist:{
         type:[ { type: mongoose.Schema.Types.ObjectId, ref: "restaurants" }],
         default:[],
