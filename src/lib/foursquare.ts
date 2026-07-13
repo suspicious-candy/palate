@@ -30,6 +30,8 @@ async function fsq<T>(path: string, params?: Record<string, string | number>) {
     return (await res.json()) as T;
 }
 
+// Pro fields plus `rating` (Premium, kept). Other Premium fields (price,
+// popularity, hours, photos, tastes) are excluded to keep requests lean.
 export interface FsqPlace {
   fsq_place_id: string;
   name: string;
@@ -47,13 +49,7 @@ export interface FsqPlace {
   tel?: string;
   website?: string;
   rating?: number;
-  price?: number;
-  popularity?: number;
-  hours?: { display?: string; open_now?: boolean; regular?: { day: number; open: string; close: string }[] };
-  photos?: FsqPhoto[];
-  tastes?: string[];
 }
-export interface FsqPhoto { fsq_photo_id?: string; prefix: string; suffix: string; width: number; height: number; }
 export interface FsqTip { fsq_tip_id?: string; text: string; created_at?: string; }
 
 export function searchPlaces(opts: {
@@ -63,7 +59,8 @@ export function searchPlaces(opts: {
   radius?: number;
   categories?: string;
   limit?: number;
-  sort?: "RELEVANCE" | "RATING" | "DISTANCE" | "POPULARITY";
+  // POPULARITY sort requires Premium data, so it's not available.
+  sort?: "RELEVANCE" | "RATING" | "DISTANCE";
 }) {
   return fsq<{ results: FsqPlace[] }>("/places/search", {
     ...(opts.query ? { query: opts.query } : {}),
@@ -79,10 +76,6 @@ export function searchPlaces(opts: {
 
 export function getPlace(fsqPlaceId: string) {
   return fsq<FsqPlace>(`/places/${fsqPlaceId}`, { fields: SEARCH_FIELDS });
-}
-
-export function getPlacePhotos(fsqPlaceId: string, limit = 8) {
-  return fsq<FsqPhoto[]>(`/places/${fsqPlaceId}/photos`, { limit });
 }
 
 export function getPlaceTips(fsqPlaceId: string, limit = 10) {

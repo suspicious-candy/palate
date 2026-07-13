@@ -108,8 +108,8 @@ const userSchema = new mongoose.Schema({
     },
 
     friendlist:{
-        type:[User],
-        defualt:[],
+        type:[{ type: mongoose.Schema.Types.ObjectId, ref: "users" }],
+        default:[],
     },
 
     preferences:{

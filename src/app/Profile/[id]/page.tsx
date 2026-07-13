@@ -9,7 +9,6 @@ type RestaurantRef = {
     _id: string;
     name: string;
     rating?: number; // 0 - 10
-    price?: number; // 1 ($) - 4 ($$$$)
     cuisine?: string[];
     categories?: { name?: string }[];
     location?: { locality?: string; region?: string };
@@ -128,7 +127,6 @@ function getUser(id: string): UserProfile {
                     _id: "rest1",
                     name: "Osteria Rustica",
                     rating: 9.6,
-                    price: 3,
                     cuisine: ["Italian"],
                     location: { locality: "Chicago", region: "IL" },
                 },
@@ -139,10 +137,10 @@ function getUser(id: string): UserProfile {
             },
         ],
         visitedResturants: [
-            { _id: "v1", name: "Pizano Heritage", rating: 9.8, price: 2, cuisine: ["Pizza"], location: { locality: "Chicago", region: "IL" } },
-            { _id: "v2", name: "Trattoria Roma", rating: 9.2, price: 3, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
-            { _id: "v3", name: "Osteria Rustica", rating: 9.6, price: 3, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
-            { _id: "v4", name: "Bella Napoli", rating: 9.0, price: 2, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v1", name: "Pizano Heritage", rating: 9.8, cuisine: ["Pizza"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v2", name: "Trattoria Roma", rating: 9.2, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v3", name: "Osteria Rustica", rating: 9.6, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
+            { _id: "v4", name: "Bella Napoli", rating: 9.0, cuisine: ["Italian"], location: { locality: "Chicago", region: "IL" } },
         ],
         savedAddresses: [
             {

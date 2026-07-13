@@ -35,5 +35,5 @@ export const FOOD_CATEGORIES = [
   { fsqid: 13377, name: "Vietnamese" },
   { fsqid: 13338, name: "Seafood" },
   { fsqid: 13276, name: "Sushi" },
-  { fsqid: 13352, name: "Vegan / Vegetarian" },
+  { fsqid: 13385, name: "Vegan / Vegetarian" },
 ];

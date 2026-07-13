@@ -10,15 +10,15 @@ export async function syncArea(opts: { ll?: string; near?: string; categories?: 
 
   await connect();
 
-  const { results } = await searchPlaces({ ...opts, limit: 50, sort: "POPULARITY" });
+  const { results } = await searchPlaces({ ...opts, limit: 50, sort: "RELEVANCE" });
 
   const ops = results.map((p: FsqPlace) => {
     const doc = mapPlaceToResturant(p);
     return {
       updateOne: {
-        filter: { fsqId: doc.fsqId }, 
-        update: { $set: doc },      
-        upsert: true,   
+        filter: { fsqId: doc.fsqId },
+        update: { $set: doc },
+        upsert: true,
       },
     };
   });

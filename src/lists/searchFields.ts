@@ -1,3 +1,6 @@
+// Foursquare Pro fields plus `rating` (Premium, kept intentionally). Other
+// Premium fields (price, popularity, hours, photos, tastes, description,
+// features) are omitted to keep requests lean.
 export const SEARCH_FIELDS = [
   "fsq_place_id",
   "name",
@@ -8,9 +11,4 @@ export const SEARCH_FIELDS = [
   "tel",
   "website",
   "rating",
-  "price",
-  "popularity",
-  "hours",
-  "photos",
-  "tastes",
 ].join(",");

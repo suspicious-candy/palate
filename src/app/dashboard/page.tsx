@@ -30,14 +30,6 @@ type category = {
     name: string;
     icon: { prefix: string; suffix: string };
 };
-type photo = {
-    fsqPhotoId: string;
-    prefix: string;
-    suffix: string;
-    width: number;
-    height: number;
-};
-
 type Restaurant = {
     fsqId: string;
     name: string;
@@ -45,9 +37,7 @@ type Restaurant = {
     geocodes: { latitude: number; longitude: number };
     geo: { type: string; coordinates: number[] };
     rating: number;
-    price: number;
     tips: tip[];
-    photos: photo[];
 };
 
 type User = {
@@ -64,7 +54,7 @@ type User = {
     };
     matchingGroup:{
         group:matching;
-        isInMatching:boolean
+        isInMatching: false
     };
     friendlist:User[];
     lists:[Restaurant[]]
@@ -93,10 +83,49 @@ function useTimeLeft(date: Date): string {
 
     React.useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 60000);
-        return () => clearInterval(id); 
+        return () => clearInterval(id);
     }, []);
 
     return timeLeft(date, now);
+}
+
+type GeoState =
+    | { status: "loading" }
+    | { status: "success"; latitude: number; longitude: number }
+    | { status: "error"; message: string };
+
+// Browser-only API (needs navigator), so this only ever runs client-side,
+// after mount, inside the effect below.
+function useGeolocation(): GeoState {
+    const [state, setState] = React.useState<GeoState>({ status: "loading" });
+
+    React.useEffect(() => {
+        if (!("geolocation" in navigator)) {
+            setState({ status: "error", message: "Geolocation is not supported by this browser" });
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setState({
+                    status: "success",
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                });
+            },
+            (error) => {
+                // error.code: 1 = permission denied, 2 = position unavailable, 3 = timeout
+                setState({ status: "error", message: error.message || "Location permission denied" });
+            },
+            {
+                enableHighAccuracy: false, // city-level precision is enough; avoids a slow GPS fix
+                timeout: 10000,
+                maximumAge: 5 * 60 * 1000, // reuse a fix from the last 5 minutes instead of re-prompting the OS
+            }
+        );
+    }, []);
+
+    return state;
 }
 
 function castedVotes(group?: matching): number {
@@ -114,9 +143,7 @@ function castedVotes(group?: matching): number {
 export default function Dashboard() {
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
-
-    // Called unconditionally at the top level (Rules of Hooks). Falls back to
-    // `now` until the group loads; re-renders every minute.
+    const geo = useGeolocation();
     const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date());
 
     const formattedDate = new Date().toLocaleDateString("en-US", {
@@ -161,13 +188,18 @@ export default function Dashboard() {
                 <div className={styles.menuCard}>
                     <div className={styles.menuHeader}>
                         <p className={styles.eyebrow}>{"Tonight's Table"}</p>
+                        {geo.status === "loading" && <p>📍 Getting your location…</p>}
+                        {geo.status === "success" && (
+                            <p>📍 {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</p>
+                        )}
+                        {geo.status === "error" && <p>📍 {geo.message}</p>}
                         <h1 className={styles.menuTitle}>Where shall we eat?</h1>
                         <p className={styles.menuSubtitle}>
                             {formattedDate} · curated for {user?.firstName} &amp; the crew
                         </p>
                     </div>
 
-                    {!user?.matchingGroup.isInMatching ? (
+                    {!user?.matchingGroup?.isInMatching ? (
                         <div className={styles.featureCard}>
                             <div className={styles.featureIcon}>⌗</div>
                             <div className={styles.featureBody}>
@@ -192,7 +224,7 @@ export default function Dashboard() {
                                 <div className={styles.itemRow}>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>
-                                            {user?.matchingGroup.group.name}
+                                            {user?.matchingGroup?.group?.name}
                                             <span className={styles.itemTag}>— ready to vote</span>
                                         </p>
                                         <p className={styles.itemMeta}>
@@ -209,7 +241,7 @@ export default function Dashboard() {
                                 <div className={styles.itemRow}>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>
-                                            {user?.matchingGroup.group.name}
+                                            {user?.matchingGroup?.group?.name}
                                             <span className={styles.itemTag}>— a live vote</span>
                                         </p>
                                         <p className={styles.itemMeta}>
@@ -228,7 +260,7 @@ export default function Dashboard() {
                                 <div className={styles.itemRow}>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>
-                                            {user?.matchingGroup.group.name}
+                                            {user?.matchingGroup?.group?.name}
                                             <span className={styles.itemTag}>— you found the restaurant!</span>
                                         </p>
                                     </div>

@@ -33,17 +33,6 @@ export function mapPlaceToResturant(p:FsqPlace){
         tel: p.tel,
         website: p.website,
         rating: p.rating,
-        price: p.price,
-        popularity: p.popularity,
-
-        photos: (p.photos ?? []).map((ph) => ({
-            fsqPhotoId: ph.fsq_photo_id,
-            prefix: ph.prefix,
-            suffix: ph.suffix,
-            width: ph.width,
-            height: ph.height,
-        })),
-        tastes: p.tastes ?? [],
         lastFetchedAt: new Date(),
     });
 }

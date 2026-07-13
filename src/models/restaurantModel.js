@@ -13,18 +13,6 @@ const categorySchema = new mongoose.Schema(
   { _id: false }
 );
 
-const photoSchema = new mongoose.Schema(
-  {
-    fsqPhotoId: String,
-    // Build a usable URL with: prefix + "<size>" + suffix  (e.g. prefix + "300x300" + suffix)
-    prefix: String,
-    suffix: String,
-    width: Number,
-    height: Number,
-  },
-  { _id: false }
-);
-
 const tipSchema = new mongoose.Schema(
   {
     fsqTipId: String,
@@ -34,21 +22,9 @@ const tipSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const hoursSchema = new mongoose.Schema(
-  {
-    displayHours: [String], // human-readable, e.g. "Mon-Fri 9:00 AM-10:00 PM"
-    openNow: Boolean,
-    regular: [
-      {
-        day: Number, // 1 = Monday ... 7 = Sunday
-        open: String, // "0900"
-        close: String, // "2200"
-      },
-    ],
-  },
-  { _id: false }
-);
-
+// NOTE: We keep `rating` and `tips` (reviews). Other Premium Foursquare fields
+// (price, popularity, hours, photos, tastes, description, features) are
+// intentionally not stored to keep requests lean.
 const restaurantSchema = new mongoose.Schema(
   {
     fsqId: {
@@ -62,7 +38,6 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    description: String,
 
     categories: [categorySchema],
     cuisine: [String], // optional flattened convenience field
@@ -98,27 +73,10 @@ const restaurantSchema = new mongoose.Schema(
       twitter: String,
     },
 
-    // Ratings & popularity
+    // Ratings & reviews (kept from Premium tier)
     rating: Number, // 0 - 10
-    popularity: Number, // 0 - 1
-    price: Number, // 1 ($) - 4 ($$$$)
-    stats: {
-      totalPhotos: Number,
-      totalRatings: Number,
-      totalTips: Number,
-    },
-
-    // Hours
-    hours: hoursSchema,
-
-    // Rich content
-    photos: [photoSchema],
     tips: [tipSchema],
-    tastes: [String], // crowd tags, e.g. "good for groups", "great cocktails"
-    features: mongoose.Schema.Types.Mixed, // deeply nested amenities object — kept flexible
-    menuUrl: String,
 
-    verified: Boolean,
     dateClosed: String,
 
     // When you last synced this record from Foursquare
