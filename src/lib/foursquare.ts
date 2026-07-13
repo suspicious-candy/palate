@@ -1,83 +1,87 @@
-import "server-only"
-import { SEARCH_FIELDS } from "../lists/searchFields"
+const FOURSQUARE_BASE_URL = "https://places-api.foursquare.com/places/search";
 
+type FoursquarePlace = {
+    fsq_place_id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    categories: {
+        fsq_category_id: string;
+        name: string;
+        icon?: { prefix: string; suffix: string };
+    }[];
+    location: {
+        address?: string;
+        locality?: string;
+        region?: string;
+        postcode?: string;
+        country?: string;
+        formatted_address?: string;
+    };
+    tel?: string;
+    website?: string;
+    social_media?: {
+        facebook_id?: string;
+        instagram?: string;
+        twitter?: string;
+    };
+};
 
-const BASE = "https://places-api.foursquare.com";
-const API_KEY = process.env.FOURSQUARE_API_KEY!;
-const API_VERSION = process.env.FOURSQUARE_API_VERSION ?? "2025-06-17";
+export async function searchFoursquarePlaces(
+    latitude: number,
+    longitude: number,
+    radiusMeters: number
+): Promise<FoursquarePlace[]> {
+    const url = `${FOURSQUARE_BASE_URL}?ll=${latitude},${longitude}&radius=${radiusMeters}&limit=50&query=restaurant`;
 
-if (!API_KEY) {
-  console.warn("[foursquare] FOURSQUARE_API_KEY is not set");
-}
-
-async function fsq<T>(path: string, params?: Record<string, string | number>) {
-    const url = new URL(`${BASE}${path}`);
-    for (const [k, v] of Object.entries(params ?? {})) {
-         url.searchParams.set(k, String(v));
-    }
     const res = await fetch(url, {
         headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        "X-Places-Api-Version": API_VERSION,
-        accept: "application/json",
+            Authorization: `Bearer ${process.env.FOURSQUARE_API_KEY}`,
+            "X-Places-Api-Version": process.env.FOURSQUARE_API_VERSION!,
+            accept: "application/json",
         },
-        next: { revalidate: 3600 },
     });
+
     if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Foursquare ${res.status} on ${path}: ${body}`);
+        throw new Error(`Foursquare search failed: ${res.status} ${await res.text()}`);
     }
-    return (await res.json()) as T;
+
+    const data = await res.json();
+    return data.results as FoursquarePlace[];
 }
 
-// Pro fields plus `rating` (Premium, kept). Other Premium fields (price,
-// popularity, hours, photos, tastes) are excluded to keep requests lean.
-export interface FsqPlace {
-  fsq_place_id: string;
-  name: string;
-  latitude?: number;
-  longitude?: number;
-  location?: {
-    address?: string;
-    locality?: string;
-    region?: string;
-    postcode?: string;
-    country?: string;
-    formatted_address?: string;
-  };
-  categories?: { fsq_category_id: string; name: string; icon?: { prefix: string; suffix: string } }[];
-  tel?: string;
-  website?: string;
-  rating?: number;
-}
-export interface FsqTip { fsq_tip_id?: string; text: string; created_at?: string; }
-
-export function searchPlaces(opts: {
-  query?: string;
-  ll?: string;
-  near?: string;
-  radius?: number;
-  categories?: string;
-  limit?: number;
-  // POPULARITY sort requires Premium data, so it's not available.
-  sort?: "RELEVANCE" | "RATING" | "DISTANCE";
-}) {
-  return fsq<{ results: FsqPlace[] }>("/places/search", {
-    ...(opts.query ? { query: opts.query } : {}),
-    ...(opts.ll ? { ll: opts.ll } : {}),
-    ...(opts.near ? { near: opts.near } : {}),
-    ...(opts.radius ? { radius: opts.radius } : {}),
-    ...(opts.categories ? { fsq_category_ids: opts.categories } : {}),
-    fields: SEARCH_FIELDS,
-    limit: opts.limit ?? 20,
-    sort: opts.sort ?? "RELEVANCE",
-  });
-}
-
-export function getPlace(fsqPlaceId: string) {
-  return fsq<FsqPlace>(`/places/${fsqPlaceId}`, { fields: SEARCH_FIELDS });
-}
-
-export function getPlaceTips(fsqPlaceId: string, limit = 10) {
-  return fsq<FsqTip[]>(`/places/${fsqPlaceId}/tips`, { limit });
+export function mapFoursquarePlace(place: FoursquarePlace) {
+    return {
+        fsqId: place.fsq_place_id,
+        name: place.name,
+        categories: place.categories.map((c) => ({
+            fsqCategoryId: c.fsq_category_id,
+            name: c.name,
+            icon: c.icon ? { prefix: c.icon.prefix, suffix: c.icon.suffix } : undefined,
+        })),
+        cuisine: place.categories.map((c) => c.name),
+        location: {
+            formattedAddress: place.location.formatted_address,
+            address: place.location.address,
+            locality: place.location.locality,
+            region: place.location.region,
+            postcode: place.location.postcode,
+            country: place.location.country,
+        },
+        geocodes: { latitude: place.latitude, longitude: place.longitude },
+        geo: {
+            type: "Point" as const,
+            coordinates: [place.longitude, place.latitude], // GeoJSON: lng first
+        },
+        tel: place.tel,
+        website: place.website,
+        socialMedia: place.social_media
+            ? {
+                  facebookId: place.social_media.facebook_id,
+                  instagram: place.social_media.instagram,
+                  twitter: place.social_media.twitter,
+              }
+            : undefined,
+        lastFetchedAt: new Date(),
+    };
 }
