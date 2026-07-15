@@ -5,7 +5,6 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import styles from "./dashboard.module.css";
 
-// First-name + last-name initials, e.g. "Maya Kapoor" -> "MK".
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
@@ -60,7 +59,6 @@ type User = {
     lists:[Restaurant[]]
 };
 
-// Pure: how much time is left until `date`, formatted relative to `now`.
 function timeLeft(date: Date, now: Date = new Date()): string {
     const diffMs = new Date(date).getTime() - now.getTime();
 
@@ -94,8 +92,6 @@ type GeoState =
     | { status: "success"; latitude: number; longitude: number }
     | { status: "error"; message: string };
 
-// Browser-only API (needs navigator), so this only ever runs client-side,
-// after mount, inside the effect below.
 function useGeolocation(): GeoState {
     const [state, setState] = React.useState<GeoState>({ status: "loading" });
 
@@ -125,6 +121,8 @@ function useGeolocation(): GeoState {
         );
     }, []);
 
+   
+
     return state;
 }
 
@@ -144,7 +142,8 @@ export default function Dashboard() {
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
     const geo = useGeolocation();
-    const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date());
+    const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date()); 
+    const [nearbyRestaurants, setNearbyRestaurants] = React.useState<Restaurant[]>([]);
 
     const formattedDate = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -165,6 +164,14 @@ export default function Dashboard() {
             .finally(() => setLoading(false));
     }, []);
 
+    React.useEffect(() => {
+        if (geo.status !== "success") return;
+
+        axios.get("/api/Restaurants/nearby", { params: { lat: geo.latitude, lng: geo.longitude } })
+        .then((res) => setNearbyRestaurants(res.data.restaurants ?? []))
+            .catch(() => {});
+        }, [geo]);
+        console.log(nearbyRestaurants);
     const loaded = () => (
         <div className={styles.page}>
             <nav className={styles.nav}>
@@ -188,11 +195,6 @@ export default function Dashboard() {
                 <div className={styles.menuCard}>
                     <div className={styles.menuHeader}>
                         <p className={styles.eyebrow}>{"Tonight's Table"}</p>
-                        {geo.status === "loading" && <p>📍 Getting your location…</p>}
-                        {geo.status === "success" && (
-                            <p>📍 {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</p>
-                        )}
-                        {geo.status === "error" && <p>📍 {geo.message}</p>}
                         <h1 className={styles.menuTitle}>Where shall we eat?</h1>
                         <p className={styles.menuSubtitle}>
                             {formattedDate} · curated for {user?.firstName} &amp; the crew
@@ -269,6 +271,9 @@ export default function Dashboard() {
                             ) : null}
                         </div>
                     )}
+                    <div>
+                        <h1>Recommended for you</h1>
+                    </div>
                 </div>
 
                 <aside>
@@ -319,4 +324,12 @@ export default function Dashboard() {
     );
 
     return <div>{loading ? notloaded() : loaded()}</div>;
+}
+
+function RestaurantCard(Rest  : Restaurant){
+    return(
+        <div>
+            {}
+        </div>
+    )
 }
