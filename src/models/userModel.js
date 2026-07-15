@@ -104,7 +104,9 @@ const userSchema = new mongoose.Schema({
         default:[],
     },
     lists:{
-        type:[[{ type: mongoose.Schema.Types.ObjectId, ref: "restaurants" }]]
+        type: Map,
+        of: [{ type: mongoose.Schema.Types.ObjectId, ref: "restaurants" }],
+        default: {},
     },
 
     friendlist:{

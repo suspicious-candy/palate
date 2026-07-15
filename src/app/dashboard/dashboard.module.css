@@ -404,6 +404,134 @@
     font-weight: 600;
 }
 
+/* ---------- recommended restaurant rows ---------- */
+.restaurantRow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 2px;
+    border-bottom: 1px dotted var(--cream-line);
+}
+
+.restaurantRow:last-child {
+    border-bottom: none;
+}
+
+.restaurantSwatch {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.swatchSage {
+    background: #dde1d3;
+}
+
+.swatchBlush {
+    background: #f3d9d5;
+}
+
+.swatchSand {
+    background: #ece0c9;
+}
+
+.restaurantMain {
+    flex: 1;
+    min-width: 0;
+}
+
+.restaurantName {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: var(--ink);
+    margin: 0 0 4px;
+}
+
+.restaurantMeta {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.restaurantStats {
+    flex: none;
+    font-size: 13.5px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.heartBtn {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--cream-line);
+    background: #fffdfa;
+    color: var(--faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.heartBtn:hover {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.heartBtnActive {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+}
+
+/* ---------- from your lists ---------- */
+.listRow {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 10px 2px;
+    border-bottom: 1px dotted var(--cream-line);
+    cursor: pointer;
+}
+
+.listRow:last-child {
+    border-bottom: none;
+}
+
+.listName {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+.listRule {
+    flex: 1;
+    border-bottom: 1px dotted var(--faint);
+    transform: translateY(-4px);
+}
+
+.listCount {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
 /* ---------- loading ---------- */
 .loading {
     min-height: 100vh;

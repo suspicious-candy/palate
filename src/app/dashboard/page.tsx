@@ -4,6 +4,8 @@ import React from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import styles from "./dashboard.module.css";
+import Image from 'next/image';
+import { Geo } from "next/font/google";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -56,7 +58,7 @@ type User = {
         isInMatching: false
     };
     friendlist:User[];
-    lists:[Restaurant[]]
+    lists: Record<string, Restaurant[]>;
 };
 
 function timeLeft(date: Date, now: Date = new Date()): string {
@@ -94,6 +96,7 @@ type GeoState =
 
 function useGeolocation(): GeoState {
     const [state, setState] = React.useState<GeoState>({ status: "loading" });
+    const [cord,setcord] = React.useState<GeolocationPosition>();
 
     React.useEffect(() => {
         if (!("geolocation" in navigator)) {
@@ -108,9 +111,10 @@ function useGeolocation(): GeoState {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
                 });
+                setcord(position);
+                return cord;
             },
             (error) => {
-                // error.code: 1 = permission denied, 2 = position unavailable, 3 = timeout
                 setState({ status: "error", message: error.message || "Location permission denied" });
             },
             {
@@ -137,6 +141,28 @@ function castedVotes(group?: matching): number {
     return casted;
 }
 
+function addrest(r:Restaurant,user:User){
+    user.wishlist.push(r);
+}
+
+function haversineDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // distance in km
+}
 
 export default function Dashboard() {
     const [user, setUser] = React.useState<User | null>(null);
@@ -172,6 +198,7 @@ export default function Dashboard() {
             .catch(() => {});
         }, [geo]);
         console.log(nearbyRestaurants);
+
     const loaded = () => (
         <div className={styles.page}>
             <nav className={styles.nav}>
@@ -271,8 +298,26 @@ export default function Dashboard() {
                             ) : null}
                         </div>
                     )}
-                    <div>
-                        <h1>Recommended for you</h1>
+                    <div className={styles.section}>
+                        <div className={styles.sectionHead}>
+                            <span className={styles.numeral}>II.</span>
+                            <h2 className={styles.sectionTitle}>Recommended for you</h2>
+                            <span className={styles.rule} />
+                            <span className={styles.itemTag}>tap ♥ to save</span>
+                        </div>
+                        {nearbyRestaurants.map((r, i) => (
+                            <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} index={i} />
+                        ))}
+                    </div>
+                    <div className={styles.section}>
+                        <div className={styles.sectionHead}>
+                            <span className={styles.numeral}>III.</span>
+                            <h2 className={styles.sectionTitle}>From your lists</h2>
+                            <span className={styles.rule} />
+                        </div>
+                        {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
+                            <ListCard key={name} name={name} restaurants={restaurants} />
+                        ))}
                     </div>
                 </div>
 
@@ -326,10 +371,56 @@ export default function Dashboard() {
     return <div>{loading ? notloaded() : loaded()}</div>;
 }
 
-function RestaurantCard(Rest  : Restaurant){
+const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
+
+function RestaurantCard({ restaurant, geo, user, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; index: number }){
+    const Rest = restaurant;
+    const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
+    const icon = Rest.categories[0]?.icon;
+
     return(
-        <div>
-            {}
+        <div className={styles.restaurantRow}>
+            <div className={`${styles.restaurantSwatch} ${swatchClasses[index % swatchClasses.length]}`}>
+                {icon && (
+                    <Image src={`${icon.prefix}64${icon.suffix}`} alt="" width={28} height={28} />
+                )}
+            </div>
+            <div className={styles.restaurantMain}>
+                <p className={styles.restaurantName}>{Rest.name}</p>
+                <p className={styles.restaurantMeta}>
+                    {Rest.categories.map((c) => c.name).join(", ")}
+                </p>
+            </div>
+            <div className={styles.restaurantStats}>
+                {Rest.rating > 0 && <span>★ {Rest.rating.toFixed(1)}</span>}
+                {geo.status === "success" && (
+                    <span>
+                        · {haversineDistance(
+                            geo.latitude,
+                            geo.longitude,
+                            Rest.geocodes.latitude,
+                            Rest.geocodes.longitude
+                        ).toFixed(1)} mi
+                    </span>
+                )}
+            </div>
+            <button
+                className={`${styles.heartBtn} ${saved ? styles.heartBtnActive : ""}`}
+                onClick={() => user && addrest(restaurant, user)}
+                aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+            >
+                ♥
+            </button>
+        </div>
+    )
+}
+
+function ListCard({ name, restaurants }: { name: string; restaurants: Restaurant[] }){
+    return(
+        <div className={styles.listRow}>
+            <span className={styles.listName}>{name}</span>
+            <span className={styles.listRule} />
+            <span className={styles.listCount}>{restaurants.length} spots →</span>
         </div>
     )
 }
