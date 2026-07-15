@@ -141,15 +141,12 @@ function castedVotes(group?: matching): number {
     return casted;
 }
 
-function addrest(r:Restaurant,user:User){
-    user.wishlist.push(r);
-}
 
 function haversineDistance(
   lat1: number, lon1: number,
   lat2: number, lon2: number
 ): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371; 
   const toRad = (deg: number) => (deg * Math.PI) / 180;
 
   const dLat = toRad(lat2 - lat1);
@@ -161,7 +158,31 @@ function haversineDistance(
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; // distance in km
+  return R * c;
+}
+
+function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatch<React.SetStateAction<User | null>>){
+
+   const request = saved
+        ? axios.delete("/api/Restaurants/wishList", { data: { fsqId: rest.fsqId, name: rest.name } })
+        : axios.patch("/api/Restaurants/wishList", { fsqId: rest.fsqId, name: rest.name });
+
+   return toast.promise(request, {
+        loading: saved ? "Removing from wishlist" : "Adding to wishlist",
+        success: saved ? "Removed from wishlist" : "Added to wishlist",
+        error: (err) => err.response?.data?.error ?? "Couldn't update wishlist",
+   }).then(() => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                wishlist: saved
+                    ? prev.wishlist.filter((w) => w.fsqId !== rest.fsqId)
+                    : [...prev.wishlist, rest],
+            };
+        });
+   });
+
 }
 
 export default function Dashboard() {
@@ -229,17 +250,24 @@ export default function Dashboard() {
                     </div>
 
                     {!user?.matchingGroup?.isInMatching ? (
-                        <div className={styles.featureCard}>
-                            <div className={styles.featureIcon}>⌗</div>
-                            <div className={styles.featureBody}>
-                                <p className={styles.eyebrow}>{"Tonight's Feature"}</p>
-                                <h2 className={styles.featureName}>Start a Group Dinner</h2>
-                                <p className={styles.featureDesc}>
-                                    Share a QR, everyone swipes the same shortlist, Palate
-                                    serves the winner.
-                                </p>
+                        <div className={styles.section}>
+                            <div className={styles.sectionHead}>
+                                <span className={styles.numeral}>I.</span>
+                                <h2 className={styles.sectionTitle}>{"Tonight's Feature"}</h2>
+                                <span className={styles.rule} />
                             </div>
-                            <button className={styles.beginBtn}>Begin →</button>
+
+                            <div className={styles.itemRow}>
+                                <div className={`${styles.itemIcon} ${styles.swatchBlush}`}>⌗</div>
+                                <div className={styles.itemMain}>
+                                    <p className={styles.itemName}>Start a Group Dinner</p>
+                                    <p className={styles.itemTag}>
+                                        Share a QR, everyone swipes the same shortlist, Palate
+                                        serves the winner.
+                                    </p>
+                                </div>
+                                <button className={styles.beginBtn}>Begin →</button>
+                            </div>
                         </div>
                     ) : (
                         <div className={styles.section}>
@@ -251,47 +279,44 @@ export default function Dashboard() {
 
                             {user?.matchingGroup?.group?.status === "open" ? (
                                 <div className={styles.itemRow}>
+                                    <div className={`${styles.itemIcon} ${styles.swatchSage}`}>⏳</div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>
-                                            {user?.matchingGroup?.group?.name}
-                                            <span className={styles.itemTag}>— ready to vote</span>
-                                        </p>
-                                        <p className={styles.itemMeta}>
-                                            {castedVotes(user?.matchingGroup?.group)} of{" "}
-                                            {user?.matchingGroup?.group?.participants.length} have voted
-                                            <span className={styles.dot}>·</span> {remaining}
-                                        </p>
+                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
+                                        <p className={styles.itemTag}>ready to vote</p>
                                     </div>
+                                    <p className={styles.itemMeta}>
+                                        {castedVotes(user?.matchingGroup?.group)} of{" "}
+                                        {user?.matchingGroup?.group?.participants.length} voted
+                                        <span className={styles.dot}>·</span> {remaining}
+                                    </p>
                                     <button className={styles.ghostBtn}>Begin the voting</button>
                                 </div>
                             ) : null}
 
                             {user?.matchingGroup?.group?.status === "voting" ? (
                                 <div className={styles.itemRow}>
+                                    <div className={`${styles.itemIcon} ${styles.swatchBlush}`}>🗳</div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>
-                                            {user?.matchingGroup?.group?.name}
-                                            <span className={styles.itemTag}>— a live vote</span>
-                                        </p>
-                                        <p className={styles.itemMeta}>
-                                            <strong>{user?.matchingGroup?.group?.winner?.name}</strong> leads
-                                            <span className={styles.dot}>·</span>
-                                            {castedVotes(user?.matchingGroup?.group)} of{" "}
-                                            {user?.matchingGroup?.group?.participants.length} have voted
-                                            <span className={styles.dot}>·</span> {remaining}
-                                        </p>
+                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
+                                        <p className={styles.itemTag}>a live vote</p>
                                     </div>
+                                    <p className={styles.itemMeta}>
+                                        <strong>{user?.matchingGroup?.group?.winner?.name}</strong> leads
+                                        <span className={styles.dot}>·</span>
+                                        {castedVotes(user?.matchingGroup?.group)} of{" "}
+                                        {user?.matchingGroup?.group?.participants.length} voted
+                                        <span className={styles.dot}>·</span> {remaining}
+                                    </p>
                                     <button className={styles.ghostBtn}>Cast your vote</button>
                                 </div>
                             ) : null}
 
                             {user?.matchingGroup?.group?.status === "closed" ? (
                                 <div className={styles.itemRow}>
+                                    <div className={`${styles.itemIcon} ${styles.swatchSand}`}>✓</div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>
-                                            {user?.matchingGroup?.group?.name}
-                                            <span className={styles.itemTag}>— you found the restaurant!</span>
-                                        </p>
+                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
+                                        <p className={styles.itemTag}>you found the restaurant!</p>
                                     </div>
                                     <button className={styles.ghostBtn}>Cast your vote</button>
                                 </div>
@@ -306,7 +331,7 @@ export default function Dashboard() {
                             <span className={styles.itemTag}>tap ♥ to save</span>
                         </div>
                         {nearbyRestaurants.map((r, i) => (
-                            <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} index={i} />
+                            <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
                         ))}
                     </div>
                     <div className={styles.section}>
@@ -373,7 +398,8 @@ export default function Dashboard() {
 
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
 
-function RestaurantCard({ restaurant, geo, user, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; index: number }){
+function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
+    
     const Rest = restaurant;
     const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
     const icon = Rest.categories[0]?.icon;
@@ -406,7 +432,7 @@ function RestaurantCard({ restaurant, geo, user, index }: { restaurant: Restaura
             </div>
             <button
                 className={`${styles.heartBtn} ${saved ? styles.heartBtnActive : ""}`}
-                onClick={() => user && addrest(restaurant, user)}
+                onClick={() => toggleWishlist(restaurant, saved, setUser)}
                 aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
             >
                 ♥

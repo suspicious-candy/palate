@@ -143,50 +143,6 @@
     margin: 0;
 }
 
-/* ---------- tonight's feature ---------- */
-.featureCard {
-    background: #fffdfa;
-    border: 1px solid var(--cream-line);
-    border-radius: 16px;
-    padding: 22px 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 40px;
-    box-shadow: 0 4px 14px rgba(120, 60, 20, 0.04);
-}
-
-.featureIcon {
-    flex: none;
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    background: #fbe9e6;
-    color: var(--red);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-}
-
-.featureBody {
-    flex: 1;
-}
-
-.featureName {
-    font-family: var(--serif);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--ink);
-    margin: 4px 0 4px;
-}
-
-.featureDesc {
-    font-size: 14px;
-    color: var(--muted);
-    margin: 0;
-}
-
 /* ---------- sections ---------- */
 .section {
     margin-bottom: 30px;
@@ -226,22 +182,35 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 6px 2px 18px;
+    padding: 14px 2px;
+    border-bottom: 1px dotted var(--cream-line);
+}
+
+.itemRow:last-child {
+    border-bottom: none;
+}
+
+.itemIcon {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
 }
 
 .itemMain {
     flex: 1;
+    min-width: 0;
 }
 
 .itemName {
     font-family: var(--serif);
-    font-size: 20px;
+    font-size: 18px;
     color: var(--ink);
     margin: 0 0 4px;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
 }
 
 .itemTag {
@@ -249,16 +218,18 @@
     font-style: normal;
     font-size: 13px;
     color: var(--muted);
+    display: block;
 }
 
 .itemMeta {
+    flex: none;
     font-size: 13.5px;
-    color: var(--muted);
+    color: var(--ink);
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 4px;
+    white-space: nowrap;
 }
 
 .dot {

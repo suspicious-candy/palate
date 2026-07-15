@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
                     { path: "restaurants" },
                     { path: "winner" },
                 ],
-            });
+            })
+            .populate("wishlist");
         if(!authUser){
                 return NextResponse.json(
                     {error:"Invalid credentials"},{status:401}
