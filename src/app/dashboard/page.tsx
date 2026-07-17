@@ -211,6 +211,30 @@ function toggleLists(rest: Restaurant, inList: boolean, listName:string ,setUser
 
 }
 
+function handleList(addList:boolean,listName:string,setUser: React.Dispatch<React.SetStateAction<User | null>>){
+
+    const request = addList
+        ? axios.patch("/api/user/lists", { listName })
+        : axios.delete("/api/user/lists", { data: { listName } });
+
+    return toast.promise(request,{
+        loading: addList ? `Adding  ${listName}` : `Removing  ${listName}`,
+        success: addList ? `Added  ${listName}` : `Removed  ${listName}`,
+        error: (err) => err.response?.data?.error ?? `Couldn't update you lists`,
+    }).then(()=>{
+        setUser((prev) => {
+            if (!prev) return prev;
+            if (addList) {
+                return { ...prev, lists: { ...prev.lists, [listName]: [] } };
+            }
+
+            const { [listName]: _removed, ...remainingLists } = prev.lists;
+             return { ...prev, lists: remainingLists };
+        });
+    })
+
+}
+
 export default function Dashboard() {
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
@@ -482,7 +506,7 @@ function ListDropDown({ rest, user, setUser }: { rest: Restaurant; user: User | 
 
     const [isOpen, setIsOpen] = React.useState(false);
     const wrapRef = React.useRef<HTMLDivElement>(null);
-   
+    const [newListName, setNewListName] = React.useState("");
 
     React.useEffect(()=>{
         function onClickOutside(e:MouseEvent){
@@ -494,20 +518,58 @@ function ListDropDown({ rest, user, setUser }: { rest: Restaurant; user: User | 
         return()=>document.removeEventListener("mousedown",onClickOutside);
     },[]);
 
-    return(
-        <div ref={wrapRef}>
-            <div onClick={() => setIsOpen((v) => !v)}>✓</div>
+    const lists = Object.entries(user?.lists ?? {});
+
+    return (
+        <div className={styles.dropdownWrap} ref={wrapRef}>
+            <button
+                type="button"
+                className={styles.listToggleBtn}
+                onClick={() => setIsOpen((v) => !v)}
+                aria-label="Save to a specific list"
+            >
+                ⌄
+            </button>
             {isOpen && (
-                <div className={styles.navMenu}>
-                    <h1>Save To A List</h1>
-                    {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => {
-                        const inList = restaurants.some((r) => r.fsqId === rest.fsqId) ?? false;
-                        return (
-                            <button key={name} onClick={() => toggleLists(rest,inList,name,setUser)}>
-                                {name}
-                            </button>
-                        );
-                    })}
+                <div className={styles.listPopover}>
+                    <p className={styles.listPopoverTitle}>Save to a list</p>
+                    {lists.length !== 0 ? (
+                        <div className={styles.listOptions}>
+                            {lists.map(([name, restaurants]) => {
+                                const inList = restaurants.some((r) => r.fsqId === rest.fsqId);
+                                return (
+                                    <button
+                                        key={name}
+                                        type="button"
+                                        className={styles.listOption}
+                                        onClick={() => toggleLists(rest, inList, name, setUser)}
+                                    >
+                                        <span>{name}</span>
+                                        {inList && <span className={styles.listOptionCheck}>✓</span>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className={styles.listEmpty}>No lists added yet</p>
+                    )}
+                    <form
+                        className={styles.newListForm}
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (!newListName.trim()) return;
+                            handleList(true, newListName, setUser);
+                            setNewListName("");
+                        }}
+                    >
+                        <input
+                            className={styles.newListInput}
+                            value={newListName}
+                            onChange={(e) => setNewListName(e.target.value)}
+                            placeholder="New list name"
+                        />
+                        <button type="submit" className={styles.newListBtn}>Add</button>
+                    </form>
                 </div>
             )}
         </div>
