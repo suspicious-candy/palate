@@ -5,7 +5,6 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import styles from "./dashboard.module.css";
 import Image from 'next/image';
-import { Geo } from "next/font/google";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -179,6 +178,33 @@ function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatc
                 wishlist: saved
                     ? prev.wishlist.filter((w) => w.fsqId !== rest.fsqId)
                     : [...prev.wishlist, rest],
+            };
+        });
+   });
+
+}
+
+function toggleLists(rest: Restaurant, inList: boolean, listName:string ,setUser: React.Dispatch<React.SetStateAction<User | null>>){
+
+   const request = inList
+        ? axios.delete("/api/Restaurants/lists", { data: { fsqId: rest.fsqId, restName: rest.name,listName:listName } })
+        : axios.patch("/api/Restaurants/lists", { fsqId: rest.fsqId, restName: rest.name,listName:listName  });
+
+   return toast.promise(request, {
+        loading: inList ? `Removing from ${listName}` : `Adding to ${listName}`,
+        success: inList ? `Removed from ${listName}` : `Added to ${listName}`,
+        error: (err) => err.response?.data?.error ?? `Couldn't update ${listName}`,
+   }).then(() => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                lists: {
+                    ...prev.lists,
+                    [listName]: inList
+                        ? prev.lists[listName].filter((w) => w.fsqId !== rest.fsqId)
+                        : [...(prev.lists[listName] ?? []), rest],
+                },
             };
         });
    });
@@ -437,6 +463,7 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
             >
                 ♥
             </button>
+            <ListDropDown rest={Rest} user={user} setUser={setUser} />
         </div>
     )
 }
@@ -449,4 +476,41 @@ function ListCard({ name, restaurants }: { name: string; restaurants: Restaurant
             <span className={styles.listCount}>{restaurants.length} spots →</span>
         </div>
     )
+}
+
+function ListDropDown({ rest, user, setUser }: { rest: Restaurant; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>> }){
+
+    const [isOpen, setIsOpen] = React.useState(false);
+    const wrapRef = React.useRef<HTMLDivElement>(null);
+   
+
+    React.useEffect(()=>{
+        function onClickOutside(e:MouseEvent){
+            if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown",onClickOutside);
+        return()=>document.removeEventListener("mousedown",onClickOutside);
+    },[]);
+
+    return(
+        <div ref={wrapRef}>
+            <div onClick={() => setIsOpen((v) => !v)}>✓</div>
+            {isOpen && (
+                <div className={styles.navMenu}>
+                    <h1>Save To A List</h1>
+                    {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => {
+                        const inList = restaurants.some((r) => r.fsqId === rest.fsqId) ?? false;
+                        return (
+                            <button key={name} onClick={() => toggleLists(rest,inList,name,setUser)}>
+                                {name}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+
 }
