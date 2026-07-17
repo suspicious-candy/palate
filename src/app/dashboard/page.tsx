@@ -241,6 +241,8 @@ export default function Dashboard() {
     const geo = useGeolocation();
     const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date()); 
     const [nearbyRestaurants, setNearbyRestaurants] = React.useState<Restaurant[]>([]);
+    const [listEdit,setlistEdit] = React.useState(false);
+    const [listName, setlistName] = React.useState("");
 
     const formattedDate = new Date().toLocaleDateString("en-US", {
         weekday: "long",
@@ -389,10 +391,44 @@ export default function Dashboard() {
                             <span className={styles.numeral}>III.</span>
                             <h2 className={styles.sectionTitle}>From your lists</h2>
                             <span className={styles.rule} />
+                            {listEdit ?
+
+                                <button className={`${styles.editToggleBtn} ${styles.editToggleBtnActive}`} onClick={()=>{setlistEdit(!listEdit)}}>Done</button>
+                                :<button className={styles.editToggleBtn} onClick={()=>{setlistEdit(!listEdit)}}>Edit</button>
+                            }
+                            
                         </div>
-                        {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
-                            <ListCard key={name} name={name} restaurants={restaurants} />
-                        ))}
+                        {listEdit ? 
+                            <div>
+                                <form
+                                    className={styles.newListForm}
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!listName.trim()) return;
+                                        handleList(true, listName, setUser);
+                                        setlistName("");
+                                    }}
+                                >
+                                    <input
+                                        className={styles.newListInput}
+                                        value={listName}
+                                        onChange={(e) => setlistName(e.target.value)}
+                                        placeholder="New list name"
+                                    />
+                                    <button type="submit" className={styles.newListBtn}>Add</button>
+                                </form>
+
+                                {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
+                                    <EditedListCard key={name} name={name} restaurants={restaurants} setUser={setUser} />
+                                ))}
+                            </div>
+                            :
+                            
+                            Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
+                                <LoadedListCard key={name} name={name} restaurants={restaurants} />
+                            ))
+                            
+                        }
                     </div>
                 </div>
 
@@ -492,12 +528,29 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
     )
 }
 
-function ListCard({ name, restaurants }: { name: string; restaurants: Restaurant[] }){
+function LoadedListCard({ name, restaurants }: { name: string; restaurants: Restaurant[] }){
     return(
         <div className={styles.listRow}>
             <span className={styles.listName}>{name}</span>
             <span className={styles.listRule} />
             <span className={styles.listCount}>{restaurants.length} spots →</span>
+        </div>
+    )
+}
+
+
+function EditedListCard({ name, restaurants,setUser }: { name: string; restaurants: Restaurant[];setUser: React.Dispatch<React.SetStateAction<User | null>> }){
+    return(
+        <div className={styles.listRow}>
+            <span className={styles.listName}>{name}</span>
+            <span className={styles.listRule} />
+            <button
+                className={styles.removeListBtn}
+                onClick={()=>handleList(false, name, setUser)}
+                aria-label={`Remove ${name} list`}
+            >
+                −
+            </button>
         </div>
     )
 }
