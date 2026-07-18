@@ -18,62 +18,6 @@
     padding-bottom: 60px;
 }
 
-/* ---------- top nav ---------- */
-.nav {
-    background: #fffdfa;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.navInner {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 18px 28px;
-    display: flex;
-    align-items: center;
-    gap: 34px;
-}
-
-.brand {
-    font-family: var(--serif);
-    font-size: 25px;
-    font-weight: 800;
-    color: var(--red);
-    letter-spacing: -0.3px;
-}
-
-.navLinks {
-    display: flex;
-    gap: 26px;
-    font-size: 15px;
-    color: #4a423d;
-}
-
-.navLink {
-    cursor: pointer;
-}
-
-.navLinkActive {
-    color: var(--red);
-    font-weight: 600;
-}
-
-.navSpacer {
-    flex: 1;
-}
-
-.navAvatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--red);
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 /* ---------- page layout ---------- */
 .layout {
     max-width: 1120px;

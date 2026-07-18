@@ -5,6 +5,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import styles from "./dashboard.module.css";
 import Image from 'next/image';
+import Nav from "@/components/Nav";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -282,22 +283,7 @@ export default function Dashboard() {
 
     const loaded = () => (
         <div className={styles.page}>
-            <nav className={styles.nav}>
-                <div className={styles.navInner}>
-                    <span className={styles.brand}>Palate</span>
-                    <div className={styles.navLinks}>
-                        <span className={`${styles.navLink} ${styles.navLinkActive}`}>Home</span>
-                        <span className={styles.navLink}>Discover</span>
-                        <span className={styles.navLink}>Groups</span>
-                        <span className={styles.navLink}>Activity</span>
-                        <span className={styles.navLink}>Lists</span>
-                    </div>
-                    <div className={styles.navSpacer} />
-                    <div className={styles.navAvatar}>
-                        {initials(user?.firstName, user?.lastName)}
-                    </div>
-                </div>
-            </nav>
+            <Nav user={user ?? undefined} />
 
             <div className={styles.layout}>
                 <div className={styles.menuCard}>
