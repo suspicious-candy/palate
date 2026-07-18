@@ -471,29 +471,35 @@
 }
 
 /* ---------- save-to-list dropdown ---------- */
+.cardActions {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
 .dropdownWrap {
     position: relative;
     flex: none;
 }
 
 .listToggleBtn {
-    width: 36px;
+    width: 32px;
     height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--cream-line);
-    background: #fffdfa;
+    border: none;
+    background: none;
     color: var(--faint);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    padding: 0;
+    transition: color 0.15s;
 }
 
 .listToggleBtn:hover {
-    border-color: var(--red);
     color: var(--red);
 }
 

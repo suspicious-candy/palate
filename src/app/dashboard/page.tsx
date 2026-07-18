@@ -38,6 +38,7 @@ type Restaurant = {
     geo: { type: string; coordinates: number[] };
     rating: number;
     tips: tip[];
+    location?: { formattedAddress?: string };
 };
 
 type User = {
@@ -233,6 +234,13 @@ function handleList(addList:boolean,listName:string,setUser: React.Dispatch<Reac
         });
     })
 
+}
+
+function googleMapsUrl(r: Restaurant): string {
+    const query = r.location?.formattedAddress
+        ? `${r.name} ${r.location.formattedAddress}`
+        : `${r.geocodes.latitude},${r.geocodes.longitude}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 export default function Dashboard() {
@@ -458,16 +466,6 @@ export default function Dashboard() {
                         ))}
                         <button className={styles.inviteBtn}>+ Invite more</button>
                     </div>
-
-                    <div className={styles.sideCard}>
-                        <h3 className={styles.sideTitle}>Narrow it down</h3>
-                        <div className={styles.chips}>
-                            <button className={`${styles.chip} ${styles.chipActive}`}>Books tonight</button>
-                            <button className={styles.chip}>Walkable</button>
-                            <button className={styles.chip}>Veg-friendly</button>
-                            <button className={styles.chip}>Under $$</button>
-                        </div>
-                    </div>
                 </aside>
             </div>
         </div>
@@ -499,6 +497,7 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
             </div>
             <div className={styles.restaurantMain}>
                 <p className={styles.restaurantName}>{Rest.name}</p>
+                
                 <p className={styles.restaurantMeta}>
                     {Rest.categories.map((c) => c.name).join(", ")}
                 </p>
@@ -516,14 +515,25 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
                     </span>
                 )}
             </div>
-            <button
-                className={`${styles.heartBtn} ${saved ? styles.heartBtnActive : ""}`}
-                onClick={() => toggleWishlist(restaurant, saved, setUser)}
-                aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
-            >
-                ♥
-            </button>
-            <ListDropDown rest={Rest} user={user} setUser={setUser} />
+            <div className={styles.cardActions}>
+                <a
+                    href={googleMapsUrl(Rest)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.heartBtn}
+                    aria-label={`View ${Rest.name} on Google Maps`}
+                >
+                    📍
+                </a>
+                <button
+                    className={`${styles.heartBtn} ${saved ? styles.heartBtnActive : ""}`}
+                    onClick={() => toggleWishlist(restaurant, saved, setUser)}
+                    aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+                >
+                    ♥
+                </button>
+                <ListDropDown rest={Rest} user={user} setUser={setUser} />
+            </div>
         </div>
     )
 }
