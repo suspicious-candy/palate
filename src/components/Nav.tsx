@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./Nav.module.css";
+import SearchModal from "./SearchModal";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -11,6 +12,7 @@ function initials(first?: string, last?: string): string {
 
 export default function Nav({ user }: { user?: { firstName?: string; lastName?: string } }) {
     const pathname = usePathname();
+    const [isOpen,setIsOpen] = React.useState(false);
 
     return (
         <nav className={styles.nav}>
@@ -36,6 +38,14 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
 
                 <div className={styles.navSpacer} />
 
+                <button
+                    className={styles.searchTrigger}
+                    onClick={() => setIsOpen(true)}
+                    aria-label="Search restaurants"
+                >
+                    🔍
+                </button>
+                {isOpen && <SearchModal onClose={() => setIsOpen(false)} />}
                 <div className={styles.navAvatar}>
                     {initials(user?.firstName, user?.lastName)}
                 </div>

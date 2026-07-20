@@ -44,6 +44,20 @@
     flex: 1;
 }
 
+.searchTrigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    color: inherit;
+}
+
+.searchTrigger:hover {
+    opacity: 0.7;
+}
+
 .navAvatar {
     width: 40px;
     height: 40px;
