@@ -11,6 +11,7 @@
     "seed:foursquare": "node --env-file=.env scripts/syncFoursquareAreas.mjs"
   },
   "dependencies": {
+    "@phosphor-icons/web": "^2.1.2",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",

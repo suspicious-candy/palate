@@ -257,7 +257,7 @@ export default function Dashboard() {
                             </div>
 
                             <div className={styles.itemRow}>
-                                <div className={`${styles.itemIcon} ${styles.swatchBlush}`}>⌗</div>
+                                <div className={`${styles.itemIcon} ${styles.swatchBlush}`}><i className="ph ph-qr-code" /></div>
                                 <div className={styles.itemMain}>
                                     <p className={styles.itemName}>Start a Group Dinner</p>
                                     <p className={styles.itemTag}>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                                         serves the winner.
                                     </p>
                                 </div>
-                                <button className={styles.beginBtn}>Begin →</button>
+                                <button className={styles.beginBtn}>Begin <i className="ph-bold ph-arrow-right" /></button>
                             </div>
                         </div>
                     ) : (
@@ -278,7 +278,7 @@ export default function Dashboard() {
 
                             {user?.matchingGroup?.group?.status === "open" ? (
                                 <div className={styles.itemRow}>
-                                    <div className={`${styles.itemIcon} ${styles.swatchSage}`}>⏳</div>
+                                    <div className={`${styles.itemIcon} ${styles.swatchSage}`}><i className="ph ph-hourglass" /></div>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
                                         <p className={styles.itemTag}>ready to vote</p>
@@ -294,7 +294,7 @@ export default function Dashboard() {
 
                             {user?.matchingGroup?.group?.status === "voting" ? (
                                 <div className={styles.itemRow}>
-                                    <div className={`${styles.itemIcon} ${styles.swatchBlush}`}>🗳</div>
+                                    <div className={`${styles.itemIcon} ${styles.swatchBlush}`}><i className="ph ph-checks" /></div>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
                                         <p className={styles.itemTag}>a live vote</p>
@@ -312,7 +312,7 @@ export default function Dashboard() {
 
                             {user?.matchingGroup?.group?.status === "closed" ? (
                                 <div className={styles.itemRow}>
-                                    <div className={`${styles.itemIcon} ${styles.swatchSand}`}>✓</div>
+                                    <div className={`${styles.itemIcon} ${styles.swatchSand}`}><i className="ph-fill ph-check-circle" /></div>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
                                         <p className={styles.itemTag}>you found the restaurant!</p>
@@ -327,7 +327,7 @@ export default function Dashboard() {
                             <span className={styles.numeral}>II.</span>
                             <h2 className={styles.sectionTitle}>Recommended for you</h2>
                             <span className={styles.rule} />
-                            <span className={styles.itemTag}>tap ♥ to save</span>
+                            <span className={styles.itemTag}>tap <i className="ph ph-heart" /> to save</span>
                         </div>
                         {nearbyRestaurants.map((r, i) => (
                             <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
@@ -442,7 +442,7 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
                 </p>
             </div>
             <div className={styles.restaurantStats}>
-                {Rest.rating > 0 && <span>★ {Rest.rating.toFixed(1)}</span>}
+                {Rest.rating > 0 && <span><i className={`ph-fill ph-star ${styles.starIcon}`} /> {Rest.rating.toFixed(1)}</span>}
                 {geo.status === "success" && (
                     <span>
                         · {haversineDistance(
@@ -462,14 +462,14 @@ function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant:
                     className={styles.heartBtn}
                     aria-label={`View ${Rest.name} on Google Maps`}
                 >
-                    📍
+                    <i className="ph ph-map-pin" />
                 </a>
                 <button
                     className={`${styles.heartBtn} ${saved ? styles.heartBtnActive : ""}`}
                     onClick={() => toggleWishlist(restaurant, saved, setUser)}
                     aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
                 >
-                    ♥
+                    <i className={saved ? "ph-fill ph-heart" : "ph ph-heart"} />
                 </button>
                 <ListDropDown rest={Rest} user={user} setUser={setUser} />
             </div>
@@ -482,7 +482,7 @@ function LoadedListCard({ name, restaurants }: { name: string; restaurants: Rest
         <div className={styles.listRow}>
             <span className={styles.listName}>{name}</span>
             <span className={styles.listRule} />
-            <span className={styles.listCount}>{restaurants.length} spots →</span>
+            <span className={styles.listCount}>{restaurants.length} spots <i className="ph-bold ph-arrow-right" /></span>
         </div>
     )
 }
@@ -498,7 +498,7 @@ function EditedListCard({ name, restaurants,setUser }: { name: string; restauran
                 onClick={()=>handleList(false, name, setUser)}
                 aria-label={`Remove ${name} list`}
             >
-                −
+                <i className="ph ph-minus" />
             </button>
         </div>
     )
@@ -530,7 +530,7 @@ function ListDropDown({ rest, user, setUser }: { rest: Restaurant; user: User | 
                 onClick={() => setIsOpen((v) => !v)}
                 aria-label="Save to a specific list"
             >
-                ⌄
+                <i className="ph ph-caret-down" />
             </button>
             {isOpen && (
                 <div className={styles.listPopover}>
@@ -547,7 +547,7 @@ function ListDropDown({ rest, user, setUser }: { rest: Restaurant; user: User | 
                                         onClick={() => toggleLists(rest, inList, name, setUser)}
                                     >
                                         <span>{name}</span>
-                                        {inList && <span className={styles.listOptionCheck}>✓</span>}
+                                        {inList && <span className={styles.listOptionCheck}><i className="ph-bold ph-check" /></span>}
                                     </button>
                                 );
                             })}

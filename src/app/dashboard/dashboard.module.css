@@ -386,6 +386,10 @@
     white-space: nowrap;
 }
 
+.starIcon {
+    color: #e5a83b;
+}
+
 .heartBtn {
     flex: none;
     width: 36px;

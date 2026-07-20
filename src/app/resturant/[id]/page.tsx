@@ -140,7 +140,7 @@ export default async function ResturantProfile({ params }: { params: Promise<{ i
                         </div>
                         {typeof rest.rating === "number" && (
                             <span className="shrink-0 rounded-full bg-rose-700 px-3 py-1 text-sm font-medium text-white">
-                                ★ {ratingLabel(rest.rating)}
+                                <i className="ph-fill ph-star" /> {ratingLabel(rest.rating)}
                             </span>
                         )}
                     </div>

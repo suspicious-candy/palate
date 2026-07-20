@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
+import "@phosphor-icons/web/regular";
+import "@phosphor-icons/web/fill";
+import "@phosphor-icons/web/bold";
 
 import { GeolocationProvider } from "@/lib/GeolocationContext";
 import { NearbyRestaurantsProvider } from "@/lib/nearbyRestuant";

@@ -43,7 +43,7 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
                     onClick={() => setIsOpen(true)}
                     aria-label="Search restaurants"
                 >
-                    🔍
+                    <i className="ph ph-magnifying-glass" />
                 </button>
                 {isOpen && <SearchModal onClose={() => setIsOpen(false)} />}
                 <div className={styles.navAvatar}>
