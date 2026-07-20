@@ -6,6 +6,8 @@ import { toast } from "react-hot-toast";
 import styles from "./dashboard.module.css";
 import Image from 'next/image';
 import Nav from "@/components/Nav";
+import { useGeo, GeoState } from "@/lib/GeolocationContext";
+import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -90,46 +92,6 @@ function useTimeLeft(date: Date): string {
     return timeLeft(date, now);
 }
 
-type GeoState =
-    | { status: "loading" }
-    | { status: "success"; latitude: number; longitude: number }
-    | { status: "error"; message: string };
-
-function useGeolocation(): GeoState {
-    const [state, setState] = React.useState<GeoState>({ status: "loading" });
-    const [cord,setcord] = React.useState<GeolocationPosition>();
-
-    React.useEffect(() => {
-        if (!("geolocation" in navigator)) {
-            setState({ status: "error", message: "Geolocation is not supported by this browser" });
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setState({
-                    status: "success",
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                });
-                setcord(position);
-                return cord;
-            },
-            (error) => {
-                setState({ status: "error", message: error.message || "Location permission denied" });
-            },
-            {
-                enableHighAccuracy: false, // city-level precision is enough; avoids a slow GPS fix
-                timeout: 10000,
-                maximumAge: 5 * 60 * 1000, // reuse a fix from the last 5 minutes instead of re-prompting the OS
-            }
-        );
-    }, []);
-
-   
-
-    return state;
-}
 
 function castedVotes(group?: matching): number {
     if (!group) return 0;
@@ -247,9 +209,9 @@ function googleMapsUrl(r: Restaurant): string {
 export default function Dashboard() {
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
-    const geo = useGeolocation();
-    const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date()); 
-    const [nearbyRestaurants, setNearbyRestaurants] = React.useState<Restaurant[]>([]);
+    const geo = useGeo();
+    const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date());
+    const nearbyRestaurants = useNearbyRestaurants();
     const [listEdit,setlistEdit] = React.useState(false);
     const [listName, setlistName] = React.useState("");
 
@@ -271,15 +233,6 @@ export default function Dashboard() {
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
-
-    React.useEffect(() => {
-        if (geo.status !== "success") return;
-
-        axios.get("/api/Restaurants/nearby", { params: { lat: geo.latitude, lng: geo.longitude } })
-        .then((res) => setNearbyRestaurants(res.data.restaurants ?? []))
-            .catch(() => {});
-        }, [geo]);
-        console.log(nearbyRestaurants);
 
     const loaded = () => (
         <div className={styles.page}>

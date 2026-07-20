@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
+import { GeolocationProvider } from "@/lib/GeolocationContext";
+import { NearbyRestaurantsProvider } from "@/lib/nearbyRestuant";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -30,7 +33,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Toaster position="top-center" />
-        {children}
+        <GeolocationProvider>
+          <NearbyRestaurantsProvider>{children}</NearbyRestaurantsProvider>
+        </GeolocationProvider>
       </body>
     </html>
   );
