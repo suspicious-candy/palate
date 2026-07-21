@@ -5,6 +5,7 @@ import "./globals.css";
 import "@phosphor-icons/web/regular";
 import "@phosphor-icons/web/fill";
 import "@phosphor-icons/web/bold";
+import { UserProvider } from "@/lib/userContext";
 
 import { GeolocationProvider } from "@/lib/GeolocationContext";
 import { NearbyRestaurantsProvider } from "@/lib/nearbyRestuant";
@@ -37,7 +38,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Toaster position="top-center" />
         <GeolocationProvider>
-          <NearbyRestaurantsProvider>{children}</NearbyRestaurantsProvider>
+          <UserProvider>
+            <NearbyRestaurantsProvider>{children}</NearbyRestaurantsProvider>
+            </UserProvider>
         </GeolocationProvider>
       </body>
     </html>

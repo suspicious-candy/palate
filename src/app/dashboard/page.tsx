@@ -8,61 +8,11 @@ import Image from 'next/image';
 import Nav from "@/components/Nav";
 import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
+import { useUser, User, Restaurant, matching } from "@/lib/userContext";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
-
-type tip = { fsqTipId: string; text: string };
-type participant = {
-    user:User,
-    hasVoted:boolean,
-    rankedVotes: Restaurant[],
-    votedAt:Date,
-};
-type matching = {
-    name:string,
-    participants:participant[],
-    restaurants:Restaurant[],
-    date:Date,
-    status:string,
-    winner:Restaurant,
-};
-type category = {
-    fsqCategoryId: string;
-    name: string;
-    icon: { prefix: string; suffix: string };
-};
-type Restaurant = {
-    fsqId: string;
-    name: string;
-    categories: category[];
-    geocodes: { latitude: number; longitude: number };
-    geo: { type: string; coordinates: number[] };
-    rating: number;
-    tips: tip[];
-    location?: { formattedAddress?: string };
-};
-
-type User = {
-    profilePic: string;
-    firstName: string;
-    lastName: string;
-    visitedResturants: Restaurant[];
-    wishlist: Restaurant[];
-    preferences: {
-        likedCuisines: { fsqid: number; name: string }[];
-        disliked: string[];
-        allergines: string[];
-        diet: string[];
-    };
-    matchingGroup:{
-        group:matching;
-        isInMatching: false
-    };
-    friendlist:User[];
-    lists: Record<string, Restaurant[]>;
-};
 
 function timeLeft(date: Date, now: Date = new Date()): string {
     const diffMs = new Date(date).getTime() - now.getTime();
@@ -207,8 +157,7 @@ function googleMapsUrl(r: Restaurant): string {
 }
 
 export default function Dashboard() {
-    const [user, setUser] = React.useState<User | null>(null);
-    const [loading, setLoading] = React.useState(true);
+    const { user, setUser, loading } = useUser();
     const geo = useGeo();
     const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date());
     const nearbyRestaurants = useNearbyRestaurants();
@@ -221,18 +170,6 @@ export default function Dashboard() {
         month: "long",
         day: "numeric",
     });
-
-    React.useEffect(() => {
-        toast
-            .promise(axios.get("/api/user/dashboard"), {
-                loading: "Fetching user",
-                success: "User fetch successful",
-                error: (err) => err.response?.data?.error ?? "fetch failed",
-            })
-            .then((res) => setUser(res.data.user ?? null))
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, []);
 
     const loaded = () => (
         <div className={styles.page}>
