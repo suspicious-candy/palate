@@ -74,7 +74,7 @@ function haversineDistance(
   return R * c;
 }
 
-function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatch<React.SetStateAction<User | null>>){
+export function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatch<React.SetStateAction<User | null>>){
 
    const request = saved
         ? axios.delete("/api/Restaurants/wishList", { data: { fsqId: rest.fsqId, name: rest.name } })
@@ -98,7 +98,7 @@ function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatc
 
 }
 
-function toggleLists(rest: Restaurant, inList: boolean, listName:string ,setUser: React.Dispatch<React.SetStateAction<User | null>>){
+export function toggleLists(rest: Restaurant, inList: boolean, listName:string ,setUser: React.Dispatch<React.SetStateAction<User | null>>){
 
    const request = inList
         ? axios.delete("/api/Restaurants/lists", { data: { fsqId: rest.fsqId, restName: rest.name,listName:listName } })
@@ -125,7 +125,7 @@ function toggleLists(rest: Restaurant, inList: boolean, listName:string ,setUser
 
 }
 
-function handleList(addList:boolean,listName:string,setUser: React.Dispatch<React.SetStateAction<User | null>>){
+export function handleList(addList:boolean,listName:string,setUser: React.Dispatch<React.SetStateAction<User | null>>){
 
     const request = addList
         ? axios.patch("/api/user/lists", { listName })
@@ -149,7 +149,7 @@ function handleList(addList:boolean,listName:string,setUser: React.Dispatch<Reac
 
 }
 
-function googleMapsUrl(r: Restaurant): string {
+export function googleMapsUrl(r: Restaurant): string {
     const query = r.location?.formattedAddress
         ? `${r.name} ${r.location.formattedAddress}`
         : `${r.geocodes.latitude},${r.geocodes.longitude}`;
@@ -276,7 +276,6 @@ export default function Dashboard() {
                             <h2 className={styles.sectionTitle}>From your lists</h2>
                             <span className={styles.rule} />
                             {listEdit ?
-
                                 <button className={`${styles.editToggleBtn} ${styles.editToggleBtnActive}`} onClick={()=>{setlistEdit(!listEdit)}}>Done</button>
                                 :<button className={styles.editToggleBtn} onClick={()=>{setlistEdit(!listEdit)}}>Edit</button>
                             }
@@ -358,7 +357,7 @@ export default function Dashboard() {
 
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
 
-function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
+export function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
     
     const Rest = restaurant;
     const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
