@@ -9,6 +9,7 @@ import Nav from "@/components/Nav";
 import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
 import { useUser, User, Restaurant, matching } from "@/lib/userContext";
+import { useTrackClick } from "@/lib/ReservationTracker";
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -358,7 +359,7 @@ export default function Dashboard() {
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
 
 export function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
-    
+    const track = useTrackClick();
     const Rest = restaurant;
     const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
     const icon = Rest.categories[0]?.icon;
@@ -397,6 +398,7 @@ export function RestaurantCard({ restaurant, geo, user, setUser, index }: { rest
                     rel="noopener noreferrer"
                     className={styles.heartBtn}
                     aria-label={`View ${Rest.name} on Google Maps`}
+                    onClick={() => track({ fsqId: Rest.fsqId, name: Rest.name })}
                 >
                     <i className="ph ph-map-pin" />
                 </a>

@@ -9,6 +9,7 @@ import { UserProvider } from "@/lib/userContext";
 
 import { GeolocationProvider } from "@/lib/GeolocationContext";
 import { NearbyRestaurantsProvider } from "@/lib/nearbyRestuant";
+import { ReservationTracker } from "@/lib/ReservationTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,8 +40,12 @@ export default function RootLayout({
         <Toaster position="top-center" />
         <GeolocationProvider>
           <UserProvider>
-            <NearbyRestaurantsProvider>{children}</NearbyRestaurantsProvider>
-            </UserProvider>
+            <NearbyRestaurantsProvider>
+              <ReservationTracker>
+                {children}
+              </ReservationTracker>  
+            </NearbyRestaurantsProvider>
+          </UserProvider>
         </GeolocationProvider>
       </body>
     </html>

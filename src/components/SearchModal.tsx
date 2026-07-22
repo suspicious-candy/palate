@@ -7,6 +7,7 @@ import { useGeo } from "@/lib/GeolocationContext";
 import Image from 'next/image';
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useTrackClick } from "@/lib/ReservationTracker";
 
 
 
@@ -110,6 +111,7 @@ const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand]
 function RestaurantCard({ restaurant,index }: { restaurant: Restaurant; index:number }){
 
     const Rest = restaurant;
+    const track = useTrackClick();
     const icon = Rest.categories[0]?.icon;
 
     return(
@@ -136,6 +138,7 @@ function RestaurantCard({ restaurant,index }: { restaurant: Restaurant; index:nu
                     rel="noopener noreferrer"
                     className={styles.heartBtn}
                     aria-label={`View ${Rest.name} on Google Maps`}
+                    onClick={() => track({ fsqId: Rest.fsqId, name: Rest.name })}
                 >
                     <i className="ph ph-arrow-square-out" />
                 </a>
