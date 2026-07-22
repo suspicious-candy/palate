@@ -2,7 +2,7 @@
 import React from "react";
 import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useUser, User, Restaurant, matching } from "@/lib/userContext";
-import {RestaurantCard,handleList} from "@/app/dashboard/page"
+import {RestaurantCard,handleList,toggleLists} from "@/app/dashboard/page"
 
 export default function listPage(){
     const { user, setUser, loading } = useUser();
@@ -18,15 +18,15 @@ export default function listPage(){
             </div>
             <div>
                 <h1>Your Wishlist</h1>
-                {user?.wishlist.map((r,i)=>(
+                {user?.wishlist?.map((r,i)=>(
                      <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
                 ))}
             </div>
             <div>
-                <h1>Your Lists</h1>
+                <h1>Custom Lists</h1>
                 {isAdding ?
-                                <button  onClick={()=>{setIsAdding(!isAdding)}}>Done</button>
-                                :<button  onClick={()=>{setIsAdding(!isAdding)}}>Edit</button>
+                            <button  onClick={()=>{setIsAdding(!isAdding)}}>Done</button>
+                            :<button  onClick={()=>{setIsAdding(!isAdding)}}>Edit</button>
                 }
                 {isAdding ? 
                             <div>
@@ -45,7 +45,6 @@ export default function listPage(){
                                     />
                                     <button type="submit">Add</button>
                                 </form>
-
                                 {Object.keys(user?.lists ?? {}).length === 0 ?
                                     <p>No lists added yet</p>:
                                     Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
@@ -71,20 +70,41 @@ export default function listPage(){
 }
 
 function Listcard({ name, restaurants,geo,user,setUser}: { name: string; restaurants: Restaurant[]; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>;geo:GeoState } ){
+    const [showing,setShowing] = React.useState(false);
     return (
         <div>
             <div>
                 <h1>{name}</h1>
             </div>
             <div>
-                {restaurants.length == 0 ?
-                    <div>
-                        <p>No resturants added yet?!</p>
-                    </div> :
-                    restaurants.map((r,i)=>(
-                     <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
-                ))}
+                <button onClick={()=>{
+                    handleList(false, name, setUser);
+                }}>{/*delete button*/}</button>
             </div>
+            <div>
+                {showing?
+                    <button onClick={()=>{setShowing(!showing)}}>^</button>:
+                    <button onClick={()=>{setShowing(!showing)}}>^</button>
+                }
+            </div>
+            {showing?
+                <div>
+                    {restaurants.length == 0 ?
+                        <div>
+                            <p>No resturants added yet?!</p>
+                        </div> :
+                        restaurants.map((r,i)=>(
+                        <div key={r.fsqId}>
+                            <RestaurantCard  restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
+                            <button onClick={()=>{
+                                toggleLists(r,true,name,setUser)
+                            }}
+                            >{/*delete button*/}</button>
+                        </div>
+                    ))}
+                </div>:<div></div>
+            }
+            
         </div>
     )
 }
