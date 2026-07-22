@@ -3,6 +3,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import styles from "./ReservationPrompt.module.css";
 
 type Item = { fsqId: string; name: string };
 type Entry = { booked: boolean; date: string; partySize: number };
@@ -51,59 +52,38 @@ export function ReservationPrompt({ batch, onClose }: { batch: Item[]; onClose: 
   }
 
   return createPortal(
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,.4)",
-        display: "grid",
-        placeItems: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#fff",
-          borderRadius: 16,
-          padding: 24,
-          width: 360,
-          maxWidth: "90vw",
-          maxHeight: "80vh",
-          overflowY: "auto",
-        }}
-      >
-        <h2 style={{ marginBottom: 4, fontSize: 18, fontWeight: 700 }}>Did you book a table?</h2>
-        <p style={{ marginBottom: 16, fontSize: 13, color: "#666" }}>
-          Tick the places you actually reserved.
-        </p>
+    <div className={styles.backdrop} onClick={onClose}>
+      <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
+        <h2 className={styles.title}>Did you book a table?</h2>
+        <p className={styles.subtitle}>Tick the places you actually reserved.</p>
 
         {batch.map((c) => {
           const e = entries[c.fsqId];
           return (
-            <div key={c.fsqId} style={{ marginBottom: 12 }}>
-              <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+            <div key={c.fsqId} className={styles.item}>
+              <label className={styles.itemLabel}>
                 <input
                   type="checkbox"
+                  className={styles.checkbox}
                   checked={e.booked}
                   onChange={(ev) => update(c.fsqId, { booked: ev.target.checked })}
                 />
-                <span style={{ fontWeight: 500 }}>{c.name}</span>
+                <span className={styles.name}>{c.name}</span>
               </label>
 
               {e.booked && (
-                <div style={{ display: "flex", gap: 8, marginTop: 6, paddingLeft: 24 }}>
+                <div className={styles.fields}>
                   <input
                     type="datetime-local"
+                    className={styles.input}
                     value={e.date}
                     onChange={(ev) => update(c.fsqId, { date: ev.target.value })}
                   />
                   <input
                     type="number"
                     min={1}
+                    className={`${styles.input} ${styles.partyInput}`}
                     value={e.partySize}
-                    style={{ width: 64 }}
                     onChange={(ev) =>
                       update(c.fsqId, { partySize: Math.max(1, Number(ev.target.value)) })
                     }
@@ -114,11 +94,11 @@ export function ReservationPrompt({ batch, onClose }: { batch: Item[]; onClose: 
           );
         })}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-          <button type="button" onClick={onClose} disabled={saving}>
+        <div className={styles.actions}>
+          <button type="button" className={styles.btnGhost} onClick={onClose} disabled={saving}>
             Not now
           </button>
-          <button type="button" onClick={save} disabled={saving}>
+          <button type="button" className={styles.btnPrimary} onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>

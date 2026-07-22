@@ -1,0 +1,162 @@
+/* ---------- backdrop (centered confirm dialog) ---------- */
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 96;
+    background: rgba(26, 26, 26, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    cursor: pointer;
+    animation: backdropIn 0.18s ease;
+}
+
+@keyframes backdropIn {
+    from { background: rgba(26, 26, 26, 0); }
+    to   { background: rgba(26, 26, 26, 0.45); }
+}
+
+/* ---------- panel ---------- */
+.panel {
+    width: 400px;
+    max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+    padding: 24px;
+    cursor: default;
+    animation: panelIn 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes panelIn {
+    from { transform: translateY(-14px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ---------- header ---------- */
+.title {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.subtitle {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: #8a6f68;
+}
+
+/* ---------- restaurant rows ---------- */
+.item {
+    padding: 10px;
+    border-radius: 10px;
+    transition: background 0.15s ease;
+}
+
+.item:hover {
+    background: #faf4f1;
+}
+
+.itemLabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    accent-color: #c1272d;
+    cursor: pointer;
+}
+
+.name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+/* ---------- expanded date + party fields ---------- */
+.fields {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    padding-left: 27px;
+    animation: fieldsIn 0.18s ease;
+}
+
+@keyframes fieldsIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1a1a1a;
+    background: #faf4f1;
+    border: 1px solid #f0e6e2;
+    border-radius: 9px;
+    outline: none;
+}
+
+.input:focus {
+    border-color: #c1272d;
+}
+
+.partyInput {
+    width: 60px;
+    flex: none;
+}
+
+/* ---------- actions ---------- */
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.btnGhost,
+.btnPrimary {
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.btnGhost {
+    background: none;
+    color: #8a6f68;
+}
+
+.btnGhost:hover {
+    background: #f4ece9;
+}
+
+.btnPrimary {
+    background: #c1272d;
+    color: #fff;
+}
+
+.btnPrimary:hover {
+    background: #a81f24;
+}
+
+.btnPrimary:disabled,
+.btnGhost:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
