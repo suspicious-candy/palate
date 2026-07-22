@@ -7,6 +7,7 @@ import { z } from "zod";
 
 export const signupSchema = z.object({
   username: z.string().min(3),
+  firstName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),
 });
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
         );
         }
-        const { username, email, password } = result.data;
+        const { username, firstName, email, password } = result.data;
 
         if (!process.env.TOKEN_SECRET) {
             return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
 
         const newUser = new User({
             username,
+            firstName,
             email,
             password:hashedPassword
         });

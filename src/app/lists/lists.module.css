@@ -1,0 +1,271 @@
+/* Lists page — "Bill of Fare" (1c) layout, using the dashboard's design tokens */
+
+.page {
+    --ink: #2a211d;
+    --muted: #92847a;
+    --faint: #b7a999;
+    --red: #b02a2e;
+    --red-deep: #8f1f22;
+    --cream: #fbf6ec;
+    --cream-line: #ece0cf;
+    --blush: #f9ece7;
+    --serif: "Playfair Display", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    min-height: 100vh;
+    background: var(--blush);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.body {
+    padding: 30px 28px 70px;
+}
+
+.menuCard {
+    max-width: 1120px;
+    margin: 0 auto;
+    background: var(--cream);
+    border: 1px solid var(--cream-line);
+    border-radius: 20px;
+    padding: 40px 48px 48px;
+    box-shadow: 0 10px 30px rgba(120, 60, 20, 0.05);
+}
+
+@media (max-width: 640px) {
+    .body {
+        padding: 16px 12px 48px;
+    }
+
+    .menuCard {
+        padding: 28px 22px 32px;
+    }
+}
+
+/* ---------- page header ---------- */
+.pageHeader {
+    margin-bottom: 30px;
+}
+
+.pageTitle {
+    font-family: var(--serif);
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--ink);
+    margin: 0;
+}
+
+.pageSubtitle {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--muted);
+    margin: 4px 0 0;
+}
+
+/* ---------- sections ---------- */
+.section {
+    margin-bottom: 34px;
+}
+
+.section:last-child {
+    margin-bottom: 0;
+}
+
+.sectionHead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 4px;
+}
+
+.sectionTitle {
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.rule {
+    flex: 1;
+    height: 1px;
+    background: var(--cream-line);
+}
+
+.count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex: none;
+}
+
+/* ---------- empty states ---------- */
+.empty {
+    font-size: 13.5px;
+    color: #a4867c;
+    margin: 12px 2px 0;
+}
+
+.emptyTight {
+    font-size: 13px;
+    color: #a4867c;
+    margin: 10px 0 2px;
+}
+
+/* ---------- new-list toggle ---------- */
+.newListToggle {
+    flex: none;
+    border: 1px solid var(--cream-line);
+    background: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.newListToggle:hover {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.newListToggleActive {
+    border-color: transparent;
+    background: var(--red);
+    color: #fff;
+}
+
+.newListToggleActive:hover {
+    background: var(--red-deep);
+    color: #fff;
+}
+
+/* ---------- new-list form ---------- */
+.newListForm {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0 6px;
+    max-width: 380px;
+}
+
+.newListInput {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--cream-line);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    background: #fff;
+}
+
+.newListInput:focus {
+    border-color: var(--red);
+}
+
+.newListBtn {
+    flex: none;
+    border: none;
+    background: var(--red);
+    color: #fff;
+    border-radius: 9px;
+    padding: 0 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.newListBtn:hover {
+    background: var(--red-deep);
+}
+
+/* ---------- custom-list cards ---------- */
+.listStack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.listCard {
+    background: #fff;
+    border: 1px solid #efe4e0;
+    border-radius: 14px;
+    padding: 16px 18px 6px;
+    box-shadow: 0 2px 8px rgba(60, 20, 15, 0.04);
+}
+
+.listCardHead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.listCardName {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.listCardSpacer {
+    flex: 1;
+}
+
+.deleteListBtn {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: #f6efec;
+    color: #a4867c;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.deleteListBtn:hover {
+    background: #f3d9d5;
+    color: var(--red);
+}
+
+.listCardDivider {
+    height: 1px;
+    background: #f0e6e2;
+    margin: 12px 0 2px;
+}
+
+/* ---------- loading ---------- */
+.loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9ece7;
+    font-family: "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-size: 20px;
+    color: #92847a;
+}

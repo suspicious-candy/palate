@@ -15,12 +15,14 @@ export default function SignupPage(){
         password: "",
         ConfirmPassword: "",
         username: "",
+        firstName: "",
     });
 
     const buttonDisabled = !(
         user.email.length > 0 &&
         user.password.length > 7 &&
         user.username.length > 2 &&
+        user.firstName.length > 0 &&
         user.password === user.ConfirmPassword
     );
 
@@ -56,6 +58,16 @@ export default function SignupPage(){
                 <span className={styles.brand}>Palate</span>
                 <h1 className={styles.title}>Create your account</h1>
                 <p className={styles.subtitle}>Join Palate to start deciding together</p>
+
+                <label htmlFor="firstName" className={styles.label}>First Name</label>
+                <input
+                    id="firstName"
+                    type="text"
+                    placeholder="Alex"
+                    className={styles.input}
+                    value={user.firstName}
+                    onChange={(e) => setuser({...user, firstName: e.target.value})}
+                />
 
                 <label htmlFor="username" className={styles.label}>Username</label>
                 <input
