@@ -1,7 +1,6 @@
 "use client"
 import React from "react";
 import axios from "axios";
-import Reservation from "@/models/reservationModel";
 
 export type tip = { fsqTipId: string; text: string };
 
@@ -11,12 +10,12 @@ export type category = {
     icon: { prefix: string; suffix: string };
 };
 export type Reservation = {
-    _id:number;
+    _id:string;
     users:User[];
     restaurant:Restaurant;
     date:Date;
     partySize:number;
-    status:"confimed"|"cancelled"|"completed";
+    status:"confirmed"|"cancelled"|"completed";
     notes:string;
 };
 export type Restaurant = {
