@@ -1,0 +1,279 @@
+/* Reservation page — styled to the Palate dashboard-redesign handoff.
+   Fonts fall back to the app's Geist if Hanken/Plex aren't loaded globally. */
+.screen {
+  --bg: #f2eae5;
+  --card: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #7a6058;
+  --muted2: #8a6f68;
+  --faint: #b09a92;
+  --line: #efe4e0;
+  --line2: #ecdcd6;
+  --red: #c1272d;
+  --red-dark: #9e1d22;
+  --red-tint: #fdf0ee;
+  --chip: #f6efec;
+  --sans: "Hanken Grotesk", var(--font-geist-sans), system-ui, sans-serif;
+  --mono: "IBM Plex Mono", var(--font-geist-mono), ui-monospace, monospace;
+
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 24px 72px;
+}
+
+/* header ------------------------------------------------------------ */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font: 600 13px var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 26px;
+  transition: color 0.15s;
+}
+.back:hover { color: var(--red); }
+
+.eyebrow {
+  font: 600 11px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 12px;
+}
+.title {
+  font: 800 32px/1.1 var(--sans);
+  letter-spacing: -0.6px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.subtitle {
+  font: 400 15px var(--sans);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* toggle ------------------------------------------------------------ */
+.toggle {
+  display: inline-flex;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  padding: 5px;
+  margin: 26px 0 4px;
+}
+.toggleBtn {
+  border: none;
+  background: transparent;
+  font: 600 13.5px var(--sans);
+  color: var(--muted);
+  padding: 8px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.toggleBtn:hover { color: var(--ink); }
+.toggleActive,
+.toggleActive:hover {
+  background: var(--red);
+  color: #fff;
+}
+.count {
+  font: 700 11px var(--mono);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(120, 40, 30, 0.08);
+  color: var(--muted);
+}
+.toggleActive .count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* list + cards ------------------------------------------------------ */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 24px;
+}
+.card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 10px rgba(60, 20, 15, 0.05);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.card:hover {
+  box-shadow: 0 10px 26px rgba(60, 20, 15, 0.09);
+  transform: translateY(-1px);
+}
+
+.dateTile {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 14px;
+  background: var(--red-tint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.month {
+  font: 700 11px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.day {
+  font: 800 24px var(--sans);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.name {
+  font: 800 18px var(--sans);
+  color: var(--ink);
+  margin: 0;
+}
+.mapLink {
+  color: var(--muted2);
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.mapLink:hover { color: var(--red); }
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font: 500 13px var(--sans);
+  color: var(--muted2);
+}
+.dot { color: #d8c6bf; }
+.note {
+  font: italic 400 13px/1.5 var(--sans);
+  color: var(--muted);
+  background: var(--chip);
+  border-radius: 9px;
+  padding: 8px 11px;
+  margin-top: 2px;
+}
+
+/* right side — status + actions ------------------------------------ */
+.side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 12px var(--sans);
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+.status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.statusConfirmed { background: #e8f1ea; color: #2f7d54; }
+.statusCompleted { background: #f0ece9; color: #7a6058; }
+.statusCancelled { background: #fdecec; color: #c1272d; }
+
+.btn {
+  font: 700 13px var(--sans);
+  padding: 9px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid var(--line2);
+  background: #fff;
+  color: var(--red);
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover {
+  background: var(--red-tint);
+  border-color: #e6cfca;
+}
+
+/* empty + loading --------------------------------------------------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 56px 24px;
+  border: 1px dashed #e3cfca;
+  border-radius: 18px;
+  color: var(--muted2);
+  background: #fdf9f7;
+}
+.emptyIcon {
+  font-size: 34px;
+  color: var(--red);
+}
+.loading {
+  min-height: 100vh;
+  background: var(--bg, #f2eae5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 500 15px "Hanken Grotesk", var(--font-geist-sans), system-ui, sans-serif;
+  color: #7a6058;
+}
+
+/* responsive -------------------------------------------------------- */
+@media (max-width: 640px) {
+  .card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .side {
+    align-items: flex-start;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+}

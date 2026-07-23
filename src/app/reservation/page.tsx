@@ -2,8 +2,10 @@
 
 import React from "react";
 import axios from "axios";
-import { Restaurant, Reservation } from "@/lib/userContext";
+import Nav from "@/components/Nav";
+import { useUser, Restaurant, Reservation } from "@/lib/userContext";
 import { googleMapsUrl } from "@/app/dashboard/page";
+import styles from "./page.module.css";
 
 function formatReservationDate(date: string | Date) {
   const d = new Date(date);
@@ -29,6 +31,7 @@ type RowProps = {
 };
 
 export default function ReservationPage() {
+  const { user } = useUser();
   const [reservations, setReservations] = React.useState<Reservation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [toGet, setToGet] = React.useState<"upcoming" | "completed" | "cancelled">("upcoming");
@@ -54,10 +57,6 @@ export default function ReservationPage() {
     loadReservations();
   }
 
-  if (loading) {
-    return <div>Getting your reservations ready…</div>;
-  }
-
   const upcoming = reservations.filter((r) => r.status === "confirmed");
   const completed = reservations.filter((r) => r.status === "completed");
   const cancelled = reservations.filter((r) => r.status === "cancelled");
@@ -70,68 +69,108 @@ export default function ReservationPage() {
 
   const { list, Row } = VIEWS[toGet];
 
+  const tabs = [
+    { key: "upcoming" as const, label: "Upcoming", count: upcoming.length },
+    { key: "completed" as const, label: "Completed", count: completed.length },
+    { key: "cancelled" as const, label: "Cancelled", count: cancelled.length },
+  ];
+
   return (
-    <div>
-      <div>
-        <button>Back to Dashboard</button>
-      </div>
-      <div>
-        <h1>Reservations</h1>
-        <p>{"Every table you've booked, past and upcoming"}</p>
-      </div>
-      <div>
-        <button onClick={() => setToGet("upcoming")}>upcoming {upcoming.length}</button>
-        <button onClick={() => setToGet("completed")}>Completed {completed.length}</button>
-        <button onClick={() => setToGet("cancelled")}>Cancelled {cancelled.length}</button>
-      </div>
-      <div>
-        {list.length ? (
-          list.map((r) => (
-            <Row
-              key={r._id}
-              date={new Date(r.date)}
-              partySize={r.partySize}
-              rest={r.restaurant}
-              note={r.notes}
-              onCancel={() => cancelReservation(r)}
-            />
-          ))
-        ) : (
-          <p>No {toGet} reservations.</p>
-        )}
+    <div className={styles.screen}>
+      <Nav user={user ?? undefined} />
+      <div className={styles.page}>
+        <button className={styles.back}>
+          <i className="ph-bold ph-arrow-left" />
+          Back to Dashboard
+        </button>
+
+        <div className={styles.eyebrow}>Reservations</div>
+        <h1 className={styles.title}>Your table history</h1>
+        <p className={styles.subtitle}>Every table you&apos;ve booked, past and upcoming.</p>
+
+        <div className={styles.toggle}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              className={`${styles.toggleBtn} ${toGet === t.key ? styles.toggleActive : ""}`}
+              onClick={() => setToGet(t.key)}
+            >
+              {t.label}
+              <span className={styles.count}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.list}>
+          {loading ? (
+            <div className={styles.empty}>Getting your reservations ready…</div>
+          ) : list.length ? (
+            list.map((r) => (
+              <Row
+                key={r._id}
+                date={new Date(r.date)}
+                partySize={r.partySize}
+                rest={r.restaurant}
+                note={r.notes}
+                onCancel={() => cancelReservation(r)}
+              />
+            ))
+          ) : (
+            <div className={styles.empty}>
+              <i className={`ph ph-calendar-x ${styles.emptyIcon}`} />
+              <div>No {toGet} reservations.</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function UpcomingRes({ date, partySize, rest, note, onCancel }: RowProps) {
+/* shared bits ------------------------------------------------------- */
+function DateTile({ date }: { date: Date }) {
   return (
-    <div>
-      <div>
-        <p>{date.toLocaleDateString("en-US", { month: "short" })}</p>
-        <p>{date.getDate()}</p>
-      </div>
-      <div>
-        <h1>{rest?.name} .</h1>
+    <div className={styles.dateTile}>
+      <span className={styles.month}>{date.toLocaleDateString("en-US", { month: "short" })}</span>
+      <span className={styles.day}>{date.getDate()}</span>
+    </div>
+  );
+}
+
+function CardBody({ date, partySize, rest, note }: Omit<RowProps, "onCancel">) {
+  return (
+    <div className={styles.body}>
+      <div className={styles.nameRow}>
+        <h2 className={styles.name}>{rest?.name}</h2>
         <a
+          className={styles.mapLink}
           href={googleMapsUrl(rest)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`View ${rest.name} on Google Maps`}
+          aria-label={`View ${rest?.name} on Google Maps`}
         >
           <i className="ph ph-map-pin" />
         </a>
       </div>
-      <div>
-        <p>{formatReservationDate(date)} .</p>
-        <p>Party of {partySize}</p>
+      <div className={styles.meta}>
+        <span>{formatReservationDate(date)}</span>
+        <span className={styles.dot}>•</span>
+        <span>Party of {partySize}</span>
       </div>
-      <div>
-        <p>{note}</p>
-      </div>
-      <div>
-        <p>confirmed</p>
-        <button onClick={onCancel}>Cancel</button>
+      {note ? <div className={styles.note}>{note}</div> : null}
+    </div>
+  );
+}
+
+/* rows -------------------------------------------------------------- */
+function UpcomingRes({ date, partySize, rest, note, onCancel }: RowProps) {
+  return (
+    <div className={styles.card}>
+      <DateTile date={date} />
+      <CardBody date={date} partySize={partySize} rest={rest} note={note} />
+      <div className={styles.side}>
+        <span className={`${styles.status} ${styles.statusConfirmed}`}>Confirmed</span>
+        <button className={styles.btn} onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
@@ -139,30 +178,12 @@ function UpcomingRes({ date, partySize, rest, note, onCancel }: RowProps) {
 
 function CompletedRes({ date, partySize, rest, note }: RowProps) {
   return (
-    <div>
-      <div>
-        <p>{date.toLocaleDateString("en-US", { month: "short" })}</p>
-        <p>{date.getDate()}</p>
-      </div>
-      <div>
-        <h1>{rest?.name} .</h1>
-        <a
-          href={googleMapsUrl(rest)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`View ${rest.name} on Google Maps`}
-        >
-          <i className="ph ph-map-pin" />
-        </a>
-      </div>
-      <div>
-        <p>{formatReservationDate(date)} .</p>
-        <p>Party of {partySize}</p>
-      </div>
-      <div>{note}</div>
-      <div>
-        <p>Completed</p>
-        <button>Book Again</button>
+    <div className={styles.card}>
+      <DateTile date={date} />
+      <CardBody date={date} partySize={partySize} rest={rest} note={note} />
+      <div className={styles.side}>
+        <span className={`${styles.status} ${styles.statusCompleted}`}>Completed</span>
+        <button className={styles.btn}>Book Again</button>
       </div>
     </div>
   );
@@ -170,28 +191,11 @@ function CompletedRes({ date, partySize, rest, note }: RowProps) {
 
 function CancelledRes({ date, partySize, rest }: RowProps) {
   return (
-    <div>
-      <div>
-        <p>{date.toLocaleDateString("en-US", { month: "short" })}</p>
-        <p>{date.getDate()}</p>
-      </div>
-      <div>
-        <h1>{rest?.name} .</h1>
-        <a
-          href={googleMapsUrl(rest)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`View ${rest.name} on Google Maps`}
-        >
-          <i className="ph ph-map-pin" />
-        </a>
-      </div>
-      <div>
-        <p>{formatReservationDate(date)} .</p>
-        <p>Party of {partySize}</p>
-      </div>
-      <div>
-        <p>Cancelled</p>
+    <div className={styles.card}>
+      <DateTile date={date} />
+      <CardBody date={date} partySize={partySize} rest={rest} note="" />
+      <div className={styles.side}>
+        <span className={`${styles.status} ${styles.statusCancelled}`}>Cancelled</span>
       </div>
     </div>
   );

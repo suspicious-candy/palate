@@ -32,7 +32,12 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
                     >
                         Groups
                     </Link>
-                    <span className={styles.navLink}>Reservations</span>
+                    <Link
+                        href="/reservation"
+                        className={`${styles.navLink} ${pathname === "/reservation" ? styles.navLinkActive : ""}`}
+                    >
+                        Reservations
+                    </Link>
                     <Link
                         href="/lists"
                         className={`${styles.navLink} ${pathname === "/lists" ? styles.navLinkActive : ""}`}
