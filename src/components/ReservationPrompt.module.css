@@ -29,6 +29,38 @@
     padding: 24px;
     cursor: default;
     animation: panelIn 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    /* smoother scrolling */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+
+    /* slim, palette-matched scrollbar (Firefox) */
+    scrollbar-width: thin;
+    scrollbar-color: #e3d3cd transparent;
+}
+
+/* slim, palette-matched scrollbar (WebKit / Chromium) */
+.panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.panel::-webkit-scrollbar-thumb {
+    background: #e3d3cd;
+    border-radius: 8px;
+    /* inset the thumb so it doesn't hug the panel edge */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.15s ease;
+}
+
+.panel::-webkit-scrollbar-thumb:hover {
+    background: #cdb3ab;
+    background-clip: padding-box;
 }
 
 @keyframes panelIn {

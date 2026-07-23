@@ -1,6 +1,7 @@
 "use client"
 import React from "react";
 import axios from "axios";
+import Reservation from "@/models/reservationModel";
 
 export type tip = { fsqTipId: string; text: string };
 
@@ -8,6 +9,15 @@ export type category = {
     fsqCategoryId: string;
     name: string;
     icon: { prefix: string; suffix: string };
+};
+export type Reservation = {
+    _id:number;
+    users:User[];
+    restaurant:Restaurant;
+    date:Date;
+    partySize:number;
+    status:"confimed"|"cancelled"|"completed";
+    notes:string;
 };
 export type Restaurant = {
     fsqId: string;
@@ -18,14 +28,17 @@ export type Restaurant = {
     rating: number;
     tips: tip[];
     location?: { formattedAddress?: string };
+    reservations:Reservation[];
 };
 
 export type User = {
+    _id:number;
     profilePic: string;
     firstName: string;
     lastName: string;
     visitedResturants: Restaurant[];
     wishlist: Restaurant[];
+    reservation:Reservation[];
     preferences: {
         likedCuisines: { fsqid: number; name: string }[];
         disliked: string[];

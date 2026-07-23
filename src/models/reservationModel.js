@@ -2,12 +2,9 @@ import mongoose from "mongoose";
 
 const reservationSchema = new mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "users", // must match the model name in userModel.js
-      required: true,
-      index: true,
-    },
+    users: [
+          { type: mongoose.Schema.Types.ObjectId, ref: "users" },
+    ],
     restaurant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "restaurants", // must match the model name in restaurantModel.js
@@ -25,10 +22,10 @@ const reservationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled", "completed"],
-      default: "pending",
+      enum: ["confirmed", "cancelled", "completed"],
+      default: "confirmed",
     },
-    notes: String, // optional: "window seat", allergies, etc.
+    notes: String,
   },
   { timestamps: true }
 );

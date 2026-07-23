@@ -46,11 +46,11 @@ export function ReservationTracker({children}:{children:React.ReactNode}){
             if (firstHiddenRef.current === null) firstHiddenRef.current = Date.now(); 
             if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
             } else {
-            debounceRef.current = setTimeout(finalize, 4000);
+            debounceRef.current = setTimeout(finalize, 2500);
             }
         }
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility); // cleanup
+    return () => document.removeEventListener("visibilitychange", onVisibility);
     }, []);
     return (
         <TrackerContext.Provider value={recordClick}>
