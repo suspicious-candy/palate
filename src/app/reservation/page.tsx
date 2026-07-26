@@ -111,7 +111,7 @@ export default function ReservationPage() {
                 date={new Date(r.date)}
                 partySize={r.partySize}
                 rest={r.restaurant}
-                note={r.notes}
+                note={r.notes ?? ""}
                 onCancel={() => cancelReservation(r)}
               />
             ))

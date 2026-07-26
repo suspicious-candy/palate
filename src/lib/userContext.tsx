@@ -13,31 +13,68 @@ export type Reservation = {
     _id:string;
     users:User[];
     restaurant:Restaurant;
-    date:Date;
+    // JSON has no date type — this is an ISO string over the wire. Normalise
+    // with `new Date(...)` before calling any Date method on it.
+    date: string | Date;
     partySize:number;
     status:"confirmed"|"cancelled"|"completed";
-    notes:string;
+    notes?:string;
 };
 export type Restaurant = {
+    _id?: string;
     fsqId: string;
     name: string;
     categories: category[];
+    cuisine?: string[];
     geocodes: { latitude: number; longitude: number };
     geo: { type: string; coordinates: number[] };
     rating: number;
     tips: tip[];
-    location?: { formattedAddress?: string };
-    reservations:Reservation[];
+    location?: {
+        formattedAddress?: string;
+        locality?: string;
+        region?: string;
+    };
+    // Not a field on the restaurant document — only present if a caller populates it.
+    reservations?:Reservation[];
 };
 
+// Mirrors src/models/addressModel.js — `address` is a structured sub-object,
+// not a single string.
+export type Address = {
+    _id: string;
+    label?: "Home" | "Office";
+    address: {
+        aptNumber?: string;
+        streetAddress: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode?: number;
+    };
+};
+
+// Mirrors src/models/userModel.js as returned by GET /api/user/dashboard.
+// Fields the schema leaves without a default are optional here — a brand-new
+// user who hasn't filled them in still has to render.
 export type User = {
-    _id:number;
+    _id:string;
+    username: string;
+    email: string;
     profilePic: string;
     firstName: string;
     lastName: string;
+    phone?: string;
+    dob?: string | Date;
+    favDish?: string;
+    numVisits?: number;
+    firstOrderDate?: string | Date;
+    StarmembershipStatus?: boolean;
     visitedResturants: Restaurant[];
     wishlist: Restaurant[];
-    reservation:Reservation[];
+    reservations:Reservation[];
+    reservationHistory: Reservation[];
+    savedAddresses: Address[];
     preferences: {
         likedCuisines: { fsqid: number; name: string }[];
         disliked: string[];
@@ -90,7 +127,16 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
     React.useEffect(()=>{
         axios.get("/api/user/dashboard")
             .then((res:any) => setUser(res.data.user ?? null))
-            .catch(() => {})
+            .catch((err:any) => {
+                // Leave `user` null so callers show a signed-out state, but never
+                // swallow the reason — a 500 here is indistinguishable from a 401
+                // in the UI, which makes it very easy to misdiagnose.
+                console.error(
+                    "[userContext] /api/user/dashboard failed:",
+                    err?.response?.status,
+                    err?.response?.data ?? err?.message
+                );
+            })
             .finally(() => setLoading(false));
     }, []);
 

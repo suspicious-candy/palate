@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import Restaurant from "@/models/restaurantModel.js";
 import Reservation from "@/models/reservationModel.js";
+import User from "@/models/userModel.js";
 import { z } from "zod";
 import { markVisited } from "@/lib/visited";
 
@@ -36,7 +37,16 @@ export async function GET(request: NextRequest) {
     }).select("_id restaurant");
 
     if (justCompleted.length) {
+      // Both user-side writes happen BEFORE the status flip: if either fails,
+      // the rows stay "confirmed" and the next GET retries. $addToSet makes the
+      // retry a no-op for anything already recorded.
       await markVisited(user.id, justCompleted.map((r) => r.restaurant));
+
+      await User.findByIdAndUpdate(user.id, {
+        $addToSet: {
+          reservationHistory: { $each: justCompleted.map((r) => r._id) },
+        },
+      });
 
       await Reservation.updateMany(
         { _id: { $in: justCompleted.map((r) => r._id) } },
@@ -83,8 +93,15 @@ export async function POST(request: NextRequest) {
       restaurant: rest._id,
       date: new Date(date),
       partySize,
-      status: "confirmed", 
+      status: "confirmed",
       notes,
+    });
+
+    // The reservation carries a back-ref to the user; the user also keeps a
+    // forward list. Both sides are written here so the profile page (which
+    // reads user.reservations) stays in step with /api/reservations.
+    await User.findByIdAndUpdate(user.id, {
+      $addToSet: { reservations: reservation._id },
     });
 
     return NextResponse.json({ success: true, reservation }, { status: 201 });
