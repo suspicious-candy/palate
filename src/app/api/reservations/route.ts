@@ -4,6 +4,7 @@ import { getUserFromToken } from "@/lib/auth";
 import Restaurant from "@/models/restaurantModel.js";
 import Reservation from "@/models/reservationModel.js";
 import { z } from "zod";
+import { markVisited } from "@/lib/visited";
 
 const bodySchema = z.object({
   fsqId: z.string(),
@@ -26,11 +27,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // auto-complete: any confirmed booking whose time has passed becomes completed
-    await Reservation.updateMany(
-      { users: user.id, status: "confirmed", date: { $lt: new Date() } },
-      { $set: { status: "completed" } }
-    );
+    const now = new Date();
+
+    const justCompleted = await Reservation.find({
+      users: user.id,
+      status: "confirmed",
+      date: { $lt: now },
+    }).select("_id restaurant");
+
+    if (justCompleted.length) {
+      await markVisited(user.id, justCompleted.map((r) => r.restaurant));
+
+      await Reservation.updateMany(
+        { _id: { $in: justCompleted.map((r) => r._id) } },
+        { $set: { status: "completed" } }
+      );
+    }
 
     const reservations = await Reservation.find({ users: user.id })
       .populate("restaurant")

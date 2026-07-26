@@ -46,8 +46,6 @@ const userSchema = new mongoose.Schema({
         default: "",
     },
     phone: {
-        // String (not Number) so it can hold "+", spaces, parentheses, and any
-        // leading zeros in international/formatted numbers.
         type: String,
         trim: true,
     },
@@ -55,20 +53,16 @@ const userSchema = new mongoose.Schema({
         type: Date,
     },
 
-    // Active/upcoming reservations — references into the reservations collection.
     reservations: [
         { type: mongoose.Schema.Types.ObjectId, ref: "reservations" },
     ],
 
-    // Restaurants the user has actually visited.
     visitedResturants: [
         { type: mongoose.Schema.Types.ObjectId, ref: "restaurants" },
     ],
 
-    // Embedded address sub-documents.
     savedAddresses: [{ type: mongoose.Schema.Types.ObjectId, ref: "address" }],
 
-    // Past reservations — references into the reservations collection.
     reservationHistory: [
         { type: mongoose.Schema.Types.ObjectId, ref: "reservations" },
     ],
