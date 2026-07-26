@@ -43,6 +43,9 @@ export async function GET(request: NextRequest) {
                     { path: "winner" },
                 ],
             }).populate("wishlist")
+            // `lists` is a Map of name -> [restaurant refs]; `$*` is mongoose's
+            // wildcard for map VALUES. Without it the page receives raw ObjectIds.
+            .populate("lists.$*")
             .populate("visitedResturants")
             .populate("savedAddresses")
             .populate({ path: "reservations",        populate: { path: "restaurant" } })

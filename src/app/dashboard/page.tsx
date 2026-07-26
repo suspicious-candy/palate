@@ -362,7 +362,7 @@ export function RestaurantCard({ restaurant, geo, user, setUser, index }: { rest
     const track = useTrackClick();
     const Rest = restaurant;
     const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
-    const icon = Rest.categories[0]?.icon;
+    const icon = Rest.categories?.[0]?.icon;
 
     return(
         <div className={styles.restaurantRow}>

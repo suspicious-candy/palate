@@ -1,6 +1,7 @@
 "use client"
 import React from "react";
 import Nav from "@/components/Nav";
+import styles from "./profile.module.css";
 import {
     useUser,
     type User,
@@ -10,6 +11,12 @@ import {
 } from "@/lib/userContext";
 
 type ReservationStatus = Reservation["status"];
+
+const STATUS_CLASS: Record<ReservationStatus, string> = {
+    confirmed: styles.statusConfirmed,
+    completed: styles.statusCompleted,
+    cancelled: styles.statusCancelled,
+};
 
 // ---------- Helpers ----------
 // Every date here crosses the wire as an ISO string, so each helper normalises
@@ -53,7 +60,30 @@ function formatAddress(a: Address["address"]): string {
 
 // Small reusable placeholder for a missing value.
 function Placeholder({ text }: { text: string }) {
-    return <span className="italic text-gray-400">{text}</span>;
+    return <span className={styles.placeholder}>{text}</span>;
+}
+
+function SectionHead({
+    numeral,
+    title,
+    action,
+}: {
+    numeral: string;
+    title: string;
+    action?: string;
+}) {
+    return (
+        <div className={styles.sectionHead}>
+            <span className={styles.numeral}>{numeral}</span>
+            <h2 className={styles.sectionTitle}>{title}</h2>
+            <span className={styles.rule} />
+            {action && (
+                <button type="button" className={styles.headLink}>
+                    {action}
+                </button>
+            )}
+        </div>
+    );
 }
 
 // ---------- Page ----------
@@ -62,20 +92,18 @@ export default function UserProfile() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className={styles.screen}>
                 <Nav />
-                <p className="p-6 text-sm text-gray-400">Loading your profile…</p>
+                <p className={styles.notice}>Loading your profile…</p>
             </div>
         );
     }
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className={styles.screen}>
                 <Nav />
-                <p className="p-6 text-sm text-gray-500">
-                    Please sign in to view your profile.
-                </p>
+                <p className={styles.notice}>Please sign in to view your profile.</p>
             </div>
         );
     }
@@ -89,86 +117,80 @@ export default function UserProfile() {
     const upcoming = reservations.filter((r) => r.status === "confirmed");
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
+        <div className={styles.screen}>
             <Nav user={user} />
 
-            <main className="mx-auto max-w-5xl space-y-6 p-6">
-                {/* Profile header */}
-                <header className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-white p-6 shadow-sm sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-4">
-                        <div className="h-20 w-20 overflow-hidden rounded-full bg-gray-200">
+            <main className={styles.page}>
+                {/* Hero */}
+                <header className={styles.hero}>
+                    <div className={styles.identity}>
+                        <div className={styles.avatar}>
                             {user.profilePic ? (
-                                <img src={user.profilePic} alt="Profile" className="h-full w-full object-cover" />
+                                <img src={user.profilePic} alt="" className={styles.avatarImg} />
                             ) : (
-                                <span className="flex h-full w-full items-center justify-center text-xl font-semibold text-gray-500">
-                                    {initials(user)}
-                                </span>
+                                <span className={styles.avatarInitials}>{initials(user)}</span>
                             )}
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold">
+                            <div className={styles.nameRow}>
+                                <h1 className={styles.name}>
                                     {fullName(user) || <Placeholder text="Unnamed guest" />}
                                 </h1>
                                 {user.StarmembershipStatus && (
-                                    <span className="rounded-full bg-rose-700 px-2 py-0.5 text-xs font-medium text-white">
-                                        Star Member
-                                    </span>
+                                    <span className={styles.star}>Star Member</span>
                                 )}
                             </div>
-                            <p className="mt-0.5 text-sm text-gray-400">@{user.username}</p>
-                            <p className="mt-1 text-sm text-gray-500">
+                            <p className={styles.handle}>@{user.username}</p>
+                            <p className={styles.tagline}>
                                 {user.favDish ? `Dedicated ${user.favDish} enthusiast` : "Food lover"}
-                                {user.firstOrderDate && ` and member since ${formatMonthYear(user.firstOrderDate)}`}
-                                {typeof user.numVisits === "number" && `. ${user.numVisits} visits and counting`}
+                                {user.firstOrderDate && ` · member since ${formatMonthYear(user.firstOrderDate)}`}
+                                {typeof user.numVisits === "number" && ` · ${user.numVisits} visits and counting`}
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-3">
-                        <button type="button" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">
+                    <div className={styles.actions}>
+                        <button type="button" className={styles.btn}>
                             Edit Profile
                         </button>
-                        <button type="button" className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800">
+                        <button type="button" className={`${styles.btn} ${styles.btnPrimary}`}>
                             Book Table
                         </button>
                     </div>
                 </header>
 
                 {/* Upcoming + Favourites */}
-                <div className="grid gap-6 md:grid-cols-2">
-                    {/* Upcoming Reservations */}
-                    <section className="rounded-2xl bg-white p-6 shadow-sm">
-                        <p className="text-xs font-semibold tracking-wide text-gray-400">NEXT VISIT</p>
-                        <h2 className="mb-4 text-lg font-bold">Upcoming Reservations</h2>
+                <div className={styles.grid}>
+                    <section className={styles.card}>
+                        <SectionHead numeral="I." title="Next visit" />
                         {upcoming.length === 0 ? (
-                            <p className="text-sm text-gray-400">
-                                No upcoming reservations yet — book a table to get started.
-                            </p>
+                            <div className={styles.empty}>
+                                <i className={`ph ph-calendar-x ${styles.emptyIcon}`} />
+                                <span>No upcoming reservations yet — book a table to get started.</span>
+                            </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className={styles.list}>
                                 {upcoming.map((r) => (
-                                    <ReservationCard key={r._id} reservation={r} />
+                                    <ReservationRow key={r._id} reservation={r} />
                                 ))}
                             </div>
                         )}
                     </section>
 
-                    {/* Favourites — top 3 highest rated places they've visited */}
-                    <section className="rounded-2xl bg-white p-6 shadow-sm">
-                        <p className="text-xs font-semibold tracking-wide text-gray-400">PERSONALIZED</p>
-                        <h2 className="mb-4 text-lg font-bold">Favourites</h2>
+                    <section className={styles.card}>
+                        <SectionHead numeral="II." title="Favourites" />
                         {visited.length === 0 ? (
-                            <p className="text-sm text-gray-400">
-                                Your favourites will appear here once you’ve dined with us.
-                            </p>
+                            <div className={styles.empty}>
+                                <i className={`ph ph-heart ${styles.emptyIcon}`} />
+                                <span>Your favourites will appear here once you’ve dined with us.</span>
+                            </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className={styles.list}>
                                 {visited
                                     .slice()
                                     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
                                     .slice(0, 3)
                                     .map((r) => (
-                                        <FavouriteCard key={r.fsqId} restaurant={r} />
+                                        <FavouriteRow key={r.fsqId} restaurant={r} />
                                     ))}
                             </div>
                         )}
@@ -176,9 +198,9 @@ export default function UserProfile() {
                 </div>
 
                 {/* Personal Information */}
-                <section className="rounded-2xl bg-white p-6 shadow-sm">
-                    <h2 className="mb-4 text-lg font-bold">Personal Information</h2>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                <section className={styles.card}>
+                    <SectionHead numeral="III." title="Personal information" />
+                    <div className={styles.fieldGrid}>
                         <Field label="Full Name" value={fullName(user)} />
                         <Field label="Username" value={user.username} />
                         <Field label="Email Address" value={user.email} />
@@ -189,26 +211,22 @@ export default function UserProfile() {
                 </section>
 
                 {/* Saved Addresses */}
-                <section className="rounded-2xl bg-white p-6 shadow-sm">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-bold">Saved Addresses</h2>
-                        <button type="button" className="text-sm font-medium text-rose-700 hover:underline">
-                            + Add New
-                        </button>
-                    </div>
+                <section className={styles.card}>
+                    <SectionHead numeral="IV." title="Saved addresses" action="+ Add New" />
                     {addresses.length === 0 ? (
-                        <p className="text-sm text-gray-400">
-                            No saved addresses yet — add one to speed up booking and delivery.
-                        </p>
+                        <div className={styles.empty}>
+                            <i className={`ph ph-map-pin ${styles.emptyIcon}`} />
+                            <span>No saved addresses yet — add one to speed up booking and delivery.</span>
+                        </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className={styles.list}>
                             {addresses.map((a) => (
-                                <div key={a._id} className="flex items-start justify-between rounded-lg border border-gray-100 p-3">
-                                    <div>
-                                        <p className="text-sm font-semibold">
+                                <div key={a._id} className={styles.row}>
+                                    <div className={styles.rowMain}>
+                                        <p className={styles.rowTitle}>
                                             {a.label ?? <Placeholder text="Address" />}
                                         </p>
-                                        <p className="text-sm text-gray-500">{formatAddress(a.address)}</p>
+                                        <p className={styles.rowMeta}>{formatAddress(a.address)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -217,37 +235,31 @@ export default function UserProfile() {
                 </section>
 
                 {/* Reservation History */}
-                <section className="rounded-2xl bg-white p-6 shadow-sm">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-bold">Reservation History</h2>
-                        <button type="button" className="text-sm font-medium text-rose-700 hover:underline">
-                            View All
-                        </button>
-                    </div>
+                <section className={styles.card}>
+                    <SectionHead numeral="V." title="Reservation history" action="View All" />
                     {history.length === 0 ? (
-                        <p className="text-sm text-gray-400">
-                            You haven’t dined with us yet — your past reservations will show up here.
-                        </p>
+                        <div className={styles.empty}>
+                            <i className={`ph ph-clock-counter-clockwise ${styles.emptyIcon}`} />
+                            <span>You haven’t dined with us yet — your past reservations will show up here.</span>
+                        </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="text-xs uppercase tracking-wide text-gray-400">
+                        <div className={styles.tableWrap}>
+                            <table className={styles.table}>
+                                <thead>
                                     <tr>
-                                        <th className="pb-2">Restaurant</th>
-                                        <th className="pb-2">Date</th>
-                                        <th className="pb-2">Guests</th>
-                                        <th className="pb-2">Status</th>
+                                        <th>Restaurant</th>
+                                        <th>Date</th>
+                                        <th>Guests</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {history.map((h) => (
-                                        <tr key={h._id} className="border-t border-gray-100">
-                                            <td className="py-3 font-medium">
-                                                {h.restaurant?.name ?? <Placeholder text="Unknown" />}
-                                            </td>
-                                            <td className="py-3 text-gray-500">{formatLongDate(h.date)}</td>
-                                            <td className="py-3 text-gray-500">{h.partySize} Guests</td>
-                                            <td className="py-3">
+                                        <tr key={h._id}>
+                                            <td>{h.restaurant?.name ?? <Placeholder text="Unknown" />}</td>
+                                            <td>{formatLongDate(h.date)}</td>
+                                            <td>{h.partySize} Guests</td>
+                                            <td>
                                                 <StatusBadge status={h.status} />
                                             </td>
                                         </tr>
@@ -258,8 +270,8 @@ export default function UserProfile() {
                     )}
                 </section>
 
-                <footer className="py-6 text-center text-xs text-gray-400">
-                    © {new Date().getFullYear()} Palate. All rights reserved.
+                <footer className={styles.footer}>
+                    © {new Date().getFullYear()} Palate
                 </footer>
             </main>
         </div>
@@ -270,8 +282,8 @@ export default function UserProfile() {
 function Field({ label, value }: { label: string; value?: string }) {
     return (
         <div>
-            <p className="mb-1 text-xs font-medium text-gray-400">{label}</p>
-            <div className="rounded-lg border border-gray-200 px-3 py-2 text-sm">
+            <p className={styles.fieldLabel}>{label}</p>
+            <div className={styles.fieldValue}>
                 {value && value.trim() ? value : <Placeholder text="Not provided" />}
             </div>
         </div>
@@ -280,62 +292,52 @@ function Field({ label, value }: { label: string; value?: string }) {
 
 // Colored pill for a reservation status (matches the model's enum).
 function StatusBadge({ status }: { status: ReservationStatus }) {
-    const tone: Record<ReservationStatus, string> = {
-        completed: "bg-green-100 text-green-700",
-        confirmed: "bg-blue-100 text-blue-700",
-        cancelled: "bg-red-100 text-red-700",
-    };
     return (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${tone[status]}`}>
-            {status}
-        </span>
+        <span className={`${styles.status} ${STATUS_CLASS[status]}`}>{status}</span>
     );
 }
 
-// Favourites / Personalized card — shows the restaurant name, rating and a hint
-// of cuisine / location.
-function FavouriteCard({ restaurant }: { restaurant: Restaurant }) {
+// Favourites row — restaurant name, rating and a hint of cuisine / location.
+function FavouriteRow({ restaurant }: { restaurant: Restaurant }) {
     const sub =
         restaurant.cuisine?.[0] ||
         restaurant.categories?.[0]?.name ||
         [restaurant.location?.locality, restaurant.location?.region].filter(Boolean).join(", ");
     return (
-        <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
-            <div className="flex items-center gap-2">
-                <h3 className="font-semibold">{restaurant.name}</h3>
-                {typeof restaurant.rating === "number" && (
-                    <span className="text-sm text-gray-400">— {ratingLabel(restaurant.rating)} ⭐</span>
-                )}
+        <div className={styles.row}>
+            <div className={styles.rowMain}>
+                <h3 className={styles.rowTitle}>
+                    {restaurant.name}
+                    {typeof restaurant.rating === "number" && (
+                        <span className={styles.rating}>{ratingLabel(restaurant.rating)} ★</span>
+                    )}
+                </h3>
             </div>
-            {sub && <span className="text-sm text-gray-500">{sub}</span>}
+            {sub && <span className={styles.sub}>{sub}</span>}
         </div>
     );
 }
 
-// Upcoming reservation card — restaurant + when + party size + status.
-function ReservationCard({ reservation }: { reservation: Reservation }) {
+// Upcoming reservation row — restaurant + when + party size + status.
+function ReservationRow({ reservation }: { reservation: Reservation }) {
     const { restaurant } = reservation;
     return (
-        <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
-            <div>
-                <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">
-                        {restaurant?.name ?? <Placeholder text="Unknown" />}
-                    </h3>
+        <div className={styles.row}>
+            <div className={styles.rowMain}>
+                <h3 className={styles.rowTitle}>
+                    {restaurant?.name ?? <Placeholder text="Unknown" />}
                     {typeof restaurant?.rating === "number" && (
-                        <span className="text-sm text-gray-400">{ratingLabel(restaurant.rating)} ⭐</span>
+                        <span className={styles.rating}>{ratingLabel(restaurant.rating)} ★</span>
                     )}
-                </div>
-                <p className="text-sm text-gray-500">
+                </h3>
+                <p className={styles.rowMeta}>
                     {formatLongDate(reservation.date)} at {formatTime(reservation.date)}
                 </p>
-                {reservation.notes && <p className="mt-0.5 text-xs text-gray-400">{reservation.notes}</p>}
+                {reservation.notes && <p className={styles.note}>{reservation.notes}</p>}
             </div>
-            <div className="text-right text-sm text-gray-500">
-                <p>{reservation.partySize} Guests</p>
-                <div className="mt-1">
-                    <StatusBadge status={reservation.status} />
-                </div>
+            <div className={styles.rowSide}>
+                <span>{reservation.partySize} Guests</span>
+                <StatusBadge status={reservation.status} />
             </div>
         </div>
     );
