@@ -108,12 +108,14 @@ type UserContextValue = {
     user: User | null;
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
     loading: boolean;
+    refreshUser: () => Promise<void>;
 };
 
 const userContext = React.createContext<UserContextValue>({
     user: null,
     setUser: () => {},
     loading: true,
+    refreshUser: async () => {},
 });
 
 export function useUser(): UserContextValue {
@@ -123,14 +125,31 @@ export function useUser(): UserContextValue {
 export function UserProvider({ children }:{ children: React.ReactNode }){
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
+    const refreshUser = React.useCallback(async () => {
+    setLoading(true);
+        try {
+            const res = await axios.get("/api/user/dashboard");
+            setUser(res.data.user ?? null);
+        } catch (err: any) {
+            setUser(null);
+            console.error(
+                "[userContext] /api/user/dashboard failed:",
+                err?.response?.status,
+                err?.response?.data ?? err?.message
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    React.useEffect(() => { refreshUser(); }, [refreshUser]);
+
 
     React.useEffect(()=>{
         axios.get("/api/user/dashboard")
             .then((res:any) => setUser(res.data.user ?? null))
             .catch((err:any) => {
-                // Leave `user` null so callers show a signed-out state, but never
-                // swallow the reason — a 500 here is indistinguishable from a 401
-                // in the UI, which makes it very easy to misdiagnose.
+            
                 console.error(
                     "[userContext] /api/user/dashboard failed:",
                     err?.response?.status,
@@ -141,7 +160,7 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
     }, []);
 
     return (
-        <userContext.Provider value={{ user, setUser, loading }}>
+        <userContext.Provider value={{ user, setUser, loading,refreshUser  }}>
             {children}
         </userContext.Provider>
     );

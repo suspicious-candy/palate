@@ -6,12 +6,18 @@ import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./signup.module.css";
 import { toast } from "react-hot-toast";
+import { useUser } from "@/lib/userContext";
+
 
 export default function SignupPage(){
 
+    const { refreshUser } = useUser()
     const router = useRouter();
     const [user,setuser]= React.useState({
         email: "",
+        lastName:"",
+        phone:"",
+        dob:"",
         password: "",
         ConfirmPassword: "",
         username: "",
@@ -38,14 +44,14 @@ export default function SignupPage(){
                 success: "Account created! Redirecting...",
                 error: (err) => err.response?.data?.error ?? "Signup failed",
             });
-            // No auth/session yet — stash the new user's id so the onboarding
-            // page can attach preferences to the right account.
+
             if (res.data?.userId) {
                 localStorage.setItem("userId", res.data.userId);
             }
+            await refreshUser(); 
             router.push("/onBoarding");
         } catch(error:any){
-            // toast.promise already showed the error toast; just log here.
+           
             console.log("signup failed, " + error.message)
         }finally{
             setloading(false);
@@ -67,6 +73,30 @@ export default function SignupPage(){
                     className={styles.input}
                     value={user.firstName}
                     onChange={(e) => setuser({...user, firstName: e.target.value})}
+                />
+                <input
+                    id="lastName"
+                    type="text"
+                    placeholder="smith"
+                    className={styles.input}
+                    value={user.lastName}
+                    onChange={(e) => setuser({...user, lastName: e.target.value})}
+                />
+                <input
+                    id="dob"
+                    type="date"
+                    placeholder=""
+                    className={styles.input}
+                    value={user.dob}
+                    onChange={(e) => setuser({...user, dob: e.target.value})}
+                />
+                <input
+                    id="phone"
+                    type="tel"
+                    placeholder=""
+                    className={styles.input}
+                    value={user.phone}
+                    onChange={(e) => setuser({...user, phone: e.target.value})}
                 />
 
                 <label htmlFor="username" className={styles.label}>Username</label>

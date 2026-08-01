@@ -8,8 +8,14 @@ import { z } from "zod";
 export const signupSchema = z.object({
   username: z.string().min(3),
   firstName: z.string().min(1),
+  lastName: z.string().optional(),
   email: z.string().email(),
   password: z.string().min(8),
+  phone: z.string().optional(),
+  dob: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.date().optional()
+  ),
 });
 
 export async function POST(request: NextRequest) {
@@ -27,13 +33,19 @@ export async function POST(request: NextRequest) {
             { status: 400 }
         );
         }
-        const { username, firstName, email, password } = result.data;
+        const { username, firstName, lastName, email, password, phone, dob } = result.data;
 
         if (!process.env.TOKEN_SECRET) {
             return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
         }
 
-        const user =  await User.findOne({email});
+        const user = await User.findOne({ $or: [{ email }, { username }] });
+        if (user) {
+            return NextResponse.json(
+                { error: user.email === email ? "Email already in use" : "Username already taken" },
+                { status: 400 }
+            );
+        }
 
         if(user){
             return NextResponse.json(
@@ -47,8 +59,11 @@ export async function POST(request: NextRequest) {
         const newUser = new User({
             username,
             firstName,
+            lastName,
             email,
-            password:hashedPassword
+            password: hashedPassword,
+            phone,
+            dob,
         });
 
         const savedUser = await newUser.save();
