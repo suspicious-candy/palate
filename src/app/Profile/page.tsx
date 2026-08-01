@@ -33,6 +33,18 @@ function formatLongDate(date: string | Date): string {
     });
 }
 
+// A date of birth is a calendar date, not a moment in time. It's stored as
+// midnight UTC, so formatting it in the viewer's local zone rolls it back a day
+// anywhere west of Greenwich — read it back in UTC to get the date as entered.
+function formatBirthDate(date: string | Date): string {
+    return new Date(date).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+    });
+}
+
 function formatTime(date: string | Date): string {
     return new Date(date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
@@ -205,7 +217,7 @@ export default function UserProfile() {
                         <Field label="Username" value={user.username} />
                         <Field label="Email Address" value={user.email} />
                         <Field label="Phone Number" value={user.phone} />
-                        <Field label="Date of Birth" value={user.dob ? formatLongDate(user.dob) : ""} />
+                        <Field label="Date of Birth" value={user.dob ? formatBirthDate(user.dob) : ""} />
                         <Field label="Favourite Dish" value={user.favDish} />
                     </div>
                 </section>

@@ -144,23 +144,8 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
 
     React.useEffect(() => { refreshUser(); }, [refreshUser]);
 
-
-    React.useEffect(()=>{
-        axios.get("/api/user/dashboard")
-            .then((res:any) => setUser(res.data.user ?? null))
-            .catch((err:any) => {
-            
-                console.error(
-                    "[userContext] /api/user/dashboard failed:",
-                    err?.response?.status,
-                    err?.response?.data ?? err?.message
-                );
-            })
-            .finally(() => setLoading(false));
-    }, []);
-
     return (
-        <userContext.Provider value={{ user, setUser, loading,refreshUser  }}>
+        <userContext.Provider value={{ user, setUser, loading, refreshUser }}>
             {children}
         </userContext.Provider>
     );

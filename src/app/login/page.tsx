@@ -5,10 +5,11 @@ import React from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./login.module.css";
+import { useUser } from "@/lib/userContext";
 import { toast } from "react-hot-toast";
 
 export default function LoginPage(){
-
+    const { refreshUser } = useUser();
     const router = useRouter();
     const [user,setuser]= React.useState({
         identifier: "",
@@ -36,6 +37,7 @@ export default function LoginPage(){
                     if (res.data?.userId) {
                         localStorage.setItem("userId", res.data.userId);
                     }
+                    await refreshUser();
                     router.push("/dashboard");
                 } catch(error:any){
                     console.log("Login failed, " + error.message)
