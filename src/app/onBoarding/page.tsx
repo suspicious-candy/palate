@@ -7,6 +7,7 @@ import axios from "axios"
 import styles from "./onBoarding.module.css";
 import { toast } from "react-hot-toast";
 import { FOOD_CATEGORIES } from "../../lists/foodCategories";
+import { safeNext, readNextParam } from "@/lib/safeNext";
 
 export default function onBoarding(){
 
@@ -59,7 +60,7 @@ export default function onBoarding(){
                         err.response?.data?.error ?? "Could not save preferences",
                 }
             );
-            router.push("/dashboard");
+            router.push(safeNext(readNextParam()));
         } catch (error: any) {
             // toast.promise already surfaced the error; just log here.
             console.log("save preferences failed, " + error.message);

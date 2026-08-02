@@ -71,7 +71,7 @@ async function resolveExisting(
     const accepted = await friendship.findOneAndUpdate(
         { userA, userB, status: "pending" },
         { $set: { status: "accepted" } },
-        { new: true }
+        { returnDocument: "after" }
     );
 
     return accepted

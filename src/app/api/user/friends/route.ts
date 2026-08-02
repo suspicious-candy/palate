@@ -5,8 +5,10 @@ import {getUserFromToken} from "@/lib/auth"
 import { z } from "zod";
 import {friends, InvalidFriendshipError, type FriendOutcome,listFriends,listPending} from "@/lib/friends";
 
+// Either handle works — the invite link sends a username, the modal lets people
+// type whichever one they know.
 const argSchema = z.object({
-    username: z.string().min(3),
+    identifier: z.string().min(3),
 });
 
 
@@ -43,7 +45,12 @@ export async function  POST(request: NextRequest) {
                 { status: 400  }
             );
         }
-        const target = await User.findOne({username:result.data.username});
+        const target = await User.findOne({
+            $or: [
+                { username: result.data.identifier },
+                { email: result.data.identifier },
+            ],
+        });
         if (!target) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }

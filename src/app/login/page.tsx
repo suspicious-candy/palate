@@ -6,6 +6,7 @@ import {useRouter} from "next/navigation";
 import axios from "axios"
 import styles from "./login.module.css";
 import { useUser } from "@/lib/userContext";
+import { safeNext, readNextParam } from "@/lib/safeNext";
 import { toast } from "react-hot-toast";
 
 export default function LoginPage(){
@@ -23,6 +24,17 @@ export default function LoginPage(){
 
     const [loading,setloading]= React.useState(false);
 
+    // Read after mount, not during render: the server has no window, so doing
+    // this inline would produce a hydration mismatch.
+    // Sanitised here once, so an invalid `next` collapses to "" rather than
+    // silently turning into an explicit next=/dashboard downstream.
+    const [nextParam, setNextParam] = React.useState("");
+    React.useEffect(() => setNextParam(safeNext(readNextParam(), "")), []);
+
+    const signupHref = nextParam
+        ? `/signup?next=${encodeURIComponent(safeNext(nextParam))}`
+        : "/signup";
+
 
     const onLogin = async ()=>{
 
@@ -38,7 +50,7 @@ export default function LoginPage(){
                         localStorage.setItem("userId", res.data.userId);
                     }
                     await refreshUser();
-                    router.push("/dashboard");
+                    router.push(safeNext(readNextParam()));
                 } catch(error:any){
                     console.log("Login failed, " + error.message)
                 }finally{
@@ -93,7 +105,7 @@ export default function LoginPage(){
 
                 <p className={styles.footer}>
                     Not yet signed up?{" "}
-                    <Link href="/signup" className={styles.link}>Sign up</Link>
+                    <Link href={signupHref} className={styles.link}>Sign up</Link>
                 </p>
             </div>
             );

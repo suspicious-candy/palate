@@ -54,7 +54,9 @@ const matchingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-matchingSchema.pre("save", function (next) {
+// Mongoose 9 no longer passes `next` to pre hooks: return to continue, throw to
+// reject. The old `function (next) { ... next() }` form fails at runtime.
+matchingSchema.pre("save", function () {
   const allowed = new Set(this.restaurants.map((r) => r.toString()));
 
   for (const participant of this.participants) {
@@ -63,20 +65,16 @@ matchingSchema.pre("save", function (next) {
       const id = restaurantId.toString();
 
       if (!allowed.has(id)) {
-        return next(
-          new Error(`Ranked vote ${id} is not one of this match's restaurants`)
+        throw new Error(
+          `Ranked vote ${id} is not one of this match's restaurants`
         );
       }
       if (seen.has(id)) {
-        return next(
-          new Error(`Duplicate ranked vote ${id} for a participant`)
-        );
+        throw new Error(`Duplicate ranked vote ${id} for a participant`);
       }
       seen.add(id);
     }
   }
-
-  next();
 });
 
 const matching =

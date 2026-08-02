@@ -10,6 +10,15 @@ import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
 import { useUser, User, Restaurant, matching } from "@/lib/userContext";
 import { useTrackClick } from "@/lib/ReservationTracker";
+import InviteModal from "@/components/InviteModal";
+
+type FriendSummary = {
+    _id: string;
+    username: string;
+    firstName?: string;
+    lastName?: string;
+    profilePic?: string;
+};
 
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
@@ -150,6 +159,8 @@ export function handleList(addList:boolean,listName:string,setUser: React.Dispat
 
 }
 
+
+
 export function googleMapsUrl(r: Restaurant): string {
     const query = r.location?.formattedAddress
         ? `${r.name} ${r.location.formattedAddress}`
@@ -164,13 +175,18 @@ export default function Dashboard() {
     const nearbyRestaurants = useNearbyRestaurants();
     const [listEdit,setlistEdit] = React.useState(false);
     const [listName, setlistName] = React.useState("");
-
+    const [inviteOpen, setInviteOpen] = React.useState(false);
     const formattedDate = new Date().toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
     });
+    const [friends,setFriends] = React.useState<FriendSummary[]>([]);
+
+    React.useEffect(()=>{
+        axios.get("/api/user/friends").then((res) => setFriends(res.data.confirmed ?? [])).catch(()=>setFriends([]));
+    },[])
 
     const loaded = () => (
         <div className={styles.page}>
@@ -320,30 +336,24 @@ export default function Dashboard() {
                     <div className={styles.sideCard}>
                         <h3 className={styles.sideTitle}>At the table tonight</h3>
                         <p className={styles.sideSub}>
-                            {user?.friendlist?.length ?? 0} friends available
+                            {friends.length} {friends.length === 1 ? "friend" : "friends"} available
                         </p>
-                        {user?.friendlist?.map((f, index) => (
-                            <div className={styles.friendRow} key={index}>
-                                {f.profilePic ? (
-                                    <img
-                                        className={styles.friendAvatar}
-                                        src={f.profilePic}
-                                        alt={`${f.firstName} ${f.lastName}`}
-                                    />
-                                ) : (
-                                    <span className={styles.friendAvatar}>
-                                        {initials(f.firstName, f.lastName)}
-                                    </span>
-                                )}
-                                <p className={styles.friendName}>
-                                    {f.firstName} {f.lastName}
-                                </p>
-                            </div>
+                        {friends.map((f) => (
+                            <FriendCard key={f._id} friend={f} />
                         ))}
-                        <button className={styles.inviteBtn}>+ Invite more</button>
+                        <button
+                            className={styles.inviteBtn}
+                            onClick={() => setInviteOpen(true)}
+                        >
+                            + Invite more
+                        </button>
                     </div>
                 </aside>
             </div>
+
+            {inviteOpen && (
+                <InviteModal user={user} onClose={() => setInviteOpen(false)} />
+            )}
         </div>
     );
 
@@ -358,6 +368,30 @@ export default function Dashboard() {
 
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
 
+export function FriendCard({ friend }: { friend: FriendSummary }){
+    // Both names can be empty strings on a fresh account, so fall back to the
+    // username rather than rendering a blank row.
+    const name =
+        [friend.firstName, friend.lastName].filter(Boolean).join(" ") ||
+        friend.username;
+
+    return(
+        <div className={styles.friendRow}>
+            {friend.profilePic ? (
+                <img
+                    className={styles.friendAvatar}
+                    src={friend.profilePic}
+                    alt={name}
+                />
+            ) : (
+                <span className={styles.friendAvatar}>
+                    {initials(friend.firstName, friend.lastName)}
+                </span>
+            )}
+            <p className={styles.friendName}>{name}</p>
+        </div>
+    );
+}
 export function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
     const track = useTrackClick();
     const Rest = restaurant;

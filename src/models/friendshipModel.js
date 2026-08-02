@@ -24,14 +24,16 @@ const friendshipSchema = new mongoose.Schema({
 
 },{ timestamps: true });
 
-friendshipSchema.pre("validate", function (next) {
-    if (!this.userA || !this.userB) return next();
+// Mongoose 9 no longer passes `next` to pre hooks: return to continue, throw to
+// reject. The old `function (next) { ... next() }` form fails at runtime.
+friendshipSchema.pre("validate", function () {
+    if (!this.userA || !this.userB) return;
 
     const a = this.userA.toString();
     const b = this.userB.toString();
 
     if (a === b) {
-        return next(new Error("A user cannot be friends with themselves"));
+        throw new Error("A user cannot be friends with themselves");
     }
 
     if (a > b) {
@@ -40,8 +42,6 @@ friendshipSchema.pre("validate", function (next) {
         this.userB = first;
         this.requestedBy = this.requestedBy === "a" ? "b" : "a";
     }
-
-    next();
 });
 
 friendshipSchema.index({ userA: 1, userB: 1 }, { unique: true });
