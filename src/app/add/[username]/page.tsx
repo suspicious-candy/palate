@@ -3,9 +3,6 @@ import User from "@/models/userModel.js";
 import AddFriendButton from "./AddFriendButton";
 import styles from "./add.module.css";
 
-/* Server Component: it only reads the inviter so the page can be rendered for
-   logged-out visitors too. The friend request itself is a POST fired from the
-   client button, never from this render. */
 export default async function AddFriendPage(
     { params }: { params: Promise<{ username: string }> }
 ) {

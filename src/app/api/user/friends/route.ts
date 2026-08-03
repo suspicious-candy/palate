@@ -3,10 +3,8 @@ import User from "@/models/userModel.js"
 import { NextRequest, NextResponse } from "next/server";
 import {getUserFromToken} from "@/lib/auth"
 import { z } from "zod";
-import {friends, InvalidFriendshipError, type FriendOutcome,listFriends,listPending} from "@/lib/friends";
+import {friends, InvalidFriendshipError, type FriendOutcome,listFriends,listPending,removePendingRequest} from "@/lib/friends";
 
-// Either handle works — the invite link sends a username, the modal lets people
-// type whichever one they know.
 const argSchema = z.object({
     identifier: z.string().min(3),
 });
@@ -17,6 +15,9 @@ const OUTCOME_MESSAGES: Record<FriendOutcome, string> = {
     accepted: "Friend request accepted",
     already_requested: "Friend request already sent",
     already_friends: "You are already friends",
+    rejected: "Friend request declined",
+    cancelled: "Friend request cancelled",
+    nothing_to_remove: "No pending request with this user",
 };
 
 export async function  POST(request: NextRequest) {
@@ -111,3 +112,61 @@ export async function  GET(request: NextRequest) {
 
 }
 
+export async function  DELETE(request: NextRequest) {
+
+    try{
+
+        await connect();
+
+        if (!process.env.TOKEN_SECRET) {
+            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+
+        const token = request.cookies.get("token")?.value;
+        const user = getUserFromToken(token);
+
+        if (!user) {
+            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+
+        const requesterId = user.id;
+
+        // safeParse takes `unknown`, so a bare string here would fail validation
+        // at runtime with no compiler warning. argSchema wants an object.
+        const identifier = request.nextUrl.searchParams.get("identifier");
+
+        const result = argSchema.safeParse({ identifier });
+        if (!result.success) {
+            return NextResponse.json(
+                { error: result.error.flatten().fieldErrors },
+                { status: 400  }
+            );
+        }
+        const target = await User.findOne({
+            $or: [
+                { username: result.data.identifier },
+                { email: result.data.identifier },
+            ],
+        });
+        if (!target) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+        const {outcome} = await removePendingRequest(requesterId,target._id.toString());
+        return NextResponse.json({
+            message: OUTCOME_MESSAGES[outcome],
+            success: true,
+            outcome,
+        });
+
+    }
+
+    catch(error:any){
+        if (error instanceof InvalidFriendshipError) {
+            return NextResponse.json({error: error.message}, {status:400});
+        }
+        return NextResponse.json({error: error.message},
+            {status:500}
+        )
+    }
+
+}

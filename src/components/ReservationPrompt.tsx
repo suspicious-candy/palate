@@ -10,12 +10,11 @@ type Entry = { booked: boolean; date: string; partySize: number };
 
 function defaultDate() {
   const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // shift to local time
-  return d.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM" for datetime-local
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); 
+  return d.toISOString().slice(0, 16);
 }
 
 export function ReservationPrompt({ batch, onClose }: { batch: Item[]; onClose: () => void }) {
-  // one form entry per restaurant, pre-filled with sensible defaults
   const [entries, setEntries] = React.useState<Record<string, Entry>>(() =>
     Object.fromEntries(
       batch.map((c) => [c.fsqId, { booked: false, date: defaultDate(), partySize: 2 }])
@@ -23,7 +22,6 @@ export function ReservationPrompt({ batch, onClose }: { batch: Item[]; onClose: 
   );
   const [saving, setSaving] = React.useState(false);
 
-  // immutable update: new outer object, new inner object
   function update(fsqId: string, patch: Partial<Entry>) {
     setEntries((prev) => ({ ...prev, [fsqId]: { ...prev[fsqId], ...patch } }));
   }

@@ -369,8 +369,6 @@ export default function Dashboard() {
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
 
 export function FriendCard({ friend }: { friend: FriendSummary }){
-    // Both names can be empty strings on a fresh account, so fall back to the
-    // username rather than rendering a blank row.
     const name =
         [friend.firstName, friend.lastName].filter(Boolean).join(" ") ||
         friend.username;

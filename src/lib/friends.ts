@@ -14,7 +14,10 @@ export type FriendOutcome =
     | "created"
     | "accepted"
     | "already_requested"
-    | "already_friends";
+    | "already_friends"
+    | "rejected"
+    | "cancelled"
+    | "nothing_to_remove";
 
 export type FriendResult = {
     outcome: FriendOutcome;
@@ -96,25 +99,44 @@ export async function listFriends(requesterId: string){
 
 }
 
-export async function listPending(requesterId: string){
-
-    try{
+ export async function listPending(requesterId: string){
 
         const pendingFriends = await friendship.find({
             status:"pending",
              $or:[{ userA: requesterId, requestedBy: "b" }, 
                 { userB: requesterId, requestedBy: "a" }],
-        }).lean();
-        
-        const pending = pendingFriends.map((f) =>
-            f.userA.toString() === requesterId ? f.userB : f.userA
-        );
+        }).sort({createdAt:-1}).lean();
 
-        const pendingIdsData = await User.find({_id:{$in:pending}}).select({ username: 1, firstName: 1, lastName: 1, profilePic: 1 }).lean();
-        return (pendingIdsData);
+        const otherId = (f: any) =>(f.userA.toString() === requesterId ? f.userB : f.userA).toString();
+
+        const pendingIdsData = await User.find({_id: {$in: pendingFriends.map(otherId)}}).select({ username: 1, firstName: 1, lastName: 1, profilePic: 1 ,}).lean();
+        const usersById = new Map<string, any>(pendingIdsData.map((u: any) => [u._id.toString(), u] as [string, any]));
+        return pendingFriends.map((f: any) => ({
+            _id: f._id,
+            requestedAt: f.createdAt,
+            user: usersById.get(otherId(f)),
+        })).filter((request) => request.user);
+};
+
+export async function removePendingRequest(requesterId: string,targetId: string): Promise<FriendResult>{
+
+    if(requesterId===targetId){
+        throw new InvalidFriendshipError("A user has no pending request with themselves");
     }
-    catch(error:any){
-        throw new Error (error.message);
+
+    const requesterIsA = requesterId < targetId;
+    const userA = requesterIsA ? requesterId : targetId;
+    const userB = requesterIsA ? targetId : requesterId;
+    const initiator = requesterIsA ? "a" : "b";
+
+    const existing = await friendship.findOneAndDelete({ userA, userB,status:"pending"});
+
+    if(!existing){
+        return { outcome: "nothing_to_remove", friendship: null }
     }
+
+    return initiator !== existing.requestedBy
+        ? { outcome: "rejected", friendship: existing }
+        : { outcome: "cancelled", friendship: existing };
 
 }

@@ -13,8 +13,6 @@ export type Reservation = {
     _id:string;
     users:User[];
     restaurant:Restaurant;
-    // JSON has no date type — this is an ISO string over the wire. Normalise
-    // with `new Date(...)` before calling any Date method on it.
     date: string | Date;
     partySize:number;
     status:"confirmed"|"cancelled"|"completed";
@@ -35,12 +33,9 @@ export type Restaurant = {
         locality?: string;
         region?: string;
     };
-    // Not a field on the restaurant document — only present if a caller populates it.
-    reservations?:Reservation[];
+     reservations?:Reservation[];
 };
 
-// Mirrors src/models/addressModel.js — `address` is a structured sub-object,
-// not a single string.
 export type Address = {
     _id: string;
     label?: "Home" | "Office";
@@ -54,9 +49,6 @@ export type Address = {
     };
 };
 
-// Mirrors src/models/userModel.js as returned by GET /api/user/dashboard.
-// Fields the schema leaves without a default are optional here — a brand-new
-// user who hasn't filled them in still has to render.
 export type User = {
     _id:string;
     username: string;
@@ -109,6 +101,17 @@ type UserContextValue = {
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
     loading: boolean;
     refreshUser: () => Promise<void>;
+    refreshPending:()=>Promise<void>;
+    pending:PendingReq[];
+};
+
+// Mirrors what listPending() actually sends: the friendship row plus the five
+// user fields the route selects. Widening `user` to the full User would let
+// callers reference fields the server never sends.
+export type PendingReq = {
+    user: Pick<User, "_id" | "username" | "firstName" | "lastName" | "profilePic">;
+    _id:string;
+    requestedAt:string | Date;
 };
 
 const userContext = React.createContext<UserContextValue>({
@@ -116,6 +119,8 @@ const userContext = React.createContext<UserContextValue>({
     setUser: () => {},
     loading: true,
     refreshUser: async () => {},
+    refreshPending:async ()=>{},
+    pending:[],
 });
 
 export function useUser(): UserContextValue {
@@ -125,6 +130,7 @@ export function useUser(): UserContextValue {
 export function UserProvider({ children }:{ children: React.ReactNode }){
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
+    const [pending,setPending] = React.useState<PendingReq[]>([]);
     const refreshUser = React.useCallback(async () => {
     setLoading(true);
         try {
@@ -142,10 +148,25 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
         }
     }, []);
 
+    const refreshPending = React.useCallback(async () => {
+        try {
+            const res = await axios.get("/api/user/friends");
+            setPending(res.data.pending ?? []);
+        } catch (err: any) {
+            setPending([]);
+            console.error(
+                "[userContext] /api/user/friends failed:",
+                err?.response?.status,
+                err?.response?.data ?? err?.message
+            );
+        }
+    }, []);
+
     React.useEffect(() => { refreshUser(); }, [refreshUser]);
+    React.useEffect(() => { refreshPending(); }, [refreshPending]);
 
     return (
-        <userContext.Provider value={{ user, setUser, loading, refreshUser }}>
+        <userContext.Provider value={{ user, setUser, loading, refreshUser,refreshPending,pending }}>
             {children}
         </userContext.Provider>
     );

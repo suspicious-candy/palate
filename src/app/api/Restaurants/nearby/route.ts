@@ -7,6 +7,15 @@ import UserModel from "@/models/userModel.js";
 
 const radius = 20000;
 
+/* userModel is a .js file, so anything Mongoose returns here arrives as `any`.
+   Annotating the query gives the preferences shape a real type instead. */
+type UserPreferences = {
+    likedCuisines?: { fsqid?: number; name: string }[];
+    disliked?: string[];
+    allergines?: string[];
+    diet?: string[];
+};
+
 export async function GET(request:NextRequest) {
     try{
         await connect();
@@ -19,7 +28,9 @@ export async function GET(request:NextRequest) {
 
         const token = request.cookies.get("token")?.value;
         const authPayload = getUserFromToken(token);
-        const dbUser = authPayload ? await UserModel.findById(authPayload.id).select("preferences").lean(): null;
+        const dbUser: { preferences?: UserPreferences } | null = authPayload
+            ? await UserModel.findById(authPayload.id).select("preferences").lean()
+            : null;
 
         const prefs = dbUser?.preferences;
         const preferenceQuery = prefs?.likedCuisines?.length
