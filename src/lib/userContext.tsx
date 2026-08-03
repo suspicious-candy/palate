@@ -101,8 +101,9 @@ type UserContextValue = {
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
     loading: boolean;
     refreshUser: () => Promise<void>;
-    refreshPending:()=>Promise<void>;
+    refreshFriends:()=>Promise<void>;
     pending:PendingReq[];
+    confirmed:FriendSummary[];
 };
 
 // Mirrors what listPending() actually sends: the friendship row plus the five
@@ -113,14 +114,18 @@ export type PendingReq = {
     _id:string;
     requestedAt:string | Date;
 };
+// listFriends() maps straight to user documents, so these arrive flat — there
+// is no request left to wrap them in, unlike PendingReq above.
+export type FriendSummary = Pick<User, "_id" | "username" | "firstName" | "lastName" | "profilePic">;
 
 const userContext = React.createContext<UserContextValue>({
     user: null,
     setUser: () => {},
     loading: true,
     refreshUser: async () => {},
-    refreshPending:async ()=>{},
+    refreshFriends:async ()=>{},
     pending:[],
+    confirmed:[],
 });
 
 export function useUser(): UserContextValue {
@@ -131,6 +136,7 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
     const [user, setUser] = React.useState<User | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [pending,setPending] = React.useState<PendingReq[]>([]);
+    const [confirmed,setConfirmed] = React.useState<FriendSummary[]>([]);
     const refreshUser = React.useCallback(async () => {
     setLoading(true);
         try {
@@ -148,12 +154,14 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
         }
     }, []);
 
-    const refreshPending = React.useCallback(async () => {
+    const refreshFriends = React.useCallback(async () => {
         try {
             const res = await axios.get("/api/user/friends");
             setPending(res.data.pending ?? []);
+            setConfirmed(res.data.confirmed ?? []);
         } catch (err: any) {
             setPending([]);
+            setConfirmed([]);
             console.error(
                 "[userContext] /api/user/friends failed:",
                 err?.response?.status,
@@ -163,10 +171,10 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
     }, []);
 
     React.useEffect(() => { refreshUser(); }, [refreshUser]);
-    React.useEffect(() => { refreshPending(); }, [refreshPending]);
+    React.useEffect(() => { refreshFriends(); }, [refreshFriends]);
 
     return (
-        <userContext.Provider value={{ user, setUser, loading, refreshUser,refreshPending,pending }}>
+        <userContext.Provider value={{ user, setUser, loading, refreshUser,refreshFriends,pending,confirmed }}>
             {children}
         </userContext.Provider>
     );

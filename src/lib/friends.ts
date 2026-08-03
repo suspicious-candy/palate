@@ -1,8 +1,6 @@
 import friendship from "@/models/friendshipModel.js";
 import User from "@/models/userModel.js";
 
-/* Expected, caller-caused failures. Routes map this to a 400 so it is never
-   confused with a genuine server fault. */
 export class InvalidFriendshipError extends Error {
     constructor(message: string) {
         super(message);

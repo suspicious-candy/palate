@@ -123,3 +123,43 @@
     background: rgba(176, 42, 46, 0.07);
     color: var(--red);
 }
+
+/* Pending-request count on the avatar. Positioned against .navAvatarWrap,
+   which is already position: relative. pointer-events: none so it never
+   swallows a click meant for the avatar button underneath it. */
+.navBadge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border: 2px solid #fffdfa;
+    border-radius: 9px;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 14px;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* Same count inside the dropdown item. margin-left: auto pushes it to the
+   right edge of the flex row so it lines up regardless of label length. */
+.menuCount {
+    margin-left: auto;
+    min-width: 20px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.menuItem:hover .menuCount {
+    color: #fff;
+}

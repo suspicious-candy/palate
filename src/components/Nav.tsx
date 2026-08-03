@@ -7,23 +7,18 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import styles from "./Nav.module.css";
 import SearchModal from "./SearchModal";
+import FriendsModal from "./FriendsModal";
 import { useUser } from "@/lib/userContext";
-
-function initials(first?: string, last?: string): string {
-    return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
-}
+import { initials } from "@/lib/initials";
 
 export default function Nav({ user }: { user?: { firstName?: string; lastName?: string } }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { setUser } = useUser();
+    const { setUser, pending } = useUser();
     const [isOpen,setIsOpen] = React.useState(false);
     const [menuOpen, setMenuOpen] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
-
-    // Dismiss the account menu on an outside click or Escape. Both listeners sit
-    // on `document` because the dismissing click lands outside our own subtree,
-    // so a React onBlur/onClick on the menu would never see it.
+    const [inboxOpen,setInboxOpen]=React.useState(false);
     React.useEffect(() => {
         if (!menuOpen) return;
 
@@ -46,10 +41,7 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
         setMenuOpen(false);
         try {
             await axios.post("/api/user/logout");
-            // Drop the cached user too, or the nav keeps rendering their initials
-            // until the next full page load.
             setUser(null);
-            // replace() rather than push() so Back doesn't return to a signed-in page.
             router.replace("/login");
         } catch {
             toast.error("Could not log out. Please try again.");
@@ -98,6 +90,7 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
                     <i className="ph ph-magnifying-glass" />
                 </button>
                 {isOpen && <SearchModal onClose={() => setIsOpen(false)} />}
+                {inboxOpen && <FriendsModal onClose={() => setInboxOpen(false)} />}
                 <div className={styles.navAvatarWrap} ref={menuRef}>
                     <button
                         type="button"
@@ -105,13 +98,33 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
                         onClick={() => setMenuOpen((open) => !open)}
                         aria-haspopup="menu"
                         aria-expanded={menuOpen}
-                        aria-label="Account menu"
+                        aria-label={
+                            pending.length > 0
+                                ? `Account menu, ${pending.length} pending friend requests`
+                                : "Account menu"
+                        }
                     >
                         {initials(user?.firstName, user?.lastName)}
                     </button>
+                    
+                    {pending.length > 0 && (
+                        <span className={styles.navBadge}>{pending.length}</span>
+                    )}
 
                     {menuOpen && (
                         <div className={styles.menu} role="menu">
+                            <button
+                                type="button"
+                                role="menuitem"
+                                className={styles.menuItem}
+                                onClick={()=>{setMenuOpen(false);setInboxOpen(true);}}
+                            >
+                                <i className="ph ph-users-three" />
+                                Friends
+                                {pending.length > 0 && (
+                                    <span className={styles.menuCount}>{pending.length}</span>
+                                )}
+                            </button>
                             <Link
                                 href="/profile"
                                 role="menuitem"
