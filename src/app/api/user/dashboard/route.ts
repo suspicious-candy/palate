@@ -3,18 +3,11 @@ import User from "@/models/userModel.js"
 import "@/models/restaurantModel.js";
 import "@/models/reservationModel.js";
 import "@/models/addressModel.js";
-import "@/models/matching.js";
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import {getUserFromToken} from "@/lib/auth"
 import { z } from "zod";
-
-/* The five fields FriendSummary declares. A populated subdocument does NOT
-   inherit the outer .select("-password"), so without this every participant's
-   password hash, email and phone ship to the browser. Duplicated in
-   /api/user/matching, which populates the same paths — hoist both into a shared
-   module once POST /api/user/matching needs it too. */
-const USER_SUMMARY = "username firstName lastName profilePic";
+import { findActiveGroup } from "@/lib/activeGroup";
 
 export async function GET(request: NextRequest) {
 
@@ -35,16 +28,7 @@ export async function GET(request: NextRequest) {
 
         const authUser = await User.findById(userId)
             .select("-password")
-            .populate({
-                path: "matchingGroup.group",
-                populate: [
-                    { path: "participants.user", select: USER_SUMMARY },
-                    { path: "participants.approvals" },
-                    { path: "restaurants" },
-                    { path: "winner" },
-                    { path: "admins", select: USER_SUMMARY },
-                ],
-            }).populate("wishlist")
+            .populate("wishlist")
             // `lists` is a Map of name -> [restaurant refs]; `$*` is mongoose's
             // wildcard for map VALUES. Without it the page receives raw ObjectIds.
             .populate("lists.$*")
@@ -57,12 +41,18 @@ export async function GET(request: NextRequest) {
                     {error:"Invalid credentials"},{status:401}
                 );
         }
-        const getPref = authUser.preferences;
-        const getwishlist=authUser.wishlist;
+        /* A second query rather than a populate: membership lives in the
+           matching collection, not on a pointer here. Cheap — it hits the
+           participants.user index — and it is the price of never having two
+           documents that can disagree about who is in a group. */
+        const group = await findActiveGroup(userId);
+
         const response = NextResponse.json({
-                message: "Prefrence Fetch successful",
+                message: "Dashboard fetch successful",
                 success: true,
-                user:authUser,
+                // toObject() so the group can be attached; the model has no
+                // virtuals or custom toJSON, so this serializes identically.
+                user: { ...authUser.toObject(), matchingGroup: group },
         })
 
         return response;

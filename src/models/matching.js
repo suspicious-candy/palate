@@ -58,6 +58,15 @@ const matchingSchema = new mongoose.Schema(
       enum: ["open", "voting", "closed"],
       default: "open",
     },
+    /* Whether the roster can still change — orthogonal to `status`, which
+       governs the vote. Added before anything reads it because Mongoose applies
+       defaults at creation only: introduce this later and every group made in
+       the meantime has no value, which reads as falsy, which means locked —
+       the opposite of the default declared here. */
+    membershipOpen: {
+      type: Boolean,
+      default: true,
+    },
     winner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "restaurants",
@@ -66,6 +75,13 @@ const matchingSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+/* Membership is looked up by scanning for the user inside participants[] rather
+   than from a pointer on the user document, so this is the hottest query in the
+   feature. Compound and in this order: the equality match on participants.user
+   narrows first, then `date` serves both the staleness filter and the sort, so
+   Mongo never has to sort in memory. */
+matchingSchema.index({ "participants.user": 1, date: 1 });
 
 // Mongoose 9 no longer passes `next` to pre hooks: return to continue, throw to
 // reject. The old `function (next) { ... next() }` form fails at runtime.

@@ -73,10 +73,12 @@ export type User = {
         allergines: string[];
         diet: string[];
     };
-    matchingGroup:{
-        group:matching;
-        isInMatching: boolean;
-    };
+    /* The soonest group whose dinner has not passed, or null. Not a field on
+       the user document — /api/user/dashboard attaches it from a query against
+       the matching collection, so there is no pointer here to drift out of
+       sync with participants[]. A user may be in several groups at once; this
+       is the one worth showing. */
+    matchingGroup: matching | null;
     friendlist:User[];
     lists: Record<string, Restaurant[]>;
 };

@@ -33,18 +33,20 @@ function timeLeft(date: Date | null, now: Date = new Date()): string {
 
     const diffMs = new Date(date).getTime() - now.getTime();
 
-    if (diffMs <= 0) {
-        return "Time's up";
-    }
+    /* A bare duration — "2h 14m", not "2h 14m left". The caller supplies the
+       phrasing, because the same number reads as "voting closes in" on one card
+       and "dinner in" on another. Empty for a deadline already passed, so the
+       caller can say what expiry means in its own context. */
+    if (diffMs <= 0) return "";
 
     const totalMinutes = Math.floor(diffMs / 60000);
     const days = Math.floor(totalMinutes / (60 * 24));
     const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
     const minutes = totalMinutes % 60;
 
-    if (days > 0) return `${days}d ${hours}h left`;
-    if (hours > 0) return `${hours}h ${minutes}m left`;
-    return `${minutes}m left`;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
 }
 
 function useTimeLeft(date: Date | null): string {
@@ -171,7 +173,7 @@ export function googleMapsUrl(r: Restaurant): string {
 export default function Dashboard() {
     const { user, setUser, loading } = useUser();
     const geo = useGeo();
-    const group = user?.matchingGroup?.group;
+    const group = user?.matchingGroup;
     /* Counts down to the VOTE deadline, not to dinner. `date` is when the table
        is booked; voting shuts VOTE_LEAD_MINUTES before that. */
     const remaining = useTimeLeft(votingClosesAt(group));
@@ -208,7 +210,7 @@ export default function Dashboard() {
                         </p>
                     </div>
 
-                    {!user?.matchingGroup?.isInMatching ? (
+                    {!group ? (
                         <div className={styles.section}>
                             <div className={styles.sectionHead}>
                                 <span className={styles.numeral}>I.</span>
@@ -245,7 +247,8 @@ export default function Dashboard() {
                                     </div>
                                     <p className={styles.itemMeta}>
                                         {votedCount(group)} of {totalCount(group)} voted
-                                        <span className={styles.dot}>·</span> voting closes in {remaining}
+                                        <span className={styles.dot}>·</span>{" "}
+                                        {remaining ? `voting closes in ${remaining}` : "voting has closed"}
                                     </p>
                                     <button className={styles.ghostBtn}>Begin the voting</button>
                                 </div>
@@ -268,7 +271,8 @@ export default function Dashboard() {
                                             </>
                                         ) : null}
                                         {votedCount(group)} of {totalCount(group)} voted
-                                        <span className={styles.dot}>·</span> {remaining}
+                                        <span className={styles.dot}>·</span>{" "}
+                                        {remaining ? `${remaining} left to vote` : "voting has closed"}
                                     </p>
                                     <button className={styles.ghostBtn}>Cast your vote</button>
                                 </div>
