@@ -9,7 +9,12 @@ import jwt from "jsonwebtoken";
 import {getUserFromToken} from "@/lib/auth"
 import { z } from "zod";
 
-
+/* The five fields FriendSummary declares. A populated subdocument does NOT
+   inherit the outer .select("-password"), so without this every participant's
+   password hash, email and phone ship to the browser. Duplicated in
+   /api/user/matching, which populates the same paths — hoist both into a shared
+   module once POST /api/user/matching needs it too. */
+const USER_SUMMARY = "username firstName lastName profilePic";
 
 export async function GET(request: NextRequest) {
 
@@ -33,10 +38,11 @@ export async function GET(request: NextRequest) {
             .populate({
                 path: "matchingGroup.group",
                 populate: [
-                    { path: "participants.user" },
-                    { path: "participants.rankedVotes" },
+                    { path: "participants.user", select: USER_SUMMARY },
+                    { path: "participants.approvals" },
                     { path: "restaurants" },
                     { path: "winner" },
+                    { path: "admins", select: USER_SUMMARY },
                 ],
             }).populate("wishlist")
             // `lists` is a Map of name -> [restaurant refs]; `$*` is mongoose's

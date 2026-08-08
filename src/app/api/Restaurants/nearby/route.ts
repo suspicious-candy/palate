@@ -63,35 +63,37 @@ export async function GET(request:NextRequest) {
                     },
                 }))
             );
-            
-            try {
-                await fetch(`${RECOMMENDER_URL}/embed`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        places: mapped.map((r) => ({
-                            businessId: r.fsqId,
-                            text: `${r.name} is a ${r.cuisine.join(", ") || "restaurant"} located at ${r.location.formattedAddress ?? "an unknown address"}.`,
-                        })),
-                    }),
-                });
-            } catch (err) {
-                console.error("Failed to embed newly-synced restaurants into the recommender:", err);
-            }
 
+            /* Deliberately no /embed call. Mongo is the source of truth for the
+               text; the vector index has exactly one writer, restarunt-Rec's
+               rebuild_index.py, which builds from Mongo with a single template.
+               Posting our own sentence here made a second writer with a second
+               template — one that kept the restaurant NAME and so embedded at
+               74% category precision against the index's 95%.
+
+               These restaurants therefore have no vector until someone runs
+               `rebuild_index.py --only-missing`. That degrades gracefully:
+               unscored candidates are appended in distance order below. */
 
             restaurants = mapped;
         }
 
         const query = searchParams.get("query")?? preferenceQuery ?? "restaurant";
-        const nearbyIds = new Set(restaurants.map((r) => r.fsqId));
+        const candidateIds = restaurants.map((r) => r.fsqId);
 
         let recommended = restaurants;
         try {
+            /* Filter-then-rank. Previously this asked the recommender for its
+               top 50 across the whole corpus and intersected that with the 50
+               nearest — two independent draws from ~15k restaurants, which
+               overlap in 0.16 items on average. Measured: the intersection was
+               empty every time, so `ranked` was always empty and the ranking
+               silently never applied. Sending the candidates instead makes the
+               vector search order what the geo query already chose. */
             const recRes = await fetch(`${RECOMMENDER_URL}/recommend`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query, k: 50 }),
+                body: JSON.stringify({ query, k: candidateIds.length, candidateIds }),
             });
 
             if (recRes.ok) {
@@ -99,10 +101,20 @@ export async function GET(request:NextRequest) {
                 const byId = new Map(restaurants.map((r) => [r.fsqId, r]));
 
                 const ranked = businessIds
-                    .filter((id: string) => nearbyIds.has(id))
-                    .map((id: string) => byId.get(id));
+                    .map((id: string) => byId.get(id))
+                    .filter(Boolean);
 
-                if (ranked.length > 0) recommended = ranked;
+                /* Not every nearby restaurant has a vector — the 5,444
+                   yelp_seed rows are not in places_v2. Ranking must reorder
+                   candidates, never drop them, so anything unscored keeps its
+                   distance ordering at the end of the list. */
+                if (ranked.length > 0) {
+                    const rankedIds = new Set(ranked.map((r: { fsqId: string }) => r.fsqId));
+                    recommended = [
+                        ...ranked,
+                        ...restaurants.filter((r) => !rankedIds.has(r.fsqId)),
+                    ];
+                }
             }
         } catch (err) {
             console.error("Recommend call failed, falling back to nearby list:", err);

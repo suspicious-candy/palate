@@ -12,7 +12,6 @@ import path from "node:path";
 import { MongoClient } from "mongodb";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
 const RADIUS_METERS = 20000; // same radius nearby/route.ts uses
 const DELAY_MS = 400; // be polite to Foursquare's rate limit
 const MIN_POPULATION = Number(process.env.MIN_POPULATION ?? 100_000);
@@ -96,7 +95,6 @@ async function main() {
   const collection = client.db().collection("restaurants");
 
   let totalUpserted = 0;
-  let totalEmbedFailures = 0;
 
   try {
     for (const city of cities) {
@@ -124,30 +122,18 @@ async function main() {
       totalUpserted += result.upsertedCount;
       console.log(`[${city.name}] ${mapped.length} found, ${result.upsertedCount} new, ${result.modifiedCount} updated`);
 
-      try {
-        const embedRes = await fetch(`${RECOMMENDER_URL}/embed`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            places: mapped.map((r) => ({
-              businessId: r.fsqId,
-              text: `${r.name} is a ${r.cuisine.join(", ") || "restaurant"} located at ${r.location.formattedAddress ?? "an unknown address"}.`,
-            })),
-          }),
-        });
-        if (!embedRes.ok) throw new Error(`status ${embedRes.status}`);
-      } catch (err) {
-        totalEmbedFailures++;
-        console.error(`[${city.name}] embed failed:`, err.message);
-      }
-
       await sleep(DELAY_MS);
     }
   } finally {
     await client.close();
   }
 
-  console.log(`\nDone. ${totalUpserted} new restaurants upserted, ${totalEmbedFailures} cities failed to embed.`);
+  console.log(`\nDone. ${totalUpserted} new restaurants upserted.`);
+  // This script writes Mongo only. The vector index has a single writer,
+  // restarunt-Rec/rebuild_index.py, so new rows stay unindexed until it runs.
+  console.log(
+    "Next: cd ../restarunt-Rec && ./.venv/Scripts/python.exe rebuild_index.py --only-missing"
+  );
 }
 
 main().catch((err) => {

@@ -11,11 +11,20 @@ const participantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    rankedVotes: {
+    approvals: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "restaurants" }],
       default: [],
     },
     votedAt: Date,
+    // Captured once when this participant opens the group, not tracked
+    // continuously. Scoped to the dinner rather than stored on the user: this
+    // is the only feature that needs it, and it expires with the group.
+    // [lng, lat] — GeoJSON order, matching restaurants.geo.
+    location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: undefined },
+    },
+    locationAt: Date,
   },
   { _id: false }
 );
@@ -29,6 +38,10 @@ const matchingSchema = new mongoose.Schema(
     participants: {
       type: [participantSchema],
       required: true,
+    },
+    admins:{
+      type:[{ type: mongoose.Schema.Types.ObjectId, ref: "users" }],
+      required:true,
     },
     restaurants: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -61,16 +74,16 @@ matchingSchema.pre("save", function () {
 
   for (const participant of this.participants) {
     const seen = new Set();
-    for (const restaurantId of participant.rankedVotes) {
+    for (const restaurantId of participant.approvals) {
       const id = restaurantId.toString();
 
       if (!allowed.has(id)) {
         throw new Error(
-          `Ranked vote ${id} is not one of this match's restaurants`
+          `Approval ${id} is not one of this match's restaurants`
         );
       }
       if (seen.has(id)) {
-        throw new Error(`Duplicate ranked vote ${id} for a participant`);
+        throw new Error(`Duplicate approval ${id} for a participant`);
       }
       seen.add(id);
     }

@@ -35,7 +35,7 @@
 
 ## Project Status
 
-> ⚠️ **Early stage / work in progress.** Auth and the data layer are now wired up; several content screens still render **hardcoded mock data** and the discovery features are incomplete.
+> ⚠️ **Work in progress.** Auth, the data layer, the dashboard, lists, reservations and friends are live on real data. Group matching is the main gap — the recommender side is built, the UI is not. Note that the app needs the [recommender service](../restarunt-Rec) running to rank restaurants; without it nearby results silently degrade to distance order.
 
 | Area | Status | Notes |
 | --- | --- | --- |
@@ -45,10 +45,13 @@
 | Preferences API | ✅ Implemented | `PATCH /api/user/preferences`, authenticated via the JWT cookie |
 | Login / Signup pages | ✅ Wired | Post to the auth API, then redirect (signup → onboarding) |
 | Onboarding (preferences) | ✅ Implemented | `src/app/onBoarding/page.tsx` — diet / allergens / cuisines |
-| Restaurant detail page | 🟡 UI complete, mock data | `getResturant()` returns hardcoded data — `TODO` real fetch |
-| User profile page | 🟡 UI complete, mock data | `getUser()` returns hardcoded data — `TODO` real fetch |
-| Group matching | 🔴 Scaffold | `src/app/matching/group/page.tsx` is empty |
-| Dashboard | 🔴 Scaffold | `src/app/dashboard/page.tsx` is empty |
+| User profile page | ✅ Implemented | `src/app/profile/page.tsx`, real DB reads via `useUser()` |
+| Dashboard | ✅ Implemented | `src/app/dashboard/page.tsx` — "Bill of Fare" layout, live data |
+| Lists / wishlist | ✅ Implemented | `src/app/lists/page.tsx` + `/api/Restaurants/lists` |
+| Reservations | ✅ Implemented | `src/app/reservation/page.tsx` + `/api/reservations` |
+| Friends | ✅ Implemented | `/api/user/friends`, `FriendsModal`, invite links + QR |
+| Restaurant detail page | 🔴 Not built | `src/app/resturant/` is an empty directory |
+| Group matching | 🔴 Scaffold | `src/app/matching/group/page.tsx` is a 10-line placeholder |
 | Home page | 🔴 Default starter | Still the `create-next-app` landing page |
 
 This README documents both what exists today and the intended direction, so a new contributor can pick up work without reverse-engineering the codebase.
@@ -61,15 +64,21 @@ This README documents both what exists today and the intended direction, so a ne
 
 - 🔐 **Authentication** — working signup and login: passwords hashed with bcrypt, requests validated with Zod, and a signed JWT stored in an httpOnly `token` cookie. Login accepts either an email or a username as the identifier. (Plus placeholder "Continue with Google / Apple" buttons.)
 - 🎯 **Taste onboarding** — after signup, users pick dietary needs, allergens, and favourite cuisines; preferences are saved to their account through a cookie-authenticated API.
-- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and a reservation‑history table (UI, mock data).
-- 🏚️ **Restaurant detail** — photo gallery, rating & price, description, crowd "tastes" tags, amenities, tips, contact card, social links, location, and opening hours with an "Open now" indicator (UI, mock data).
+- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and reservation history.
+
+- 📊 **Dashboard** — "Bill of Fare" home: tonight's feature, recommendations, wishlist and custom lists, friends rail, invite by link/QR.
+- 🗺️ **Geo discovery** — "restaurants near me" via MongoDB `2dsphere` queries, seeded from Foursquare Places and re-ranked by the recommender service.
+- 📅 **Reservations** — create, complete, and cancel bookings, plus a prompt that catches a booking after you follow a Maps link.
+- 👥 **Friends** — request / accept / decline, invite links and QR.
 
 **Planned:**
 
-- 🤝 **Group matching** — pool a group's preferences and surface restaurants everyone will enjoy.
-- 📊 **Dashboard** — a personalized home for discovery and activity.
-- 📅 **Reservations** — create, confirm, and manage bookings end‑to‑end.
-- 🗺️ **Geo discovery** — "restaurants near me" powered by MongoDB `2dsphere` geo queries.
+- 🤝 **Group matching** — `/matching/group` is still a placeholder. The
+  recommender side is built (`POST /recommend/group` does least-misery
+  aggregation over a group's members); what's missing is group creation, vote
+  persistence, and the UI.
+- ⭐ **Post-meal reviews** — prompt after a reservation completes, to supply the
+  "did you actually like it" signal and enrich restaurant text.
 
 ---
 
@@ -138,13 +147,13 @@ palate/
 │  │  ├─ login/page.tsx        # Login screen (wired to API)
 │  │  ├─ signup/page.tsx       # Signup screen (wired to API)
 │  │  ├─ onBoarding/page.tsx   # Taste onboarding (diet/allergens/cuisines)
-│  │  ├─ dashboard/page.tsx    # Dashboard (empty scaffold)
-│  │  ├─ matching/group/page.tsx  # Group matching (empty scaffold)
-│  │  ├─ profile/
-│  │  │  ├─ page.tsx           # Profile index placeholder
-│  │  │  └─ [id]/page.tsx      # User profile (mock data)
-│  │  └─ resturant/
-│  │     └─ [id]/page.tsx      # Restaurant detail (mock data)
+│  │  ├─ dashboard/page.tsx    # Dashboard ("Bill of Fare")
+│  │  ├─ lists/page.tsx        # Wishlist + custom lists
+│  │  ├─ reservation/page.tsx  # Reservations
+│  │  ├─ add/[username]/       # Friend-add landing for invite links
+│  │  ├─ matching/group/page.tsx  # Group matching (placeholder)
+│  │  ├─ profile/page.tsx      # User profile
+│  │  └─ resturant/            # Restaurant detail (not built yet)
 │  ├─ dbConfig/
 │  │  └─ dbConfig.ts           # Shared, cached Mongoose connection
 │  └─ models/                  # Mongoose schemas
@@ -223,11 +232,13 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 | `/login` | Page | Sign in | Wired to API |
 | `/signup` | Page | Create account | Wired to API |
 | `/onBoarding` | Page | Taste onboarding | Implemented |
-| `/dashboard` | Page | Personalized home | Empty |
-| `/matching/group` | Page | Group restaurant matching | Empty |
-| `/profile` | Page | Profile index | Placeholder |
-| `/profile/[id]` | Page | A user's dining profile | UI + mock data |
-| `/resturant/[id]` | Page | Restaurant detail | UI + mock data |
+| `/dashboard` | Page | Personalized home ("Bill of Fare") | Implemented |
+| `/lists` | Page | Wishlist and custom lists | Implemented |
+| `/reservation` | Page | Reservations | Implemented |
+| `/add/[username]` | Page | Friend-add landing for invite links | Implemented |
+| `/profile` | Page | A user's dining profile | Implemented |
+| `/matching/group` | Page | Group restaurant matching | Placeholder |
+| `/resturant/[id]` | Page | Restaurant detail | Not built |
 
 ### API (Route Handlers)
 
@@ -270,7 +281,25 @@ cp .env.example .env
 
 Then set `mongo_url` to your MongoDB connection string (see [Environment Variables](#environment-variables)).
 
-### 4. Run the dev server
+### 4. Start the recommender service
+
+**`npm run dev` alone is not enough.** Restaurant ranking lives in a separate
+FastAPI service in the sibling [`restarunt-Rec/`](../restarunt-Rec) repo, and
+`/api/Restaurants/nearby` calls it on every request:
+
+```bash
+cd ../restarunt-Rec
+./.venv/Scripts/python.exe -m uvicorn service:app --port 8000
+```
+
+Run it from that directory — its Chroma store is a relative path. Port 8000 is
+what `RECOMMENDER_URL` defaults to.
+
+Without it, nearby requests log `ECONNREFUSED` and **silently** fall back to an
+unranked distance-ordered list. The page still renders, so the only symptom is
+worse recommendations. See that repo's README for the index and its rebuild.
+
+### 5. Run the dev server
 
 ```bash
 npm run dev
@@ -293,12 +322,15 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 
 > **Note:** the JWT secret is read as `TOKEN_SECRET` (not `JWT_SECRET`). Without it, signup/login/preferences return `500 Server misconfigured`.
 
-**Planned** (as email and external data sync land):
+| `FOURSQUARE_API_KEY` | ✅ | Foursquare Places key. Used at runtime by `/api/Restaurants/nearby` when an area has no cached restaurants, and by `npm run seed:foursquare`. |
+| `FOURSQUARE_API_VERSION` | ✅ | Sent as the `X-Places-Api-Version` header. |
+| `RECOMMENDER_URL` | — | Base URL of the FastAPI recommender. Defaults to `http://localhost:8000`; set it if the service runs elsewhere. |
+
+**Planned** (as email lands):
 
 | Variable | Purpose |
 | --- | --- |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Transactional email (`nodemailer`) |
-| `FOURSQUARE_API_KEY` | Sync restaurant data from Foursquare Places |
 
 > 🔒 Never commit real secrets. `.env*` is gitignored (with an explicit exception for `.env.example`).
 
@@ -320,12 +352,18 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 - [x] Implement the shared Mongoose connection in `src/dbConfig/dbConfig.ts`
 - [x] Build auth API routes + wire up `onLogin` / `onSignup` (bcrypt hashing, JWT cookie sessions)
 - [x] Taste onboarding + cookie-authenticated preferences API
+- [x] Replace mock `getUser` / `getResturant` with real DB reads (with populated refs)
+- [x] Reservation create/manage flow
+- [x] Dashboard
+- [x] Foursquare Places sync job (`npm run seed:foursquare`)
+- [x] Friends: requests, accept/decline, invite links and QR
+- [x] Recommender wired into nearby (filter-then-rank against the vector index)
+- [x] Group aggregation in the recommender (`POST /recommend/group`, least-misery)
 - [ ] Auth middleware / `/api/user/me` so the client can check session state and protect pages
-- [ ] Replace mock `getUser` / `getResturant` with real DB reads (with populated refs)
-- [ ] Reservation create/manage flow
-- [ ] Group matching algorithm and `/matching/group` UI
-- [ ] Dashboard
-- [ ] Foursquare Places sync job
+- [ ] Group creation, vote persistence, and the `/matching/group` UI
+- [ ] Per-person taste vectors feeding `/recommend/group`
+- [ ] Post-meal review prompt (rating + optional text)
+- [ ] Paginate the Foursquare sync — it caps at 50 results per call, which is what limits coverage
 - [ ] Email verification & notifications via nodemailer
 - [ ] Tests and CI
 

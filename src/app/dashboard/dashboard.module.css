@@ -219,6 +219,13 @@
     background: #fbeceb;
 }
 
+/* .ghostBtn is written for <button>; an <a> needs these to match it. */
+.ghostLink {
+    display: inline-block;
+    text-decoration: none;
+    line-height: 1;
+}
+
 /* ---------- sidebar ---------- */
 .sideCard {
     background: #fffdfa;

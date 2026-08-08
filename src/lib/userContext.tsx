@@ -82,17 +82,20 @@ export type User = {
 };
 
 export type participant = {
-    user:User,
+    user:FriendSummary,
     hasVoted:boolean,
-    rankedVotes: Restaurant[],
-    votedAt:Date,
+    approvals: Restaurant[],
+    votedAt:string | Date,
 };
 export type matching = {
+    _id:string,
+    admins:FriendSummary[],
+    membershipOpen:boolean,
     name:string,
     participants:participant[],
     restaurants:Restaurant[],
-    date:Date,
-    status:string,
+    date:string | Date,
+    status:"open"|"voting"|"closed",
     winner:Restaurant|null,
 };
 

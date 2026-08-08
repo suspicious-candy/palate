@@ -8,9 +8,10 @@ import Image from 'next/image';
 import Nav from "@/components/Nav";
 import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
-import { useUser, User, Restaurant, matching } from "@/lib/userContext";
+import { useUser, User, Restaurant } from "@/lib/userContext";
 import { useTrackClick } from "@/lib/ReservationTracker";
 import InviteModal from "@/components/InviteModal";
+import { votedCount, totalCount, leader, votingClosesAt } from "@/lib/groupVote";
 
 type FriendSummary = {
     _id: string;
@@ -24,7 +25,12 @@ function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
-function timeLeft(date: Date, now: Date = new Date()): string {
+function timeLeft(date: Date | null, now: Date = new Date()): string {
+    /* Null means there is no deadline to count down to — no group, or a group
+       with no date yet. Rendering nothing is right; substituting `new Date()`
+       would show "Time's up" to someone who has nothing to be late for. */
+    if (!date) return "";
+
     const diffMs = new Date(date).getTime() - now.getTime();
 
     if (diffMs <= 0) {
@@ -41,27 +47,21 @@ function timeLeft(date: Date, now: Date = new Date()): string {
     return `${minutes}m left`;
 }
 
-function useTimeLeft(date: Date): string {
+function useTimeLeft(date: Date | null): string {
     const [now, setNow] = React.useState(() => new Date());
 
+    /* votingClosesAt() builds a fresh Date every render, so the object identity
+       always differs. Keying the effect on the timestamp instead means the
+       interval is only torn down when the deadline actually moves. */
+    const deadline = date?.getTime() ?? null;
+
     React.useEffect(() => {
+        if (deadline === null) return;
         const id = setInterval(() => setNow(new Date()), 60000);
         return () => clearInterval(id);
-    }, []);
+    }, [deadline]);
 
     return timeLeft(date, now);
-}
-
-
-function castedVotes(group?: matching): number {
-    if (!group) return 0;
-    let casted: number = 0;
-    for (const userParticipant of group.participants) {
-        if (userParticipant.hasVoted) {
-            casted++;
-        }
-    }
-    return casted;
 }
 
 
@@ -171,7 +171,13 @@ export function googleMapsUrl(r: Restaurant): string {
 export default function Dashboard() {
     const { user, setUser, loading } = useUser();
     const geo = useGeo();
-    const remaining = useTimeLeft(user?.matchingGroup?.group?.date ?? new Date());
+    const group = user?.matchingGroup?.group;
+    /* Counts down to the VOTE deadline, not to dinner. `date` is when the table
+       is booked; voting shuts VOTE_LEAD_MINUTES before that. */
+    const remaining = useTimeLeft(votingClosesAt(group));
+    /* Derived, not `group.winner` — that field stays null until the vote closes,
+       so reading it mid-vote renders a blank name. */
+    const front = leader(group);
     const nearbyRestaurants = useNearbyRestaurants();
     const [listEdit,setlistEdit] = React.useState(false);
     const [listName, setlistName] = React.useState("");
@@ -230,48 +236,67 @@ export default function Dashboard() {
                                 <span className={styles.rule} />
                             </div>
 
-                            {user?.matchingGroup?.group?.status === "open" ? (
+                            {group?.status === "open" ? (
                                 <div className={styles.itemRow}>
                                     <div className={`${styles.itemIcon} ${styles.swatchSage}`}><i className="ph ph-hourglass" /></div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
+                                        <p className={styles.itemName}>{group.name}</p>
                                         <p className={styles.itemTag}>ready to vote</p>
                                     </div>
                                     <p className={styles.itemMeta}>
-                                        {castedVotes(user?.matchingGroup?.group)} of{" "}
-                                        {user?.matchingGroup?.group?.participants.length} voted
-                                        <span className={styles.dot}>·</span> {remaining}
+                                        {votedCount(group)} of {totalCount(group)} voted
+                                        <span className={styles.dot}>·</span> voting closes in {remaining}
                                     </p>
                                     <button className={styles.ghostBtn}>Begin the voting</button>
                                 </div>
                             ) : null}
 
-                            {user?.matchingGroup?.group?.status === "voting" ? (
+                            {group?.status === "voting" ? (
                                 <div className={styles.itemRow}>
                                     <div className={`${styles.itemIcon} ${styles.swatchBlush}`}><i className="ph ph-checks" /></div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
+                                        <p className={styles.itemName}>{group.name}</p>
                                         <p className={styles.itemTag}>a live vote</p>
                                     </div>
                                     <p className={styles.itemMeta}>
-                                        <strong>{user?.matchingGroup?.group?.winner?.name}</strong> leads
-                                        <span className={styles.dot}>·</span>
-                                        {castedVotes(user?.matchingGroup?.group)} of{" "}
-                                        {user?.matchingGroup?.group?.participants.length} voted
+                                        {/* Nobody has voted yet means there is no leader — say so rather
+                                            than rendering "  leads" with an empty name. */}
+                                        {front ? (
+                                            <>
+                                                <strong>{front.restaurant.name}</strong> leads
+                                                <span className={styles.dot}>·</span>
+                                            </>
+                                        ) : null}
+                                        {votedCount(group)} of {totalCount(group)} voted
                                         <span className={styles.dot}>·</span> {remaining}
                                     </p>
                                     <button className={styles.ghostBtn}>Cast your vote</button>
                                 </div>
                             ) : null}
 
-                            {user?.matchingGroup?.group?.status === "closed" ? (
+                            {group?.status === "closed" ? (
                                 <div className={styles.itemRow}>
                                     <div className={`${styles.itemIcon} ${styles.swatchSand}`}><i className="ph-fill ph-check-circle" /></div>
                                     <div className={styles.itemMain}>
-                                        <p className={styles.itemName}>{user?.matchingGroup?.group?.name}</p>
-                                        <p className={styles.itemTag}>you found the restaurant!</p>
+                                        <p className={styles.itemName}>{group.name}</p>
+                                        <p className={styles.itemTag}>
+                                            {group.winner
+                                                ? `you're going to ${group.winner.name}`
+                                                : "the vote closed without a winner"}
+                                        </p>
                                     </div>
-                                    <button className={styles.ghostBtn}>Cast your vote</button>
+                                    {/* Once the vote is settled `winner` IS the source of truth — this
+                                        is the one status where reading it is correct. */}
+                                    {group.winner ? (
+                                        <a
+                                            className={`${styles.ghostBtn} ${styles.ghostLink}`}
+                                            href={googleMapsUrl(group.winner)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Get directions
+                                        </a>
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>

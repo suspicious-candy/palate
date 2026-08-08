@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema({
         type:{
             group:{ 
                 type: mongoose.Schema.Types.ObjectId, ref: "matching" ,
-                default:{}
+                default:null
             },
             isInMatching:{
                 type:Boolean,
