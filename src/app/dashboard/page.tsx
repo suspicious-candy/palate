@@ -12,6 +12,7 @@ import { useUser, User, Restaurant } from "@/lib/userContext";
 import { useTrackClick } from "@/lib/ReservationTracker";
 import InviteModal from "@/components/InviteModal";
 import { votedCount, totalCount, leader, votingClosesAt } from "@/lib/groupVote";
+import { useReportGroupLocation } from "@/lib/useReportGroupLocation";  
 
 type FriendSummary = {
     _id: string;
@@ -173,6 +174,7 @@ export function googleMapsUrl(r: Restaurant): string {
 export default function Dashboard() {
     const { user, setUser, loading } = useUser();
     const geo = useGeo();
+    useReportGroupLocation(user?.matchingGroup ?? null)
     const group = user?.matchingGroup;
     /* Counts down to the VOTE deadline, not to dinner. `date` is when the table
        is booked; voting shuts VOTE_LEAD_MINUTES before that. */

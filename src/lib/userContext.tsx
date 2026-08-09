@@ -88,6 +88,12 @@ export type participant = {
     hasVoted:boolean,
     approvals: Restaurant[],
     votedAt:string | Date,
+    /* Optional, not defaulted: a participant who has not opened the group — or
+       who denied permission — has no coordinates at all. Modelling that as
+       absent rather than as a zeroed point is what stops [0, 0] (a real place
+       off West Africa) from ever reading as "unknown". */
+    location?:{ type: "Point"; coordinates: [number, number] },
+    locationAt?:string|Date
 };
 export type matching = {
     _id:string,
