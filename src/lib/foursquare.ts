@@ -82,6 +82,11 @@ export function mapFoursquarePlace(place: FoursquarePlace) {
                   twitter: place.social_media.twitter,
               }
             : undefined,
+        /* Set at write time so a synced row is immediately eligible for the
+           group shortlist and for rebuild_index.py. Was previously only
+           applied retroactively by restarunt-Rec/backfill_source.py, which
+           left every row written after that one-time run unstamped. */
+        source: "foursquare" as const,
         lastFetchedAt: new Date(),
     };
 }

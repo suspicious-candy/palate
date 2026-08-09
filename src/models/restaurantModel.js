@@ -79,6 +79,24 @@ const restaurantSchema = new mongoose.Schema(
 
     dateClosed: String,
 
+    /* Which importer wrote this row. Two of them share this collection and
+       their text is not comparable — Yelp rows carry review prose, Foursquare
+       rows carry categories — so they embed into different regions of the
+       vector space and must never be ranked against each other. places_v2 and
+       findGroupCandidates both select on `source: "foursquare"`.
+
+       Originally inferred from field presence and stamped once by
+       restarunt-Rec/backfill_source.py. Declared here because Mongoose runs
+       strict: true and silently DROPS undeclared paths on write — without this
+       line, every restaurant the nearby route syncs from Foursquare is written
+       with no source, which makes it invisible to the group shortlist and to
+       rebuild_index.py alike. Nothing errors; the row just never appears. */
+    source: {
+      type: String,
+      enum: ["foursquare", "yelp_seed"],
+      index: true,
+    },
+
     // When you last synced this record from Foursquare
     lastFetchedAt: {
       type: Date,

@@ -34,7 +34,10 @@ async function main() {
       updateOne: {
         filter: { fsqId: r.fsqId },
         update: {
-          $set: { ...r, lastFetchedAt: now, updatedAt: now },
+          // Yelp rows carry review prose, not Foursquare categories, so they
+          // are excluded from places_v2 and from the group shortlist. See the
+          // `source` comment in src/models/restaurantModel.js.
+          $set: { ...r, source: "yelp_seed", lastFetchedAt: now, updatedAt: now },
           $setOnInsert: { createdAt: now },
         },
         upsert: true,

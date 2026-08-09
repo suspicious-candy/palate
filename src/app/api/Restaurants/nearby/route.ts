@@ -4,17 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchFoursquarePlaces, mapFoursquarePlace } from "@/lib/foursquare";
 import { getUserFromToken } from "@/lib/auth";
 import UserModel from "@/models/userModel.js";
+import { buildTasteQuery, type UserPreferences } from "@/lib/tasteQuery";
 
 const radius = 20000;
-
-/* userModel is a .js file, so anything Mongoose returns here arrives as `any`.
-   Annotating the query gives the preferences shape a real type instead. */
-type UserPreferences = {
-    likedCuisines?: { fsqid?: number; name: string }[];
-    disliked?: string[];
-    allergines?: string[];
-    diet?: string[];
-};
 
 export async function GET(request:NextRequest) {
     try{
@@ -33,9 +25,11 @@ export async function GET(request:NextRequest) {
             : null;
 
         const prefs = dbUser?.preferences;
-        const preferenceQuery = prefs?.likedCuisines?.length
-            ? `A ${[...prefs.likedCuisines.map((c) => c.name), ...(prefs.diet ?? [])].join(", ")} restaurant`
-            : null;
+        /* Shared with the group shortlist route, so both rank a person by the
+           same sentence. Two drifting definitions of "what this user's taste
+           sounds like" would rank two users by different rules, and nothing
+           would ever surface it. */
+        const preferenceQuery = buildTasteQuery(prefs ?? null);
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return NextResponse.json({ error: "lat and lng query params are required" }, { status: 400 });
         }
@@ -64,18 +58,25 @@ export async function GET(request:NextRequest) {
                 }))
             );
 
-            /* Deliberately no /embed call. Mongo is the source of truth for the
-               text; the vector index has exactly one writer, restarunt-Rec's
-               rebuild_index.py, which builds from Mongo with a single template.
-               Posting our own sentence here made a second writer with a second
-               template — one that kept the restaurant NAME and so embedded at
-               74% category precision against the index's 95%.
-
-               These restaurants therefore have no vector until someone runs
-               `rebuild_index.py --only-missing`. That degrades gracefully:
-               unscored candidates are appended in distance order below. */
-
             restaurants = mapped;
+
+            /* Still no /embed — posting our own sentence made a second text
+               template, one that kept the restaurant NAME and so embedded at
+               74% category precision against the index's 95%. We send only the
+               IDS; the recommender reads the text from Mongo and runs the same
+               build_text pipeline rebuild_index.py runs, so there is one
+               template either way.
+
+               Not awaited. A freshly synced restaurant has no vector until
+               something embeds it, but that is invisible to this request —
+               unscored candidates are appended in distance order below, so the
+               user gets their list now and the vectors exist for the next
+               call (and, more to the point, for the group shortlist). */
+            fetch(`${RECOMMENDER_URL}/index/missing`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ businessIds: mapped.map((r) => r.fsqId) }),
+            }).catch((err) => console.error("Index top-up failed:", err));
         }
 
         const query = searchParams.get("query")?? preferenceQuery ?? "restaurant";

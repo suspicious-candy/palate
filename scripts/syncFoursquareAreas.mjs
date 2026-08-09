@@ -74,6 +74,8 @@ function mapPlace(place) {
     geo: { type: "Point", coordinates: [place.longitude, place.latitude] },
     tel: place.tel,
     website: place.website,
+    // See restaurantModel.js — only source: "foursquare" rows get vectors.
+    source: "foursquare",
     lastFetchedAt: new Date(),
   };
 }
