@@ -315,10 +315,6 @@ export async function POST(
             message: "Shortlist created",
             success: true,
             group: await findGroupById(groupId),
-            /* What the client cannot derive from the group document. `agreement`
-               is the mean pairwise cosine between members — a low value is
-               exactly when the UI should say these are compromises rather than
-               favourites. */
             shortlist: {
                 radiusKm: area.radiusKm,
                 excludedMembers,

@@ -84,9 +84,6 @@ export function groupSearchArea(admin: Point, members: (Point | null)[]): Search
 
     return {
         center: admin,
-        // Deliberately not max(BASE, farthest + BUFFER): inside the base radius
-        // the answer is a flat 30km, so a group that all lives within a few
-        // blocks gets the same predictable pool as one spread across town.
         radiusKm: farthestKm <= BASE_RADIUS_KM ? BASE_RADIUS_KM : farthestKm + BUFFER_KM,
         farthestKm,
         excludedMembers,

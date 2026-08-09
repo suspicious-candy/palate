@@ -30,10 +30,7 @@ export type UserPreferences = {
  *   should abstain from the ranking, not vote randomly in it.
  */
 export function buildTasteQuery(preferences: UserPreferences | null): string | null {
-    /* Cuisines and diet in one list, tested once. Testing likedCuisines but
-       interpolating diet as well would hand back null for a member whose only
-       preference is "vegan" — silently abstaining the person least-misery
-       exists to protect. */
+    
     const terms = [
         ...(preferences?.likedCuisines?.map((c) => c.name) ?? []),
         ...(preferences?.diet ?? []),
