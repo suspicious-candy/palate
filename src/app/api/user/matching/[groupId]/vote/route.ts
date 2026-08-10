@@ -108,37 +108,52 @@ export async function PUT(
             return NextResponse.json({ error: "Invalid restaurant id" }, { status: 400 });
         }
 
-        /* Every precondition lives in the FILTER, so the check and the write
-           cannot be separated by anything.
+        /* Subset check in code, NOT as a `restaurants: {$all: …}` clause in the
+           filter below.
 
-           - status: "voting" is compare-and-set, exactly as in the shortlist
-             route. The guard above reads a document fetched moments ago; this
-             is what makes it true at the instant of writing.
-           - $all is the subset check the pre("save") hook would have done:
-             the group's restaurants[] must contain every id submitted, so a
-             vote for something not on the ballot matches nothing.
+           That clause corrupted real data. MongoDB's positional `$` binds to the
+           FIRST array field matched by the query, and `$all` on restaurants is
+           an array match — so `$` resolved against restaurants, not
+           participants.user. With a 7-item shortlist it wrote
+           `participants.6.approvals` on a 2-member group, and Mongo pads an
+           array with nulls to reach an index that does not exist. The result was
+           four nulls and a participant subdocument with no `user` at all, which
+           then crashed tally() on every read.
 
-           $all is omitted for an empty ballot because `$all: []` matches NO
-           documents in MongoDB — and an empty ballot is a case we deliberately
-           support ("none of these work for me"). */
-        const filter: Record<string, unknown> = {
-            _id: groupId,
-            status: "voting",
-            "participants.user": user.id,
-        };
-        if (approvals.length > 0) {
-            filter.restaurants = { $all: approvals };
+           The group is already loaded for the guards above, so the check costs
+           nothing here and yields a precise 400 instead of an ambiguous
+           zero-match. */
+        const onBallot = new Set(
+            (group.restaurants as mongoose.Types.ObjectId[]).map((r) => r.toString())
+        );
+        if (approvals.some((id) => !onBallot.has(id))) {
+            return NextResponse.json(
+                { error: "That restaurant isn't on this group's shortlist." },
+                { status: 400 }
+            );
         }
 
-        const updated = await matchingModel.updateOne(filter, {
-            $set: {
-                // $set, never $push: the body is the complete ballot, so
-                // re-voting replaces rather than appends.
-                "participants.$.approvals": approvals,
-                "participants.$.hasVoted": true,
-                "participants.$.votedAt": new Date(),
+        /* arrayFilters rather than the positional `$`. `$[p]` names the element
+           explicitly, so the target cannot be decided by whichever array the
+           query happened to match first — the class of bug described above
+           becomes unrepresentable rather than merely avoided.
+
+           status: "voting" stays in the filter: it is a scalar, so it cannot
+           capture the positional binding, and it is what makes this a
+           compare-and-set rather than a check followed by a write. */
+        const updated = await matchingModel.updateOne(
+            { _id: groupId, status: "voting", "participants.user": user.id },
+            {
+                $set: {
+                    // $set, never $push: the body is the complete ballot, so
+                    // re-voting replaces rather than appends.
+                    "participants.$[p].approvals": approvals,
+                    "participants.$[p].hasVoted": true,
+                    "participants.$[p].votedAt": new Date(),
+                },
             },
-        });
+            { arrayFilters: [{ "p.user": new mongoose.Types.ObjectId(user.id) }] }
+        );
 
         /* matchedCount, not modifiedCount — resubmitting an identical ballot
            modifies nothing and is still a success.

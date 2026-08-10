@@ -4,7 +4,7 @@ import React from "react";
 import axios from "axios";
 import Nav from "@/components/Nav";
 import { useUser, Restaurant, Reservation } from "@/lib/userContext";
-import { googleMapsUrl } from "@/app/dashboard/page";
+import { googleMapsUrl } from "@/lib/mapsUrl";
 import styles from "./page.module.css";
 
 function formatReservationDate(date: string | Date) {

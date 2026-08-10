@@ -12,7 +12,15 @@ import { useUser, User, Restaurant } from "@/lib/userContext";
 import { useTrackClick } from "@/lib/ReservationTracker";
 import InviteModal from "@/components/InviteModal";
 import { votedCount, totalCount, leader, votingClosesAt } from "@/lib/groupVote";
-import { useReportGroupLocation } from "@/lib/useReportGroupLocation";  
+import { useReportGroupLocation } from "@/lib/useReportGroupLocation";
+import { useTimeLeft } from "@/lib/timeLeft";
+import { googleMapsUrl } from "@/lib/mapsUrl";
+import Link from "next/link";
+import CreateGroupModal from "@/components/CreateGroupModal";
+
+/* googleMapsUrl and useTimeLeft moved to lib/ when the group page needed them:
+   a page is not a module other screens should import from, and there were three
+   copies of googleMapsUrl (here, reservation, SearchModal) already drifting. */
 
 type FriendSummary = {
     _id: string;
@@ -25,48 +33,6 @@ type FriendSummary = {
 function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
-
-function timeLeft(date: Date | null, now: Date = new Date()): string {
-    /* Null means there is no deadline to count down to — no group, or a group
-       with no date yet. Rendering nothing is right; substituting `new Date()`
-       would show "Time's up" to someone who has nothing to be late for. */
-    if (!date) return "";
-
-    const diffMs = new Date(date).getTime() - now.getTime();
-
-    /* A bare duration — "2h 14m", not "2h 14m left". The caller supplies the
-       phrasing, because the same number reads as "voting closes in" on one card
-       and "dinner in" on another. Empty for a deadline already passed, so the
-       caller can say what expiry means in its own context. */
-    if (diffMs <= 0) return "";
-
-    const totalMinutes = Math.floor(diffMs / 60000);
-    const days = Math.floor(totalMinutes / (60 * 24));
-    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-    const minutes = totalMinutes % 60;
-
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-}
-
-function useTimeLeft(date: Date | null): string {
-    const [now, setNow] = React.useState(() => new Date());
-
-    /* votingClosesAt() builds a fresh Date every render, so the object identity
-       always differs. Keying the effect on the timestamp instead means the
-       interval is only torn down when the deadline actually moves. */
-    const deadline = date?.getTime() ?? null;
-
-    React.useEffect(() => {
-        if (deadline === null) return;
-        const id = setInterval(() => setNow(new Date()), 60000);
-        return () => clearInterval(id);
-    }, [deadline]);
-
-    return timeLeft(date, now);
-}
-
 
 function haversineDistance(
   lat1: number, lon1: number,
@@ -164,15 +130,8 @@ export function handleList(addList:boolean,listName:string,setUser: React.Dispat
 
 
 
-export function googleMapsUrl(r: Restaurant): string {
-    const query = r.location?.formattedAddress
-        ? `${r.name} ${r.location.formattedAddress}`
-        : `${r.geocodes.latitude},${r.geocodes.longitude}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
 export default function Dashboard() {
-    const { user, setUser, loading } = useUser();
+    const { user, setUser, loading, refreshUser } = useUser();
     const geo = useGeo();
     useReportGroupLocation(user?.matchingGroup ?? null)
     const group = user?.matchingGroup;
@@ -182,10 +141,14 @@ export default function Dashboard() {
     /* Derived, not `group.winner` — that field stays null until the vote closes,
        so reading it mid-vote renders a blank name. */
     const front = leader(group);
+    /* Only the organiser can start the vote — the shortlist route answers 403
+       for anyone else — so the row should not offer them an action that fails. */
+    const isGroupAdmin = !!group?.admins?.some((a) => a._id === user?._id);
     const nearbyRestaurants = useNearbyRestaurants();
     const [listEdit,setlistEdit] = React.useState(false);
     const [listName, setlistName] = React.useState("");
     const [inviteOpen, setInviteOpen] = React.useState(false);
+    const [createGroupOpen, setCreateGroupOpen] = React.useState(false);
     const formattedDate = new Date().toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
@@ -229,7 +192,7 @@ export default function Dashboard() {
                                         serves the winner.
                                     </p>
                                 </div>
-                                <button className={styles.beginBtn}>Begin <i className="ph-bold ph-arrow-right" /></button>
+                                <button className={styles.beginBtn} onClick={() => setCreateGroupOpen(true)}>Begin <i className="ph-bold ph-arrow-right" /></button>
                             </div>
                         </div>
                     ) : (
@@ -245,14 +208,29 @@ export default function Dashboard() {
                                     <div className={`${styles.itemIcon} ${styles.swatchSage}`}><i className="ph ph-hourglass" /></div>
                                     <div className={styles.itemMain}>
                                         <p className={styles.itemName}>{group.name}</p>
-                                        <p className={styles.itemTag}>ready to vote</p>
+                                        <p className={styles.itemTag}>
+                                            {isGroupAdmin
+                                                ? "pick the shortlist to start the vote"
+                                                : "waiting on the organiser"}
+                                        </p>
                                     </div>
+                                    {/* An open group has an EMPTY shortlist — the pre-save hook forbids
+                                        approving anything that is not on it — so this row used to report
+                                        "0 of N voted" and a countdown for a vote that does not exist yet.
+                                        Both were true statements about nothing, and together they read as
+                                        a live vote nobody had joined. Say what is actually the case. */}
                                     <p className={styles.itemMeta}>
-                                        {votedCount(group)} of {totalCount(group)} voted
+                                        {totalCount(group)} in the group
                                         <span className={styles.dot}>·</span>{" "}
-                                        {remaining ? `voting closes in ${remaining}` : "voting has closed"}
+                                        {new Date(group.date).toLocaleString("en-US", {
+                                            weekday: "short",
+                                            hour: "numeric",
+                                            minute: "2-digit",
+                                        })}
                                     </p>
-                                    <button className={styles.ghostBtn}>Begin the voting</button>
+                                    <Link href="/matching/group" className={`${styles.ghostBtn} ${styles.ghostLink}`}>
+                                        {isGroupAdmin ? "Begin the voting" : "View group"}
+                                    </Link>
                                 </div>
                             ) : null}
 
@@ -276,7 +254,7 @@ export default function Dashboard() {
                                         <span className={styles.dot}>·</span>{" "}
                                         {remaining ? `${remaining} left to vote` : "voting has closed"}
                                     </p>
-                                    <button className={styles.ghostBtn}>Cast your vote</button>
+                                    <Link href="/matching/group" className={`${styles.ghostBtn} ${styles.ghostLink}`}>Cast your vote</Link>
                                 </div>
                             ) : null}
 
@@ -384,6 +362,19 @@ export default function Dashboard() {
 
             {inviteOpen && (
                 <InviteModal user={user} onClose={() => setInviteOpen(false)} />
+            )}
+
+            {/* refreshUser rather than a local patch: /api/user/dashboard is what
+                attaches matchingGroup, so re-reading it is the only way the new
+                group reaches every screen at once. Safe to call from an event
+                handler — the loop risk is effects that depend on the object this
+                replaces, not clicks. */}
+            {createGroupOpen && (
+                <CreateGroupModal
+                    friends={friends}
+                    onClose={() => setCreateGroupOpen(false)}
+                    onCreated={refreshUser}
+                />
             )}
         </div>
     );

@@ -1,0 +1,586 @@
+/* "Bill of Fare" — the group screen and its vote sheet.
+
+   Colours, type and radii lifted from the 1c direction of the Palate Dashboard
+   Redesign design doc. The design ships everything as inline styles because it
+   is a canvas prototype; here they are tokens, so a palette change is one edit
+   rather than ninety. */
+
+.page {
+    --ink: #1a1a1a;
+    --claret: #c1272d;
+    --claret-soft: #fdf0ee;
+    --cocoa: #8a6f68;
+    --clay: #b09a92;
+    --rose-line: #efe4e0;
+    --rose-line-2: #e0cec8;
+    --sand-line: #e7dccb;
+    --dash: #f0e6e2;
+    --paper: #f2eae5;
+    --shell: #f6efec;
+    --track: #f1e6e2;
+    --olive: #4c7a3f;
+    --olive-soft: #eaf1e6;
+    --check: #4cae6a;
+    --muted-btn: #5c5049;
+    --amber-soft: #efe6da;
+    --amber-ink: #8a6f4a;
+
+    min-height: 100%;
+    background: var(--paper);
+    font-family: var(--font-hanken), system-ui, sans-serif;
+    color: var(--ink);
+}
+
+.layout {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 34px 20px 80px;
+}
+
+/* ---------- header ---------- */
+
+.back {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-bottom: 10px;
+    font: 600 12px var(--font-hanken), sans-serif;
+    color: var(--claret);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.title {
+    font: 600 32px var(--font-cormorant), serif;
+    letter-spacing: 0.3px;
+    margin: 0;
+}
+
+.subtitle {
+    font: italic 500 14px var(--font-cormorant), serif;
+    color: var(--cocoa);
+    margin: 2px 0 0;
+}
+
+/* ---------- the group card ---------- */
+
+.card {
+    margin-top: 22px;
+    background: #fff;
+    border: 1px solid var(--rose-line);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(60, 20, 15, 0.04);
+}
+
+.cardHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.groupName {
+    font: 700 19px var(--font-hanken), sans-serif;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font: 700 10.5px var(--font-plex-mono), monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.pillOpen {
+    background: var(--amber-soft);
+    color: var(--amber-ink);
+}
+.pillVoting {
+    background: var(--claret-soft);
+    color: var(--claret);
+}
+.pillClosed {
+    background: var(--olive-soft);
+    color: var(--olive);
+}
+
+.meta {
+    font: 400 12.5px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    margin: 0 0 18px;
+}
+
+/* ---------- members ---------- */
+
+.members {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 60px;
+}
+
+.avatarWrap {
+    position: relative;
+}
+
+.avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 13px var(--font-hanken), sans-serif;
+    background: var(--shell);
+    color: var(--muted-btn);
+    overflow: hidden;
+}
+.avatarYou {
+    background: var(--claret);
+    color: #fff;
+}
+
+.avatarImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.votedTick {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--check);
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 9px;
+}
+
+.memberName {
+    font: 600 11px var(--font-hanken), sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60px;
+}
+
+/* ---------- shortlist bars ---------- */
+
+.sectionLabel {
+    font: 700 11px var(--font-plex-mono), monospace;
+    letter-spacing: 0.1em;
+    color: var(--clay);
+    margin-bottom: 10px;
+}
+
+.bars {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 20px;
+}
+
+.barHead {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font: 600 12.5px var(--font-hanken), sans-serif;
+    margin-bottom: 4px;
+}
+
+.barName {
+    color: var(--ink);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.barName:hover {
+    text-decoration: underline;
+}
+
+.barVotes {
+    color: var(--cocoa);
+    white-space: nowrap;
+}
+
+.track {
+    height: 7px;
+    background: var(--track);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.35s ease;
+}
+
+/* ---------- actions ---------- */
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.primaryBtn {
+    border: none;
+    background: var(--claret);
+    color: #fff;
+    font: 700 13px var(--font-hanken), sans-serif;
+    padding: 10px 18px;
+    border-radius: 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.primaryBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+.ghostBtn {
+    border: 1px solid var(--rose-line-2);
+    background: none;
+    color: var(--claret);
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    padding: 9px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.ghostBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+.quietBtn {
+    border: none;
+    background: none;
+    color: #a4867c;
+    font: 600 12.5px var(--font-hanken), sans-serif;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.votedTag {
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    color: var(--olive);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.winnerRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--olive-soft);
+    margin-bottom: 18px;
+    font: 600 14px var(--font-hanken), sans-serif;
+}
+
+.winnerLink {
+    margin-left: auto;
+    color: var(--olive);
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ---------- empty state ---------- */
+
+.empty {
+    margin-top: 22px;
+    background: #fff;
+    border: 1px dashed var(--rose-line-2);
+    border-radius: 14px;
+    padding: 34px 24px;
+    text-align: center;
+}
+
+.emptyIcon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--claret-soft);
+    color: var(--claret);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 14px;
+}
+
+.emptyTitle {
+    font: 700 17px var(--font-hanken), sans-serif;
+    margin: 0 0 5px;
+}
+
+.emptyBody {
+    font: 400 13px/1.5 var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    margin: 0 0 18px;
+}
+
+.note {
+    font: 400 12.5px/1.6 var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    margin: 14px 0 0;
+}
+
+.error {
+    margin: 14px 0 0;
+    padding: 11px 14px;
+    border-radius: 10px;
+    background: var(--claret-soft);
+    color: var(--claret);
+    font: 600 12.5px/1.5 var(--font-hanken), sans-serif;
+}
+
+/* ---------- vote sheet ---------- */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(26, 26, 26, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.sheet {
+    width: 460px;
+    max-width: 100%;
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.sheetHead {
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--dash);
+}
+
+.sheetTitleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.sheetTitle {
+    font: 600 21px var(--font-cormorant), serif;
+}
+
+.closeBtn {
+    border: none;
+    background: var(--shell);
+    color: #7a6058;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.sheetHint {
+    font: 400 13px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+}
+
+.sheetBody {
+    overflow: auto;
+    padding: 10px 14px;
+    flex: 1;
+}
+
+.voteRow {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px dashed var(--sand-line);
+}
+.voteRow:last-child {
+    border-bottom: none;
+}
+
+.swatch {
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 9px;
+    object-fit: cover;
+}
+
+.voteMain {
+    flex: 1;
+    min-width: 0;
+}
+
+.voteName {
+    font: 700 14.5px var(--font-hanken), sans-serif;
+}
+
+.voteMeta {
+    font: 400 12px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+}
+
+/* Toggle, not a radio: approval voting means "everything you'd be happy with",
+   so more than one can be lit at once. */
+.toggle {
+    border: 1px solid var(--rose-line-2);
+    background: #fff;
+    color: var(--muted-btn);
+    font: 700 12px var(--font-hanken), sans-serif;
+    padding: 8px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+}
+.toggle:hover {
+    filter: brightness(1.04);
+}
+.toggle:active {
+    transform: scale(0.94);
+}
+
+.toggleOn {
+    border: none;
+    background: var(--olive);
+    color: #fff;
+    animation: stampPop 0.38s cubic-bezier(0.3, 1.6, 0.4, 1) both;
+}
+
+@keyframes stampPop {
+    0% {
+        transform: scale(0.4) rotate(-14deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toggleOn {
+        animation: none;
+    }
+    .fill {
+        transition: none;
+    }
+}
+
+.sheetFoot {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--dash);
+}
+
+.progress {
+    flex: 1;
+    min-width: 0;
+}
+
+.dots {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ecdcd6;
+}
+.dotOn {
+    background: var(--claret);
+}
+
+.funLabel {
+    font: 700 12.5px var(--font-hanken), sans-serif;
+}
+
+.submitBtn {
+    border: none;
+    background: var(--claret);
+    color: #fff;
+    font: 700 13px var(--font-hanken), sans-serif;
+    padding: 10px 20px;
+    border-radius: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.submitBtn:hover {
+    transform: scale(1.03);
+}
+.submitBtn:active {
+    transform: scale(0.97);
+}
+.submitBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+    transform: none;
+}
+
+.centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    color: var(--cocoa);
+    font: 500 14px var(--font-hanken), sans-serif;
+}

@@ -165,15 +165,24 @@
     display: block;
 }
 
+/* Used only by the group rows, whose meta is a sentence rather than a figure.
+   `flex: none` + `nowrap` meant a real restaurant name ("Xi'an Famous Foods
+   leads · 4 of 6 voted · 2h 14m left") could not shrink OR wrap, so it shoved
+   the button past the edge of the card. Allowed to shrink and wrap, capped so
+   it never crowds out the name on its left. */
 .itemMeta {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 46%;
     font-size: 13.5px;
     color: var(--ink);
     margin: 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    text-align: right;
     gap: 4px;
-    white-space: nowrap;
 }
 
 .dot {

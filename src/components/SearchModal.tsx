@@ -8,6 +8,7 @@ import Image from 'next/image';
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useTrackClick } from "@/lib/ReservationTracker";
+import { googleMapsUrl } from "@/lib/mapsUrl";
 
 
 
@@ -27,12 +28,6 @@ type Restaurant = {
     tips: tip[];
     location?: { formattedAddress?: string };
 };
-function googleMapsUrl(r: Restaurant): string {
-    const query = r.location?.formattedAddress
-        ? `${r.name} ${r.location.formattedAddress}`
-        : `${r.geocodes.latitude},${r.geocodes.longitude}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
 
 function fetchSearchResults(query: string, lat: number, lng: number): Promise<Restaurant[]> {
     const request = axios.get("/api/Restaurants/search", { params: { query, lat, lng } });
