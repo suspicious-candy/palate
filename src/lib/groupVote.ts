@@ -61,6 +61,19 @@ export function tally(group: matching | null | undefined): TallyRow[] {
         pct: 0,
     }));
 
+    /* HOW TIES BREAK, and it is deliberate rather than arbitrary — but it holds
+       only because of two facts worth writing down.
+
+       Array.prototype.sort has been STABLE since ES2019, so rows with equal
+       votes keep the order they already had. That order comes from
+       `group.restaurants`, which the shortlist route writes in the order
+       /recommend/group ranked them. So a tie resolves to whichever restaurant
+       the group's aggregated taste scored higher — the same least-misery
+       ordering that built the ballot.
+
+       Re-sort `rows` before this line, or store restaurants[] in any order
+       other than rank order, and this quietly becomes a coin flip. Nothing
+       would fail; the group would just start being told a different answer. */
     rows.sort((a, b) => b.votes - a.votes);
 
     const max = rows[0]?.votes ?? 0;
