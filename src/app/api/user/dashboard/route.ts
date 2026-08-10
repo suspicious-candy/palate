@@ -4,10 +4,9 @@ import "@/models/restaurantModel.js";
 import "@/models/reservationModel.js";
 import "@/models/addressModel.js";
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import {getUserFromToken} from "@/lib/auth"
-import { z } from "zod";
-import { findActiveGroup } from "@/lib/activeGroup";
+import { closeVote } from "@/lib/closeVote";
+import {getUserFromToken} from "@/lib/auth";
+import { findActiveGroup,findGroupById } from "@/lib/activeGroup";
 
 export async function GET(request: NextRequest) {
 
@@ -45,7 +44,16 @@ export async function GET(request: NextRequest) {
            matching collection, not on a pointer here. Cheap — it hits the
            participants.user index — and it is the price of never having two
            documents that can disagree about who is in a group. */
-        const group = await findActiveGroup(userId);
+        let group = await findActiveGroup(userId);
+        if(group!=null){
+            try{
+                const closeResult = await closeVote(group);
+                    if(closeResult==="closed"){
+                    group = await findGroupById(group._id);
+                }}catch(error:any){
+                    console.error("cant find the closed group");
+                }
+        }
 
         const response = NextResponse.json({
                 message: "Dashboard fetch successful",

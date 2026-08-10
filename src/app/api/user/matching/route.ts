@@ -7,6 +7,7 @@ import { z } from "zod";
 import { listFriends } from "@/lib/friends";
 import { findActiveGroup, findGroupById } from "@/lib/activeGroup";
 import { VOTE_LEAD_MINUTES } from "@/lib/groupVote";
+import { closeVote } from "@/lib/closeVote";
 
 /* Voting shuts VOTE_LEAD_MINUTES before dinner, so a group booked any nearer
    than that is born with the vote already closed. Expressed in terms of the
@@ -47,7 +48,16 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
         }
 
-        const group = await findActiveGroup(user.id);
+        let group = await findActiveGroup(user.id);
+        if(group!=null){
+            try{
+            const closeResult = await closeVote(group);
+            if(closeResult==="closed"){
+                group = await findGroupById(group._id);
+            }}catch(error:any){
+                console.error("cant find the closed group");
+            }
+        }
 
         /* Having no group is a normal answer, not an error — most users, most
            of the time. Returning null with a 200 saves every caller a catch. */
