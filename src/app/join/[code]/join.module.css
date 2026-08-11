@@ -1,0 +1,132 @@
+/* Modelled on add/[username]/add.module.css — the two invite screens should
+   read as the same surface. Its own file rather than an import across route
+   folders so a change to the friend card cannot silently restyle this one. */
+
+.screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1c0d09;
+    background-image: url("/resturant.jpg");
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding: 24px 16px;
+}
+
+.card {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    padding: 28px 26px 26px;
+    box-sizing: border-box;
+}
+
+.brand {
+    align-self: flex-start;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    color: #c1272d;
+}
+
+.avatar,
+.avatarFallback {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    margin-top: 24px;
+    object-fit: cover;
+}
+
+.avatarFallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f2e6e6;
+    color: #a41e22;
+    font-size: 34px;
+    font-weight: 600;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 18px 0 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #777;
+    margin: 0 0 6px;
+}
+
+.meta {
+    font-size: 14px;
+    color: #444;
+    margin: 0 0 4px;
+}
+
+.note {
+    font-size: 12.5px;
+    color: #8a8a8a;
+    margin: 10px 0 18px;
+    line-height: 1.45;
+}
+
+.button {
+    width: 100%;
+    height: 52px;
+    margin-top: 8px;
+    border: none;
+    border-radius: 14px;
+    background: #a41e22;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+}
+
+.button:hover:not(:disabled) {
+    background: #8e1a1d;
+}
+
+.button:active:not(:disabled) {
+    transform: scale(0.99);
+}
+
+.button:disabled {
+    background: #d8b3b4;
+    cursor: default;
+}
+
+.linkButton {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 10px;
+    padding: 15px 0;
+    border-radius: 14px;
+    background: #a41e22;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.status {
+    font-size: 14.5px;
+    color: #2f6b3d;
+    font-weight: 500;
+    margin: 14px 0 0;
+}

@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import crypto from "WebCrypto";
 
 const participantSchema = new mongoose.Schema(
   {

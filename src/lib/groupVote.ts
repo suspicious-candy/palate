@@ -12,13 +12,21 @@ function key(r: Restaurant): string {
     return r.fsqId;
 }
 
-export function votingClosesAt(group: matching | null | undefined): Date | null {
+/* The three time helpers below read `date` and nothing else, so they ask for
+   exactly that rather than for a whole `matching`. The public join page holds a
+   narrowly-projected group — deliberately, since it must not fetch anyone's
+   ballots — and a `matching` parameter would have forced a cast that lies about
+   what was actually loaded. `matching` still satisfies this structurally, so
+   every existing caller is unaffected. */
+type Dated = { date: string | Date };
+
+export function votingClosesAt(group: Dated | null | undefined): Date | null {
     if (!group?.date) return null;
     return new Date(new Date(group.date).getTime() - VOTE_LEAD_MINUTES * 60_000);
 }
 
 export function votingDeadlinePassed(
-    group: matching | null | undefined,
+    group: Dated | null | undefined,
     now: Date = new Date()
 ): boolean {
     const closesAt = votingClosesAt(group);
@@ -46,7 +54,7 @@ export const STALE_AFTER_HOURS = 6;
  * dinner. This asks the calendar instead.
  */
 export function groupIsStale(
-    group: matching | null | undefined,
+    group: Dated | null | undefined,
     now: Date = new Date()
 ): boolean {
     if (!group?.date) return false;

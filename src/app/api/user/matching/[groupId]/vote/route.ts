@@ -4,12 +4,8 @@ import matchingModel from "@/models/matching.js";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { findGroupById } from "@/lib/activeGroup";
-import User from "@/models/userModel.js";
-import { groupSearchArea, findGroupCandidates, type Point } from "@/lib/groupGeo";
-import { buildTasteQuery } from "@/lib/tasteQuery";
 import { votingDeadlinePassed, VOTE_LEAD_MINUTES } from "@/lib/groupVote";
 import z from "zod"
-import Restaurant from "@/models/restaurantModel";
 const putschema = z.object(
     {
         approvals :z.array(z.string().trim()),
