@@ -25,6 +25,36 @@ export function votingDeadlinePassed(
     return closesAt !== null && now.getTime() >= closesAt.getTime();
 }
 
+/** How long a group stays current after its booked time. Relevance is about
+    whether the dinner is still ahead of you, not about the vote's status — a
+    settled vote for tonight is the most useful thing on the dashboard, and an
+    un-started vote for last Tuesday is noise. The grace window keeps the
+    winner's directions reachable while you are actually at the table.
+
+    Lives here rather than in activeGroup so that pure callers can reach it
+    without dragging a Mongoose model in behind it. */
+export const STALE_AFTER_HOURS = 6;
+
+/**
+ * Whether the dinner is far enough in the past that the group is no longer a
+ * live thing anyone can act on.
+ *
+ * Distinct from `status`, and the distinction matters: nothing forces a group
+ * to ever reach "closed". closeVote only runs when somebody happens to load the
+ * page, so a group nobody opened sits at "voting" indefinitely — and a check
+ * that trusts `status` alone would happily admit someone to last month's
+ * dinner. This asks the calendar instead.
+ */
+export function groupIsStale(
+    group: matching | null | undefined,
+    now: Date = new Date()
+): boolean {
+    if (!group?.date) return false;
+    const staleAt =
+        new Date(group.date).getTime() + STALE_AFTER_HOURS * 60 * 60 * 1000;
+    return now.getTime() > staleAt;
+}
+
 export function votedCount(group: matching | null | undefined): number {
     if (!group) return 0;
     return group.participants.filter((p) => p.hasVoted).length;

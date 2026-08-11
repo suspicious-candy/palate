@@ -95,12 +95,23 @@ export type participant = {
     location?:{ type: "Point"; coordinates: [number, number] },
     locationAt?:string|Date
 };
+/* Someone who followed the invite link but was not auto-admitted. Shaped like
+   PendingReq below rather than like `participant`: there is no vote, no
+   location and no approvals until they are actually let in. */
+export type pendingRequest = {
+    user:FriendSummary,
+    requestedAt:string | Date,
+};
 export type matching = {
     _id:string,
     admins:FriendSummary[],
     membershipOpen:boolean,
+    /* Optional because it is: every group created before invite links existed
+       has no code, and a plain `string` here would let callers assume one. */
+    inviteCode?:string,
     name:string,
     participants:participant[],
+    pendingRequests:pendingRequest[],
     restaurants:Restaurant[],
     date:string | Date,
     status:"open"|"voting"|"closed",

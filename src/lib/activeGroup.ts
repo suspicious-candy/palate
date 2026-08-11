@@ -6,6 +6,10 @@ import matchingModel from "@/models/matching.js";
 import "@/models/restaurantModel.js";
 import "@/models/userModel.js";
 import type { matching } from "@/lib/userContext";
+/* Imports point one way: this impure module reaches into pure groupVote, never
+   the reverse. STALE_AFTER_HOURS lives there so groupAdmission can share it
+   without pulling a Mongoose model into a pure decision function. */
+import { STALE_AFTER_HOURS } from "@/lib/groupVote";
 
 /* A user's current group, found by querying the matching collection directly.
 
@@ -25,13 +29,6 @@ import type { matching } from "@/lib/userContext";
     to the browser alongside their avatar initials. */
 export const USER_SUMMARY = "username firstName lastName profilePic";
 
-/** How long a group stays current after its booked time. Relevance is about
-    whether the dinner is still ahead of you, not about the vote's status — a
-    settled vote for tonight is the most useful thing on the dashboard, and an
-    un-started vote for last Tuesday is noise. The grace window keeps the
-    winner's directions reachable while you are actually at the table. */
-export const STALE_AFTER_HOURS = 6;
-
 /* One chain, used by every lookup that returns a group.
 
    The `matching` return type is a claim, not a guarantee: it holds only while
@@ -44,6 +41,11 @@ const GROUP_POPULATE = [
     { path: "restaurants" },
     { path: "winner" },
     { path: "admins", select: USER_SUMMARY },
+    /* Same projection as every other user ref, and for the same reason: an
+       admin reviewing the queue is shown a stranger's card, and without an
+       explicit select that card would carry the stranger's password hash and
+       email to the browser alongside their avatar. */
+    { path: "pendingRequests.user", select: USER_SUMMARY },
 ];
 
 /**
@@ -58,7 +60,12 @@ export async function findGroupById(groupId: string): Promise<matching | null> {
         .populate(GROUP_POPULATE)
         .lean<matching | null>();
 }
-
+export async function findGroupByInviteCode (inviteCode: string): Promise<matching | null> {
+    return matchingModel
+        .findOne({inviteCode:inviteCode})
+        .populate(GROUP_POPULATE)
+        .lean<matching | null>();
+}
 /**
  * The group to show this user, or null.
  *

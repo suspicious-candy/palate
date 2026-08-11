@@ -138,3 +138,15 @@ export async function removePendingRequest(requesterId: string,targetId: string)
         : { outcome: "cancelled", friendship: existing };
 
 }
+export async function areFriendsWithAny(userId:string,candidateIds:string[]){
+
+    const friends = await friendship.exists({
+        status:"accepted",
+        $or:[{userA:userId,userB: {$in:candidateIds}},
+            {userB:userId,userA:{$in:candidateIds}}],
+    });
+    if (friends!=null){
+        return true;
+    }
+    return false;
+}

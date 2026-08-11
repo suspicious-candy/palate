@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "WebCrypto";
 
 const participantSchema = new mongoose.Schema(
   {
@@ -35,6 +36,10 @@ const matchingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    createdBy:{
+       type: mongoose.Schema.Types.ObjectId, ref: "users",
+       required:true
+    },
     participants: {
       type: [participantSchema],
       required: true,
@@ -42,6 +47,10 @@ const matchingSchema = new mongoose.Schema(
     admins:{
       type:[{ type: mongoose.Schema.Types.ObjectId, ref: "users" }],
       required:true,
+    },
+    reservation:{
+      type: mongoose.Schema.Types.ObjectId, ref: "reservations",
+      default:null
     },
     restaurants: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -57,6 +66,22 @@ const matchingSchema = new mongoose.Schema(
       type: String,
       enum: ["open", "voting", "closed"],
       default: "open",
+    },
+    inviteCode:{
+      type:String,
+      unique: true, 
+      sparse: true
+    },
+    pendingRequests:{
+      type:[{
+        user:{
+          type:mongoose.Schema.Types.ObjectId,ref:"users"
+        },
+        requestedAt:{
+          type:Date
+        }
+      }],
+      default:[],
     },
     /* Whether the roster can still change — orthogonal to `status`, which
        governs the vote. Added before anything reads it because Mongoose applies

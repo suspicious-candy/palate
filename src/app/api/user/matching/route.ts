@@ -8,6 +8,7 @@ import { listFriends } from "@/lib/friends";
 import { findActiveGroup, findGroupById } from "@/lib/activeGroup";
 import { VOTE_LEAD_MINUTES } from "@/lib/groupVote";
 import { closeVote } from "@/lib/closeVote";
+import { generateInviteCode } from "@/lib/inviteCode";
 
 /* Voting shuts VOTE_LEAD_MINUTES before dinner, so a group booked any nearer
    than that is born with the vote already closed. Expressed in terms of the
@@ -145,15 +146,52 @@ export async function POST(request: NextRequest) {
            `restaurants` stays empty until an admin starts the vote, which is
            also what stops anyone voting early — the pre-save hook rejects any
            approval that is not in restaurants[]. */
-        const created = await matchingModel.create({
-            name: result.data.name || DEFAULT_GROUP_NAME,
-            // The admin votes too: they are a participant AND an admin. Omitting
-            // the first would compute every "3 of 5 voted" against a short count.
-            participants: [userId, ...invitedIds].map((id) => ({ user: id })),
-            admins: [userId],
-            restaurants: [],
-            date: result.data.date,
-        });
+        /* Retry rather than pre-check. "Generate a code, ask whether it exists,
+           insert if not" reads safer and is not: the read and the write are two
+           operations, and two simultaneous creations can both see nothing and
+           both insert. The unique index is the authority — let it reject, then
+           draw a fresh code.
+
+           Only 11000 is caught, and anything else rethrows. A blanket catch
+           would swallow a genuine database failure and then retry straight back
+           into it. Same shape as the friendship race in lib/friends.ts.
+
+           Three attempts is theatre at ~50 bits of entropy, but the alternative
+           to handling it at all is a 500 on group creation. */
+        let created = null;
+        for (let attempt = 0; attempt < 3 && created === null; attempt++) {
+            try {
+                created = await matchingModel.create({
+                    name: result.data.name || DEFAULT_GROUP_NAME,
+                    /* Distinct from admins[0], which is mutable the moment
+                       promotion and demotion exist. This one never changes, and
+                       is what any "you cannot demote the organiser" rule has to
+                       be anchored on. */
+                    createdBy: userId,
+                    // The admin votes too: they are a participant AND an admin. Omitting
+                    // the first would compute every "3 of 5 voted" against a short count.
+                    participants: [userId, ...invitedIds].map((id) => ({ user: id })),
+                    admins: [userId],
+                    /* Minted here so every group is shareable from the moment it
+                       exists — no second endpoint, no empty state in the UI.
+                       Rotation is a later action, and it is possible only
+                       because this is its own field rather than the group's
+                       _id. */
+                    inviteCode: generateInviteCode(),
+                    restaurants: [],
+                    date: result.data.date,
+                });
+            } catch (error: any) {
+                if (error?.code !== 11000) throw error;
+            }
+        }
+
+        if (created === null) {
+            return NextResponse.json(
+                { error: "Could not allocate an invite code — please try again." },
+                { status: 500 }
+            );
+        }
 
         /* By id, not findActiveGroup: a user can be in several groups at once,
            so "the soonest" is not necessarily the one just created. */
