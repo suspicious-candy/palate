@@ -187,110 +187,191 @@
     max-width: 60px;
 }
 
+/* ---------- roster lock (admin only) ---------- */
+
+.lockRow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 13px;
+    border-radius: 11px;
+    background: var(--shell);
+    margin-bottom: 20px;
+    font: 400 12.5px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+}
+
+.lockIcon {
+    font-size: 15px;
+    color: var(--clay);
+    flex: none;
+}
+
+/* Locked is the state worth noticing, so it takes the claret the rest of the
+   page reserves for "this is the live thing". Open is deliberately grey — it is
+   the default, and a default should not shout. */
+.lockIconOn {
+    font-size: 15px;
+    color: var(--claret);
+    flex: none;
+}
+
+.lockText {
+    flex: 1;
+    min-width: 0;
+}
+
+.lockBtn {
+    border: 1px solid var(--rose-line-2);
+    background: #fff;
+    color: var(--muted-btn);
+    font: 700 12px var(--font-hanken), sans-serif;
+    padding: 7px 15px;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+}
+
+.lockBtnOn {
+    border-color: var(--claret);
+    color: var(--claret);
+}
+
+.lockBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
 /* ---------- join requests (admin only) ---------- */
 
-/* Deliberately quieter than the member avatars above it: these people are not
-   in the group yet, and rendering them at the same weight reads as though they
-   already are. The dashed edge is the same "not settled yet" language the empty
-   state uses. */
+/* Serif heading + trailing rule, matching the section heads on the dashboard.
+   `align-items: baseline` so the rule sits on the text's baseline rather than
+   the box's centre — that is what makes it read as an underline continuing off
+   the title instead of a stray border. */
+.sectionHead {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.sectionTitle {
+    font: 600 21px var(--font-cormorant), serif;
+    color: var(--ink);
+    margin: 0;
+    white-space: nowrap;
+}
+
+.rule {
+    flex: 1;
+    border-bottom: 1px solid var(--rose-line);
+    transform: translateY(-5px);
+}
+
 .requests {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     margin-bottom: 20px;
 }
 
+/* No border and no fill: the row sits directly on the card so the eye goes to
+   the name and the two buttons, nothing else. */
 .requestRow {
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 10px 12px;
-    border: 1px dashed var(--rose-line-2);
-    border-radius: 11px;
-    background: var(--shell);
+    gap: 14px;
+    padding: 8px 0;
 }
 
+/* Sage rather than the members' shell, because these people are NOT in the
+   group yet — a different colour is what stops the queue reading as a second
+   roster. */
 .requestAvatar {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     flex: none;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font: 700 11.5px var(--font-hanken), sans-serif;
-    background: #fff;
-    color: var(--muted-btn);
+    font: 700 12px var(--font-hanken), sans-serif;
+    background: #cfdcc5;
+    color: #4f6b46;
     overflow: hidden;
 }
 
-/* min-width: 0 so a long name can actually ellipsis — a flex child defaults to
-   min-width: auto, which refuses to shrink below its content and pushes the
-   buttons off the row instead. */
-.requestWho {
-    display: flex;
-    flex-direction: column;
+/* flex: 1 + min-width: 0 so a long name ellipsises instead of shoving the
+   buttons off the row — a flex child defaults to min-width: auto, which refuses
+   to shrink below its own content. */
+.requestName {
     flex: 1;
     min-width: 0;
-}
-
-.requestName {
-    font: 700 13px var(--font-hanken), sans-serif;
+    font: 700 14px var(--font-hanken), sans-serif;
+    color: var(--ink);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.requestMeta {
-    font: 400 11.5px var(--font-hanken), sans-serif;
-    color: var(--cocoa);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Approve is the affirmative action, so it carries the olive already used for
-   "vote cast" and the winner row. Decline stays an outline — destructive-ish
-   actions should not compete for the eye with the one you usually want. */
-.approveBtn {
+/* Accept is filled claret, decline a pale outline. The asymmetry is the point:
+   admitting someone is the action you came here to take, and declining should
+   not compete for the same glance. */
+.acceptBtn {
     border: none;
-    background: var(--olive);
+    background: var(--claret);
     color: #fff;
-    font: 700 12px var(--font-hanken), sans-serif;
-    padding: 8px 13px;
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    padding: 9px 20px;
     border-radius: 9px;
     cursor: pointer;
     white-space: nowrap;
     flex: none;
 }
 
-.denyBtn {
-    border: 1px solid var(--rose-line-2);
-    background: #fff;
-    color: var(--muted-btn);
-    font: 700 12px var(--font-hanken), sans-serif;
-    padding: 8px 13px;
+.declineBtn {
+    border: 1px solid var(--rose-line);
+    background: transparent;
+    color: var(--clay);
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    padding: 9px 20px;
     border-radius: 9px;
     cursor: pointer;
     white-space: nowrap;
     flex: none;
 }
 
-.approveBtn:disabled,
-.denyBtn:disabled {
+.acceptBtn:hover,
+.declineBtn:hover {
+    filter: brightness(1.04);
+}
+
+.acceptBtn:disabled,
+.declineBtn:disabled {
     opacity: 0.55;
     cursor: progress;
 }
 
 @media (max-width: 460px) {
-    /* The two buttons and a name do not fit on one line on a phone. Wrapping is
-       better than shrinking the name to nothing — you have to know WHO you are
-       letting into your dinner. */
+    /* Name on its own line rather than ellipsised to nothing — you have to know
+       WHO you are letting into your dinner. */
     .requestRow {
         flex-wrap: wrap;
+        gap: 10px 12px;
     }
-    .requestWho {
-        flex-basis: calc(100% - 45px);
+    .requestName {
+        flex-basis: calc(100% - 48px);
+    }
+    .acceptBtn,
+    .declineBtn {
+        flex: 1;
+    }
+    .lockRow {
+        flex-wrap: wrap;
+    }
+    .lockText {
+        flex-basis: 100%;
     }
 }
 

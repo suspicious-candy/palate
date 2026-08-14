@@ -5,12 +5,11 @@ import Link from "next/link";
 import axios from "axios";
 import Nav from "@/components/Nav";
 import styles from "./group.module.css";
-import { useUser, type matching, type Restaurant } from "@/lib/userContext";
+import { useUser, type matching, type Restaurant, type FriendSummary } from "@/lib/userContext";
 import { useReportGroupLocation } from "@/lib/useReportGroupLocation";
 import { useTimeLeft } from "@/lib/timeLeft";
 import { googleMapsUrl } from "@/lib/mapsUrl";
 import { initials } from "@/lib/initials";
-import timeAgo from "@/lib/timeAgo";
 import {
     tally,
     totalCount,
@@ -55,6 +54,16 @@ function serverMessage(err: unknown, fallback: string): string {
     return e?.response?.data?.error ?? e?.response?.data?.message ?? fallback;
 }
 
+/* "Riley N." — enough to recognise someone without handing their full name to
+   every admin reviewing a queue. Falls back through last-initial, then first
+   name alone, then the username, because a user may have set none of them. */
+function shortName(u?: FriendSummary): string {
+    const first = u?.firstName?.trim();
+    const lastInitial = u?.lastName?.trim()?.[0];
+    if (first && lastInitial) return `${first} ${lastInitial}.`;
+    return first || u?.username || "Someone";
+}
+
 function restaurantMeta(r: Restaurant): string {
     const parts: string[] = [];
     if (r.cuisine?.length) parts.push(r.cuisine.slice(0, 2).join(", "));
@@ -75,7 +84,7 @@ export default function GroupPage() {
     const remaining = useTimeLeft(votingClosesAt(group));
 
     const [voteOpen, setVoteOpen] = React.useState(false);
-    const [busy, setBusy] = React.useState<null | "start" | "vote" | "close" | "book">(null);
+    const [busy, setBusy] = React.useState<null | "start" | "vote" | "close" | "book" | "lock">(null);
     const [error, setError] = React.useState<string | null>(null);
     const [busyRequest, setBusyRequest] = React.useState<string | null>(null);
 
@@ -104,11 +113,12 @@ export default function GroupPage() {
     const rows = React.useMemo(() => tally(group), [group]);
     const maxVotes = rows[0]?.votes ?? 0;
 
-    async function send(kind: "start" | "vote" | "close" | "book", path: string, body?: unknown) {
+    async function send(kind: "start" | "vote" | "close" | "book" | "lock", path: string, body?: unknown) {
         setBusy(kind);
         setError(null);
         try {
             if (kind === "vote") await axios.put(path, body);
+            else if (kind === "lock") await axios.patch(path, body);
             else await axios.post(path, body);
             await refreshUser();
             return true;
@@ -151,6 +161,18 @@ export default function GroupPage() {
     async function bookTable() {
         if (!group) return;
         await send("book", `/api/user/matching/${group._id}/reservation`);
+    }
+
+    /* `group.membershipOpen === false` IS the value to send: locked means the
+       next state is open, and anything else means the next state is locked.
+       That also handles legacy groups where the field is absent — undefined is
+       not false, so they read as open and the first tap locks them, which is
+       what an admin looking at an unlocked switch expects. */
+    async function toggleLock() {
+        if (!group) return;
+        await send("lock", `/api/user/matching/${group._id}`, {
+            membershipOpen: group.membershipOpen === false,
+        });
     }
 
     async function submitVote() {
@@ -218,6 +240,7 @@ export default function GroupPage() {
                         onClose={closeEarly}
                         onAnswerRequest={answerRequest}
                         onBook={bookTable}
+                        onToggleLock={toggleLock}
                     />
                 ) : (
                     <div className={styles.empty}>
@@ -271,6 +294,7 @@ function GroupCard({
     onClose,
     onAnswerRequest,
     onBook,
+    onToggleLock,
 }: {
     group: matching;
     meVoted: boolean;
@@ -279,7 +303,7 @@ function GroupCard({
     maxVotes: number;
     remaining: string;
     deadlinePassed: boolean;
-    busy: null | "start" | "vote" | "close" | "book";
+    busy: null | "start" | "vote" | "close" | "book" | "lock";
     busyRequest: string | null;
     userId: string;
     onStart: () => void;
@@ -287,6 +311,7 @@ function GroupCard({
     onClose: () => void;
     onAnswerRequest: (targetId: string, action: "approve" | "deny") => void;
     onBook: () => void;
+    onToggleLock: () => void;
 }) {
     const pillClass =
         group.status === "open"
@@ -359,18 +384,55 @@ function GroupCard({
                 ))}
             </div>
 
-            {/* Admin-only, and the route answers 403 for anyone else — hiding it
-                is so nobody is offered an action that will fail, not a security
-                boundary. Sits with the members because it answers the same
-                question: who is at this dinner.
+            {/* Both blocks below are admin-only, and both routes answer 403 for
+                anyone else — hiding them is so nobody is offered an action that
+                will fail, not a security boundary.
 
-                Strangers reach this queue by following a leaked invite link;
+                The lock stays visible with an empty queue: locking is exactly
+                what you do BEFORE the requests arrive. Hidden once closed, when
+                there is no longer a dinner to join. */}
+            {isAdmin && group.status !== "closed" ? (
+                <div className={styles.lockRow}>
+                    <i
+                        className={
+                            group.membershipOpen === false
+                                ? `ph-fill ph-lock ${styles.lockIconOn}`
+                                : `ph ph-lock-open ${styles.lockIcon}`
+                        }
+                    />
+                    <span className={styles.lockText}>
+                        {group.membershipOpen === false
+                            ? "Guest list locked — nobody new can ask to join."
+                            : "Anyone with the link can ask to join."}
+                    </span>
+                    {/* aria-pressed, not a checkbox: this is a button whose label
+                        changes, and a screen reader needs the on/off state. */}
+                    <button
+                        type="button"
+                        className={`${styles.lockBtn} ${
+                            group.membershipOpen === false ? styles.lockBtnOn : ""
+                        }`}
+                        onClick={onToggleLock}
+                        disabled={busy !== null}
+                        aria-pressed={group.membershipOpen === false}
+                    >
+                        {busy === "lock"
+                            ? "…"
+                            : group.membershipOpen === false
+                              ? "Unlock"
+                              : "Lock"}
+                    </button>
+                </div>
+            ) : null}
+
+            {/* Strangers reach this queue by following a leaked invite link;
                 friends of an admin are let straight in and never appear here.
                 See lib/groupAdmission.ts. */}
             {isAdmin && pending.length > 0 ? (
                 <>
-                    <div className={styles.sectionLabel}>
-                        WAITING TO JOIN · {pending.length}
+                    <div className={styles.sectionHead}>
+                        <h2 className={styles.sectionTitle}>Requests</h2>
+                        <span className={styles.rule} />
                     </div>
                     <div className={styles.requests}>
                         {pending.map((r) => {
@@ -395,30 +457,23 @@ function GroupCard({
                                         )}
                                     </div>
 
-                                    <div className={styles.requestWho}>
-                                        <span className={styles.requestName}>
-                                            {[r.user?.firstName, r.user?.lastName]
-                                                .filter(Boolean)
-                                                .join(" ") || r.user?.username}
-                                        </span>
-                                        <span className={styles.requestMeta}>
-                                            @{r.user?.username} · asked {timeAgo(r.requestedAt)}
-                                        </span>
-                                    </div>
+                                    <span className={styles.requestName}>
+                                        {shortName(r.user)}
+                                    </span>
 
                                     {/* `id &&` rather than a bare call: populate
                                         leaves user null for a deleted account,
                                         and answering with an undefined target
                                         would 400. */}
                                     <button
-                                        className={styles.approveBtn}
+                                        className={styles.acceptBtn}
                                         disabled={waiting || !id}
                                         onClick={() => id && onAnswerRequest(id, "approve")}
                                     >
-                                        {waiting ? "…" : "Let them in"}
+                                        {waiting ? "…" : "Accept"}
                                     </button>
                                     <button
-                                        className={styles.denyBtn}
+                                        className={styles.declineBtn}
                                         disabled={waiting || !id}
                                         onClick={() => id && onAnswerRequest(id, "deny")}
                                     >

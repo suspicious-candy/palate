@@ -35,7 +35,7 @@
 
 ## Project Status
 
-> ⚠️ **Work in progress.** Auth, the data layer, the dashboard, lists, reservations and friends are live on real data. Group matching is the main gap — the recommender side is built, the UI is not. Note that the app needs the [recommender service](../restarunt-Rec) running to rank restaurants; without it nearby results silently degrade to distance order.
+> ⚠️ **Work in progress.** Every feature listed below runs on real data — auth, discovery, lists, reservations, friends, and the full group-dinner flow from invite link through voting to a booked table. What is missing is polish and proof: there are no tests, no CI, and no email. Note that the app needs the [recommender service](../restarunt-Rec) running to rank restaurants; without it nearby results silently degrade to distance order, and starting a group vote fails outright.
 
 | Area | Status | Notes |
 | --- | --- | --- |
@@ -50,9 +50,12 @@
 | Lists / wishlist | ✅ Implemented | `src/app/lists/page.tsx` + `/api/Restaurants/lists` |
 | Reservations | ✅ Implemented | `src/app/reservation/page.tsx` + `/api/reservations` |
 | Friends | ✅ Implemented | `/api/user/friends`, `FriendsModal`, invite links + QR |
-| Restaurant detail page | 🔴 Not built | `src/app/resturant/` is an empty directory |
-| Group matching | 🔴 Scaffold | `src/app/matching/group/page.tsx` is a 10-line placeholder |
-| Home page | 🔴 Default starter | Still the `create-next-app` landing page |
+| Group matching | ✅ Implemented | Create, invite, approve, vote, close, book — see below |
+| Group join by link | ✅ Implemented | `/join/[code]`; friends of an admin auto-admit, strangers queue for approval |
+| Group booking | ✅ Implemented | `POST /api/user/matching/[groupId]/reservation` — one reservation, every participant |
+| Restaurant detail page | 🔴 Not built | Nothing renders `photos`, `hours`, `tips` or `menuUrl` |
+| Auth middleware / `/api/user/me` | 🟡 Partial | `proxy.ts` gates pages; `/api/user/dashboard` doubles as the session read |
+| Home page | ✅ Implemented | `/` redirects to `/dashboard` — the dashboard is the front door |
 
 This README documents both what exists today and the intended direction, so a new contributor can pick up work without reverse-engineering the codebase.
 
@@ -63,22 +66,34 @@ This README documents both what exists today and the intended direction, so a ne
 **Available now:**
 
 - 🔐 **Authentication** — working signup and login: passwords hashed with bcrypt, requests validated with Zod, and a signed JWT stored in an httpOnly `token` cookie. Login accepts either an email or a username as the identifier. (Plus placeholder "Continue with Google / Apple" buttons.)
-- 🎯 **Taste onboarding** — after signup, users pick dietary needs, allergens, and favourite cuisines; preferences are saved to their account through a cookie-authenticated API.
+- 🎯 **Taste onboarding** — after signup, users pick dietary needs, allergens, and favourite cuisines; preferences are saved to their account through a cookie-authenticated API. Only diet and cuisines feed ranking — allergens are stored for the user's own reference and the screen says so, because matching free text against cuisine names would look like allergen safety while providing none.
 - 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and reservation history.
 
 - 📊 **Dashboard** — "Bill of Fare" home: tonight's feature, recommendations, wishlist and custom lists, friends rail, invite by link/QR.
 - 🗺️ **Geo discovery** — "restaurants near me" via MongoDB `2dsphere` queries, seeded from Foursquare Places and re-ranked by the recommender service.
 - 📅 **Reservations** — create, complete, and cancel bookings, plus a prompt that catches a booking after you follow a Maps link.
 - 👥 **Friends** — request / accept / decline, invite links and QR.
+- 🤝 **Group dinners** — the whole flow, end to end:
+  - **Create** a group from your friends list, with a share code minted at creation.
+  - **Join by link** (`/join/[code]`). Friends of an admin are admitted straight
+    away; anyone else queues for approval, which is what stops a forwarded link
+    from being a leaked group. Admins can freeze the guest list at any point.
+  - **Shortlist** — the organiser starts the vote and the server builds a
+    7-restaurant ballot: a search radius covering everyone who shared a location,
+    then `POST /recommend/group` ranking those candidates by the group's
+    aggregated taste (least-misery, not the average).
+  - **Approval voting** — everyone ticks every place they would be happy with,
+    rather than picking a favourite. Live tally, and a deadline 90 minutes before
+    the table that closes the vote whether or not anyone opens the page.
+  - **Book** — one reservation carrying every participant, landing on all of
+    their accounts at once.
 
 **Planned:**
 
-- 🤝 **Group matching** — `/matching/group` is still a placeholder. The
-  recommender side is built (`POST /recommend/group` does least-misery
-  aggregation over a group's members); what's missing is group creation, vote
-  persistence, and the UI.
 - ⭐ **Post-meal reviews** — prompt after a reservation completes, to supply the
   "did you actually like it" signal and enrich restaurant text.
+- 🔔 **Notifications** — nothing currently tells an admin that someone is waiting
+  in the join queue, or tells a joiner they were approved.
 
 ---
 
@@ -98,7 +113,7 @@ This README documents both what exists today and the intended direction, so a ne
 | Notifications | [react-hot-toast](https://react-hot-toast.com/) |
 | Linting | ESLint 9 + `eslint-config-next` |
 
-> **Restaurant data shape:** the `Restaurant` model and restaurant detail page are modelled on the [Foursquare Places API](https://docs.foursquare.com/developer/reference/places-api-overview) response (`fsqId`, categories, tips, tastes, photo `prefix`/`suffix`, etc.), making it straightforward to sync from Foursquare later.
+> **Restaurant data shape:** the `Restaurant` model is modelled on the [Foursquare Places API](https://docs.foursquare.com/developer/reference/places-api-overview) response (`fsqId`, categories, tips, tastes, photo `prefix`/`suffix`, etc.), making it straightforward to sync from Foursquare later.
 
 > ⚠️ **Heads-up for contributors (`AGENTS.md`):** this project pins a build of Next.js whose APIs, conventions, and file structure may differ from older releases. For example, dynamic route `params` are now a `Promise` that must be `await`ed. When in doubt, consult the docs bundled in `node_modules/next/dist/docs/` for the exact installed version.
 
@@ -115,7 +130,7 @@ Next.js App Router (src/app)
   │   (api/user/signup, login,                 ▲
   │    preferences)                            │
   ├─ Server Components ─────────────────► dbConfig (cached shared connection)
-  │   (e.g. profile/[id], resturant/[id])      ▲
+  │   (e.g. dashboard, profile)                ▲
   │                                            │
   └─ Client Components ── fetch /api ──────────┘
       (login, signup, onBoarding, registry)
@@ -136,14 +151,25 @@ palate/
 ├─ src/
 │  ├─ app/                     # Next.js App Router
 │  │  ├─ layout.tsx            # Root layout (fonts, styled-jsx registry)
-│  │  ├─ page.tsx              # Home (default starter — TODO replace)
+│  │  ├─ page.tsx              # Home — redirects to /dashboard
 │  │  ├─ globals.css           # Tailwind import + CSS theme variables
 │  │  ├─ registry.tsx          # styled-jsx SSR registry (client component)
 │  │  ├─ api/
+│  │  │  ├─ Restaurants/            # nearby (geo + recommender), search, lists, wishList
+│  │  │  ├─ reservations/route.ts   # GET/POST/PATCH — bookings, auto-complete on read
 │  │  │  └─ user/
-│  │  │     ├─ signup/route.ts      # POST — create account, set JWT cookie
-│  │  │     ├─ login/route.ts       # POST — authenticate, set JWT cookie
-│  │  │     └─ preferences/route.ts # PATCH — save prefs (JWT-authenticated)
+│  │  │     ├─ signup, login, logout, preferences, dashboard, lists, friends
+│  │  │     └─ matching/
+│  │  │        ├─ route.ts                    # GET active group · POST create
+│  │  │        ├─ join/route.ts               # POST — redeem an invite code
+│  │  │        └─ [groupId]/
+│  │  │           ├─ route.ts                 # PATCH — lock/unlock the guest list
+│  │  │           ├─ requests/route.ts        # POST — approve or deny a join request
+│  │  │           ├─ location/route.ts        # PATCH — this member's location
+│  │  │           ├─ shortlist/route.ts       # POST — build the ballot, open voting
+│  │  │           ├─ vote/route.ts            # PUT  — replace this member's approvals
+│  │  │           ├─ close/route.ts           # POST — close the vote early
+│  │  │           └─ reservation/route.ts     # POST — book the winner for everyone
 │  │  ├─ login/page.tsx        # Login screen (wired to API)
 │  │  ├─ signup/page.tsx       # Signup screen (wired to API)
 │  │  ├─ onBoarding/page.tsx   # Taste onboarding (diet/allergens/cuisines)
@@ -151,15 +177,20 @@ palate/
 │  │  ├─ lists/page.tsx        # Wishlist + custom lists
 │  │  ├─ reservation/page.tsx  # Reservations
 │  │  ├─ add/[username]/       # Friend-add landing for invite links
-│  │  ├─ matching/group/page.tsx  # Group matching (placeholder)
+│  │  ├─ join/[code]/          # Public group-invite landing
+│  │  ├─ matching/group/page.tsx  # The group screen (roster, ballot, winner)
 │  │  ├─ profile/page.tsx      # User profile
-│  │  └─ resturant/            # Restaurant detail (not built yet)
+│  ├─ components/              # Nav, modals (search, friends, invite, create group)
+│  ├─ lib/                     # Pure logic + shared hooks — see below
 │  ├─ dbConfig/
 │  │  └─ dbConfig.ts           # Shared, cached Mongoose connection
+│  ├─ proxy.ts                 # Route gate: redirects signed-out users, carries ?next=
 │  └─ models/                  # Mongoose schemas
 │     ├─ userModel.js
 │     ├─ restaurantModel.js
 │     ├─ reservationModel.js
+│     ├─ friendshipModel.js
+│     ├─ matching.js
 │     └─ addressModel.js
 ├─ .env                        # Local secrets (gitignored)
 ├─ .env.example                # Template for required env vars
@@ -168,8 +199,6 @@ palate/
 ├─ eslint.config.mjs
 └─ postcss.config.mjs
 ```
-
-> Note: the restaurant route is spelled **`resturant`** in the codebase — paths and IDs use that spelling.
 
 ---
 
@@ -191,7 +220,7 @@ Diner profile and relationships.
 | `numVisits` | Number | |
 | `Role` | enum | `user` \| `admin` (default `user`) — included in the JWT payload |
 | `isVerified` | Boolean | email-verification flag (default `false`) |
-| `preferences` | Object | `likedCuisines[]` (`fsqid`, `name`), `disliked[]`, `allergines[]`, `diet[]` — set via onboarding |
+| `preferences` | Object | `likedCuisines[]` (`fsqid`, `name`), `allergines[]`, `diet[]` — set via onboarding. Only `likedCuisines` and `diet` build the taste query; `allergines` is stored for the user's reference only. A `disliked[]` field existed and was removed — old documents may still carry it, inertly. |
 | `reservations` | `[ObjectId → reservations]` | active/upcoming |
 | `reservationHistory` | `[ObjectId → reservations]` | past |
 | `visitedResturants` | `[ObjectId → restaurants]` | |
@@ -228,7 +257,7 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 
 | Path | Type | Description | State |
 | --- | --- | --- | --- |
-| `/` | Page | Home / landing | Default starter |
+| `/` | Page | Redirects to `/dashboard` | Implemented |
 | `/login` | Page | Sign in | Wired to API |
 | `/signup` | Page | Create account | Wired to API |
 | `/onBoarding` | Page | Taste onboarding | Implemented |
@@ -237,8 +266,8 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 | `/reservation` | Page | Reservations | Implemented |
 | `/add/[username]` | Page | Friend-add landing for invite links | Implemented |
 | `/profile` | Page | A user's dining profile | Implemented |
-| `/matching/group` | Page | Group restaurant matching | Placeholder |
-| `/resturant/[id]` | Page | Restaurant detail | Not built |
+| `/matching/group` | Page | The group screen — roster, join queue, ballot, winner, booking | Implemented |
+| `/join/[code]` | Page | Public invite landing for a group | Implemented |
 
 ### API (Route Handlers)
 
@@ -247,6 +276,26 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 | `POST /api/user/signup` | Create an account; returns `userId` and sets the `token` cookie | Public |
 | `POST /api/user/login` | Authenticate by email **or** username; sets the `token` cookie | Public |
 | `PATCH /api/user/preferences` | Save dietary needs, allergens, and favourite cuisines | JWT cookie |
+| `GET /api/user/dashboard` | The signed-in user, populated, plus their active group | JWT cookie |
+| `GET/POST/DELETE /api/user/friends` | List, request/accept, decline/cancel | JWT cookie |
+| `GET /api/Restaurants/nearby` | Geo search, re-ranked by the recommender | Optional |
+| `GET /api/Restaurants/search` | Lexical name search within 70km | Public |
+| `GET/POST/PATCH /api/reservations` | Bookings; GET also completes past ones | JWT cookie |
+| `GET/POST /api/user/matching` | The active group; create a group | JWT cookie |
+| `POST /api/user/matching/join` | Redeem an invite code — admits or queues | JWT cookie |
+| `PATCH /api/user/matching/[groupId]` | Lock or reopen the guest list | Admin |
+| `POST /api/user/matching/[groupId]/requests` | `{ targetId, action }` — approve or deny | Admin |
+| `PATCH /api/user/matching/[groupId]/location` | Report this member's location once | Member |
+| `POST /api/user/matching/[groupId]/shortlist` | Build the ballot, move to `voting` | Admin |
+| `PUT /api/user/matching/[groupId]/vote` | Replace this member's approvals | Member |
+| `POST /api/user/matching/[groupId]/close` | Close the vote early | Admin |
+| `POST /api/user/matching/[groupId]/reservation` | Book the winner for everyone | Admin |
+
+> **Why so many routes are admin-only.** Starting a vote freezes the ballot,
+> closing it discards un-cast votes, and booking writes a reservation onto every
+> participant's account. Each is irreversible for the whole group, so each is
+> gated — and every one of them re-derives identity from the JWT rather than
+> trusting `proxy.ts`, which only checks that a cookie named `token` exists.
 
 ---
 
@@ -307,8 +356,6 @@ npm run dev
 
 Open **[http://localhost:3000](http://localhost:3000)**. The app hot‑reloads as you edit files.
 
-To preview a built‑out screen right now, try a mock route such as `/profile/123` or `/resturant/abc`.
-
 ---
 
 ## Environment Variables
@@ -349,23 +396,33 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 
 ## Roadmap
 
-- [x] Implement the shared Mongoose connection in `src/dbConfig/dbConfig.ts`
-- [x] Build auth API routes + wire up `onLogin` / `onSignup` (bcrypt hashing, JWT cookie sessions)
+- [x] Shared Mongoose connection, auth API, JWT cookie sessions
 - [x] Taste onboarding + cookie-authenticated preferences API
-- [x] Replace mock `getUser` / `getResturant` with real DB reads (with populated refs)
-- [x] Reservation create/manage flow
-- [x] Dashboard
+- [x] Real DB reads with populated refs (profile, dashboard)
+- [x] Reservation create/manage flow, dashboard, lists/wishlist
 - [x] Foursquare Places sync job (`npm run seed:foursquare`)
 - [x] Friends: requests, accept/decline, invite links and QR
 - [x] Recommender wired into nearby (filter-then-rank against the vector index)
 - [x] Group aggregation in the recommender (`POST /recommend/group`, least-misery)
-- [ ] Auth middleware / `/api/user/me` so the client can check session state and protect pages
-- [ ] Group creation, vote persistence, and the `/matching/group` UI
-- [ ] Per-person taste vectors feeding `/recommend/group`
+- [x] Group creation, invite links, join-by-code with an approval queue
+- [x] Roster lock, shortlist generation, approval voting, vote close
+- [x] Group booking — one reservation across every participant
+- [x] `/` redirects to the dashboard
+- [ ] **Tests and CI** — there are none, and the concurrency-sensitive parts
+      (compare-and-set on vote start, close, join and booking) are exactly the
+      kind of thing that only fails under two simultaneous users
+- [ ] Notifications — nothing tells an admin a join request is waiting, or tells
+      a joiner they were approved
+- [ ] Restaurant detail page — `photos`, `hours`, `tips`, `price` and `menuUrl`
+      are stored and never rendered
+- [ ] Per-person taste vectors feeding `/recommend/group` (the endpoint already
+      accepts them; nothing builds them)
 - [ ] Post-meal review prompt (rating + optional text)
-- [ ] Paginate the Foursquare sync — it caps at 50 results per call, which is what limits coverage
+- [ ] Paginate the Foursquare sync — a hardcoded `limit=50` in two places is
+      what caps coverage, not geography
+- [ ] Profile editing, saved-address CRUD, and the dead "Book Again" button
 - [ ] Email verification & notifications via nodemailer
-- [ ] Tests and CI
+- [ ] A `LICENSE` file
 
 ---
 

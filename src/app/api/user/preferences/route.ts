@@ -12,7 +12,6 @@ export const prefSchema = z.object({
     fsqid: z.number(),
     name: z.string(),
   })).default([]),
-  disliked: z.array(z.string()).default([]),
   allergines: z.array(z.string()).default([]),
   diet: z.array(z.string()).default([]),
 });

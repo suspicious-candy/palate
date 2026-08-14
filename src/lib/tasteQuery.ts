@@ -2,7 +2,6 @@
    Annotating the query gives the preferences shape a real type instead. */
 export type UserPreferences = {
     likedCuisines?: { fsqid?: number; name: string }[];
-    disliked?: string[];
     allergines?: string[];
     diet?: string[];
 };
@@ -18,8 +17,9 @@ export type UserPreferences = {
  *
  * Only ATTRACTION goes in here. There is no NOT in vector space: a query saying
  * "no shellfish" pushes toward shellfish, because that is the token carrying the
- * meaning. `disliked` and `allergines` are therefore absent by design — they
- * belong to the caller as a hard filter over candidates, never as text.
+ * meaning. `allergines` is therefore absent by design — an aversion can only be
+ * expressed as a hard filter over candidates, never as text. (There is no
+ * exclusion filter at all any more; `disliked` was removed as a tracked field.)
  *
  * @returns the sentence, or null when this person has stated no taste at all.
  *   Null rather than a generic "A restaurant": a neutral phrase sits near the

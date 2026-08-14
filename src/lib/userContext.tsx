@@ -69,7 +69,6 @@ export type User = {
     savedAddresses: Address[];
     preferences: {
         likedCuisines: { fsqid: number; name: string }[];
-        disliked: string[];
         allergines: string[];
         diet: string[];
     };

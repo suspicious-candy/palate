@@ -121,14 +121,6 @@ export async function GET(request:NextRequest) {
             console.error("Recommend call failed, falling back to nearby list:", err);
         }
         
-        const excluded = new Set([...(prefs?.disliked ?? [])].map((s) => s.toLowerCase()));
-        if (excluded.size > 0) {
-            recommended = recommended.filter((r) =>
-                !r.cuisine?.some((c: string) => excluded.has(c.toLowerCase()))
-            );
-        }
-       // recommended = recommended.slice(0, 6);
-
         return NextResponse.json({ restaurants: recommended, count: recommended.length });
 
     }catch(error:any){

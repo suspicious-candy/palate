@@ -81,6 +81,26 @@
     margin: 0 0 14px;
 }
 
+/* Negative top margin pulls this up under .sectionTitle's 14px gap so the note
+   reads as part of the heading rather than as a floating caption above the
+   chips. align-items: flex-start keeps the icon on the first line when the text
+   wraps to two. */
+.sectionNote {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: -8px 0 13px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #8a6f68;
+}
+
+.sectionNote i {
+    font-size: 14px;
+    line-height: 1.4;
+    flex: none;
+}
+
 .chipGroup {
     display: flex;
     flex-wrap: wrap;

@@ -126,60 +126,18 @@ export async function POST(
            response to name members excluded for distance. */
         const prefsByUser = new Map(users.map((u: any) => [u._id.toString(), u]));
 
-        /* Union across every member: one person's exclusion disqualifies the
-           restaurant for the whole group. Unlike the taste aggregation this is
-           not a tunable — it is least-misery applied to what people will not
-           eat.
+        /* NO exclusion pass. There used to be one here — a union of every
+           member's `disliked` cuisines, applied as a hard filter before ranking,
+           on the reasoning that one person's refusal disqualifies a restaurant
+           for the whole group. That field is no longer tracked, so the ballot is
+           now shaped by attraction alone: whatever /recommend/group ranks
+           highest across the members who stated a taste.
 
-           `allergines` is deliberately NOT folded in. It is free text compared
-           against cuisine names, so "peanuts" cannot match "Thai Restaurant";
-           including it would look like allergen safety while doing nothing.
-           The UI has to say plainly that allergens are not checked. */
-        const excluded = new Set(
-            users
-                .flatMap((u: any) => u.preferences?.disliked ?? [])
-                .map((s: string) => s.trim().toLowerCase())
-                .filter(Boolean)
-        );
-
-        /* Whole-word matching, not exact-string. Foursquare stores categories
-           as "Sushi Restaurant" / "Pizza Place" while `disliked` holds whatever
-           the client sent — in practice a bare "sushi" — so exact equality,
-           which nearby/route.ts and search/route.ts both use, almost never
-           fires. Words rather than substrings so a disliked "bar" does not also
-           take out every barbecue place.
-
-           Stricter here than in the browsing routes on purpose: an unwanted
-           restaurant in a scrollable list is an annoyance, the same restaurant
-           on a frozen ballot is someone's dinner. */
-        function isExcluded(cuisines: string[] | undefined): boolean {
-            for (const c of cuisines ?? []) {
-                const lower = c.toLowerCase();
-                if (excluded.has(lower)) return true;
-                for (const word of lower.split(/[^a-z0-9]+/)) {
-                    if (word && excluded.has(word)) return true;
-                }
-            }
-            return false;
-        }
-
-        const allowed = excluded.size > 0
-            ? candidates.filter((r: any) => !isExcluded(r.cuisine))
-            : candidates;
-
-        /* Distinct from the 404 above. "Nothing nearby" and "nothing nearby
-           that everyone will eat" are different problems with different fixes —
-           widen the radius versus revisit someone's dislikes — and one message
-           for both leaves the group unable to tell which they have. */
-        if (allowed.length === 0) {
-            return NextResponse.json(
-                {
-                    error: `Nothing within ${Math.round(area.radiusKm)}km that everyone in the group will eat.`,
-                    radiusKm: area.radiusKm,
-                },
-                { status: 404 }
-            );
-        }
+           `allergines` was never folded in and still is not. It is free text
+           compared against cuisine names, so "peanuts" cannot match "Thai
+           Restaurant"; filtering on it would look like allergen safety while
+           doing nothing. The UI has to say plainly that allergens are not
+           checked. */
 
         /* Two arrays kept in step. /recommend/group returns memberSims in
            member order, so without the ids there is no way to say whose taste
@@ -211,7 +169,7 @@ export async function POST(
            strings, so swapping them typechecks perfectly and the service would
            answer 404 ("none of the candidateIds are in the index") — a failure
            that reads like a stale index rather than a wiring mistake. */
-        const candidateIds = allowed.map((r: any) => r.fsqId);
+        const candidateIds = candidates.map((r: any) => r.fsqId);
 
         const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
 
@@ -260,12 +218,12 @@ export async function POST(
         }
 
         /* The service speaks fsqIds; matching.restaurants holds ObjectIds. The
-           map is built from `allowed`, which is where candidateIds came from,
+           map is built from `candidates`, which is where candidateIds came from,
            so every returned id resolves — .filter(Boolean) is there so a
            mismatch drops that entry instead of writing an undefined into the
            ballot. */
         const idByFsqId = new Map<string, mongoose.Types.ObjectId>(
-            allowed.map((r: any) => [r.fsqId, r._id])
+            candidates.map((r: any) => [r.fsqId, r._id])
         );
         const restaurantIds = ranking.businessIds
             .map((fsqId) => idByFsqId.get(fsqId))

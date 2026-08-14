@@ -121,6 +121,19 @@ export default function onBoarding(){
 
                 <div className={styles.section}>
                     <h2 className={styles.sectionTitle}>Allergens</h2>
+                    {/* Said plainly, and deliberately BEFORE the chips rather
+                        than under them. Allergens are stored on the profile but
+                        nothing filters on them: they are free text compared
+                        against cuisine names, so "Peanuts" could never match
+                        "Thai Restaurant", and a filter that cannot fire would
+                        look like allergen safety while providing none. Someone
+                        picking "Shellfish" here would otherwise reasonably
+                        assume the shortlist accounts for it. */}
+                    <p className={styles.sectionNote}>
+                        <i className="ph ph-info" />
+                        Saved to your profile for reference — Palate does not filter
+                        restaurants by allergen. Always check with the venue.
+                    </p>
                     <div className={styles.chipGroup}>
                         {ALLERGENS.map((a) => (
                             <button

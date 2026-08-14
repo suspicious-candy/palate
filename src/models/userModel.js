@@ -114,7 +114,6 @@ const userSchema = new mongoose.Schema({
                 fsqid:Number,
                 name:String
             }],
-            disliked:[String],
             allergines:{
               type: [String],
               default:[]

@@ -1,8 +1,6 @@
 import { connect } from "@/dbConfig/dbConfig";
 import Restaurant from "@/models/restaurantModel.js";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
-import UserModel from "@/models/userModel.js";
 import { z } from "zod"
 
 const radius = 70000;
@@ -23,11 +21,9 @@ export async function GET(request:NextRequest) {
         const lat = Number(searchParams.get("lat"));
         const lng = Number(searchParams.get("lng"));
 
-        const token = request.cookies.get("token")?.value;
-        const authPayload = getUserFromToken(token);
-        const dbUser = authPayload ? await UserModel.findById(authPayload.id).select("preferences").lean(): null;
-
-        const prefs = dbUser?.preferences;
+        /* No user lookup. This route read `preferences` only to apply the
+           `disliked` exclusion; with that field gone, name search is the same
+           answer for everybody and there is nothing to personalise. */
         const parsed = argSchema.safeParse({ query: searchParams.get("query") });
 
         if (!parsed.success) {
@@ -39,7 +35,7 @@ export async function GET(request:NextRequest) {
             return NextResponse.json({ error: "lat and lng query params are required" }, { status: 400 });
         }
 
-        let pinnedRest = await Restaurant.find(
+        const pinnedRest = await Restaurant.find(
             { name: { $regex: escapeRegex(searchText), $options: "i" },
             geo: {
                 $near: {
@@ -50,14 +46,6 @@ export async function GET(request:NextRequest) {
         })
         .limit(50)
         .lean();
-
-        
-        const excluded = new Set([...(prefs?.disliked ?? [])].map((s) => s.toLowerCase()));
-        if (excluded.size > 0) {
-            pinnedRest = pinnedRest.filter((r) =>
-                !r.cuisine?.some((c: string) => excluded.has(c.toLowerCase()))
-            );
-        }
 
         return NextResponse.json({ restaurants: pinnedRest, count: pinnedRest.length });
 
