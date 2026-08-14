@@ -10,6 +10,7 @@ import { useReportGroupLocation } from "@/lib/useReportGroupLocation";
 import { useTimeLeft } from "@/lib/timeLeft";
 import { googleMapsUrl } from "@/lib/mapsUrl";
 import { initials } from "@/lib/initials";
+import timeAgo from "@/lib/timeAgo";
 import {
     tally,
     totalCount,
@@ -76,6 +77,7 @@ export default function GroupPage() {
     const [voteOpen, setVoteOpen] = React.useState(false);
     const [busy, setBusy] = React.useState<null | "start" | "vote" | "close">(null);
     const [error, setError] = React.useState<string | null>(null);
+    const [busyRequest, setBusyRequest] = React.useState<string | null>(null);
 
     const me = group?.participants.find((p) => p.user?._id === user?._id) ?? null;
     const isAdmin = !!group?.admins?.some((a) => a._id === user?._id);
@@ -115,6 +117,26 @@ export default function GroupPage() {
             return false;
         } finally {
             setBusy(null);
+        }
+    }
+
+    /* A sibling of send() rather than a call into it: send() owns the card-level
+       `busy` flag, and routing a per-row action through it would grey out Start
+       and Close while one person's request is in flight. The busy KEY is the
+       target's id, so three queued people can be answered independently. */
+    async function answerRequest(targetId: string, action: "approve" | "deny") {
+        if (!group) return;
+        setBusyRequest(targetId);
+        setError(null);
+        try {
+            await axios.post(`/api/user/matching/${group._id}/requests`, { targetId, action });
+            await refreshUser();
+        } catch (err) {
+            setError(serverMessage(err, "That didn't work. Try again in a moment."));
+        } finally {
+            /* finally, not the try block: a failed approval must release the row
+               too, or the buttons stay disabled until a reload. */
+            setBusyRequest(null);
         }
     }
 
@@ -181,10 +203,12 @@ export default function GroupPage() {
                         remaining={remaining}
                         deadlinePassed={deadlinePassed}
                         busy={busy}
+                        busyRequest={busyRequest}
                         userId={user._id}
                         onStart={startVote}
                         onOpenVote={openVoteSheet}
                         onClose={closeEarly}
+                        onAnswerRequest={answerRequest}
                     />
                 ) : (
                     <div className={styles.empty}>
@@ -231,10 +255,12 @@ function GroupCard({
     remaining,
     deadlinePassed,
     busy,
+    busyRequest,
     userId,
     onStart,
     onOpenVote,
     onClose,
+    onAnswerRequest,
 }: {
     group: matching;
     meVoted: boolean;
@@ -244,10 +270,12 @@ function GroupCard({
     remaining: string;
     deadlinePassed: boolean;
     busy: null | "start" | "vote" | "close";
+    busyRequest: string | null;
     userId: string;
     onStart: () => void;
     onOpenVote: () => void;
     onClose: () => void;
+    onAnswerRequest: (targetId: string, action: "approve" | "deny") => void;
 }) {
     const pillClass =
         group.status === "open"
@@ -255,6 +283,13 @@ function GroupCard({
             : group.status === "voting"
               ? styles.pillVoting
               : styles.pillClosed;
+
+    /* `?? []` because pendingRequests is genuinely absent on every group created
+       before the field was added — Mongoose applies defaults at CREATION only,
+       so .lean() hands back undefined and .map() on it throws. The declared type
+       says otherwise; the type describes data we control, not data that already
+       exists. Same guard, same reason, as pendingOf() in lib/groupRequest.ts. */
+    const pending = group.pendingRequests ?? [];
 
     return (
         <div className={styles.card}>
@@ -312,6 +347,78 @@ function GroupCard({
                     </div>
                 ))}
             </div>
+
+            {/* Admin-only, and the route answers 403 for anyone else — hiding it
+                is so nobody is offered an action that will fail, not a security
+                boundary. Sits with the members because it answers the same
+                question: who is at this dinner.
+
+                Strangers reach this queue by following a leaked invite link;
+                friends of an admin are let straight in and never appear here.
+                See lib/groupAdmission.ts. */}
+            {isAdmin && pending.length > 0 ? (
+                <>
+                    <div className={styles.sectionLabel}>
+                        WAITING TO JOIN · {pending.length}
+                    </div>
+                    <div className={styles.requests}>
+                        {pending.map((r) => {
+                            /* Keyed and busy-checked on the user id, never the
+                               array index: answering one removes it mid-list and
+                               shifts everything after it, so an index key would
+                               move the spinner onto somebody else's row. */
+                            const id = r.user?._id;
+                            const waiting = busyRequest === id;
+                            return (
+                                <div key={id} className={styles.requestRow}>
+                                    <div className={styles.requestAvatar}>
+                                        {r.user?.profilePic ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img
+                                                className={styles.avatarImg}
+                                                src={r.user.profilePic}
+                                                alt=""
+                                            />
+                                        ) : (
+                                            initials(r.user?.firstName, r.user?.lastName)
+                                        )}
+                                    </div>
+
+                                    <div className={styles.requestWho}>
+                                        <span className={styles.requestName}>
+                                            {[r.user?.firstName, r.user?.lastName]
+                                                .filter(Boolean)
+                                                .join(" ") || r.user?.username}
+                                        </span>
+                                        <span className={styles.requestMeta}>
+                                            @{r.user?.username} · asked {timeAgo(r.requestedAt)}
+                                        </span>
+                                    </div>
+
+                                    {/* `id &&` rather than a bare call: populate
+                                        leaves user null for a deleted account,
+                                        and answering with an undefined target
+                                        would 400. */}
+                                    <button
+                                        className={styles.approveBtn}
+                                        disabled={waiting || !id}
+                                        onClick={() => id && onAnswerRequest(id, "approve")}
+                                    >
+                                        {waiting ? "…" : "Let them in"}
+                                    </button>
+                                    <button
+                                        className={styles.denyBtn}
+                                        disabled={waiting || !id}
+                                        onClick={() => id && onAnswerRequest(id, "deny")}
+                                    >
+                                        Decline
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            ) : null}
 
             {/* Once the vote is settled `winner` IS the source of truth — this is
                 the one status where reading it rather than the tally is correct. */}

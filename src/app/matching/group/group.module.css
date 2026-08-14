@@ -187,6 +187,113 @@
     max-width: 60px;
 }
 
+/* ---------- join requests (admin only) ---------- */
+
+/* Deliberately quieter than the member avatars above it: these people are not
+   in the group yet, and rendering them at the same weight reads as though they
+   already are. The dashed edge is the same "not settled yet" language the empty
+   state uses. */
+.requests {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.requestRow {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border: 1px dashed var(--rose-line-2);
+    border-radius: 11px;
+    background: var(--shell);
+}
+
+.requestAvatar {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 11.5px var(--font-hanken), sans-serif;
+    background: #fff;
+    color: var(--muted-btn);
+    overflow: hidden;
+}
+
+/* min-width: 0 so a long name can actually ellipsis — a flex child defaults to
+   min-width: auto, which refuses to shrink below its content and pushes the
+   buttons off the row instead. */
+.requestWho {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.requestName {
+    font: 700 13px var(--font-hanken), sans-serif;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.requestMeta {
+    font: 400 11.5px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Approve is the affirmative action, so it carries the olive already used for
+   "vote cast" and the winner row. Decline stays an outline — destructive-ish
+   actions should not compete for the eye with the one you usually want. */
+.approveBtn {
+    border: none;
+    background: var(--olive);
+    color: #fff;
+    font: 700 12px var(--font-hanken), sans-serif;
+    padding: 8px 13px;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+}
+
+.denyBtn {
+    border: 1px solid var(--rose-line-2);
+    background: #fff;
+    color: var(--muted-btn);
+    font: 700 12px var(--font-hanken), sans-serif;
+    padding: 8px 13px;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+}
+
+.approveBtn:disabled,
+.denyBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+@media (max-width: 460px) {
+    /* The two buttons and a name do not fit on one line on a phone. Wrapping is
+       better than shrinking the name to nothing — you have to know WHO you are
+       letting into your dinner. */
+    .requestRow {
+        flex-wrap: wrap;
+    }
+    .requestWho {
+        flex-basis: calc(100% - 45px);
+    }
+}
+
 /* ---------- shortlist bars ---------- */
 
 .sectionLabel {

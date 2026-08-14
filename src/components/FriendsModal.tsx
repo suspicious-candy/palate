@@ -8,28 +8,8 @@ import { toast } from "react-hot-toast";
 import styles from "./FriendsModal.module.css";
 import { useUser, type FriendSummary, type PendingReq } from "@/lib/userContext";
 import { initials } from "@/lib/initials";
+import timeAgo from "@/lib/timeAgo"
 
-/* Largest unit first: the loop takes the first one the elapsed time clears,
-   so 90 minutes reads "1 hour ago" rather than "90 minutes ago". */
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-    ["year", 365 * 24 * 60 * 60 * 1000],
-    ["month", 30 * 24 * 60 * 60 * 1000],
-    ["week", 7 * 24 * 60 * 60 * 1000],
-    ["day", 24 * 60 * 60 * 1000],
-    ["hour", 60 * 60 * 1000],
-    ["minute", 60 * 1000],
-];
-
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-
-// `requestedAt` crosses the wire as an ISO string — JSON has no date type.
-function timeAgo(value: string | Date): string {
-    const elapsed = Date.now() - new Date(value).getTime();
-    for (const [unit, ms] of UNITS) {
-        if (elapsed >= ms) return relative.format(-Math.floor(elapsed / ms), unit);
-    }
-    return "just now";
-}
 
 function displayName(person: FriendSummary): string {
     return (
