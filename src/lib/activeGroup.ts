@@ -46,6 +46,7 @@ const GROUP_POPULATE = [
        explicit select that card would carry the stranger's password hash and
        email to the browser alongside their avatar. */
     { path: "pendingRequests.user", select: USER_SUMMARY },
+    { path: "reservation" },
 ];
 
 /**

@@ -426,6 +426,60 @@
     gap: 5px;
 }
 
+/* ---------- booking the winner ---------- */
+
+/* Sits directly under .winnerRow and deliberately reads as its continuation:
+   same olive family, one step quieter, because "you chose this place" is the
+   headline and "and the table is held" is the footnote. */
+.bookedRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--olive-soft);
+    margin: -8px 0 18px;
+    font: 600 13px var(--font-hanken), sans-serif;
+    color: var(--olive);
+}
+
+.bookedLink {
+    margin-left: auto;
+    color: var(--olive);
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.bookRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: -8px 0 18px;
+}
+
+.bookHint {
+    flex: 1;
+    min-width: 0;
+    font: 400 12.5px/1.5 var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+}
+
+@media (max-width: 460px) {
+    /* Let the button take the full width rather than squeezing next to the
+       hint — this is the one irreversible action on the screen. */
+    .bookRow .primaryBtn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* ---------- empty state ---------- */
 
 .empty {

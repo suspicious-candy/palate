@@ -102,6 +102,20 @@ export type pendingRequest = {
     user:FriendSummary,
     requestedAt:string | Date,
 };
+/* Narrow on purpose. GROUP_POPULATE fills this one level deep, so the
+   reservation's own `restaurant` and `users` are still raw ObjectIds — typing
+   it as the full Reservation would claim fields the populate chain does not
+   fill, and `group.reservation.restaurant.name` would typecheck while being
+   undefined at runtime. The group screen needs to know the table exists and
+   when; /reservation is where the whole booking lives. */
+export type groupReservation = {
+    _id:string,
+    date:string|Date,
+    partySize:number,
+    // The model's enum, not a bare string — otherwise any typo compares equal.
+    status:"confirmed"|"cancelled"|"completed",
+};
+
 export type matching = {
     _id:string,
     admins:FriendSummary[],
@@ -116,6 +130,7 @@ export type matching = {
     date:string | Date,
     status:"open"|"voting"|"closed",
     winner:Restaurant|null,
+    reservation: groupReservation | null,
 };
 
 type UserContextValue = {

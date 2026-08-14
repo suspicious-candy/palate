@@ -63,7 +63,7 @@ function respond(outcome: RequestOutcome, group: matching | null) {
 
 export async function POST(
     request: NextRequest,
-    context: RouteContext<'/api/user/matching/[groupId]/vote'>)
+    context: RouteContext<'/api/user/matching/[groupId]/requests'>)
 {
     try{
         await connect();

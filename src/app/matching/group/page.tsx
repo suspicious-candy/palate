@@ -75,7 +75,7 @@ export default function GroupPage() {
     const remaining = useTimeLeft(votingClosesAt(group));
 
     const [voteOpen, setVoteOpen] = React.useState(false);
-    const [busy, setBusy] = React.useState<null | "start" | "vote" | "close">(null);
+    const [busy, setBusy] = React.useState<null | "start" | "vote" | "close" | "book">(null);
     const [error, setError] = React.useState<string | null>(null);
     const [busyRequest, setBusyRequest] = React.useState<string | null>(null);
 
@@ -104,7 +104,7 @@ export default function GroupPage() {
     const rows = React.useMemo(() => tally(group), [group]);
     const maxVotes = rows[0]?.votes ?? 0;
 
-    async function send(kind: "start" | "vote" | "close", path: string, body?: unknown) {
+    async function send(kind: "start" | "vote" | "close" | "book", path: string, body?: unknown) {
         setBusy(kind);
         setError(null);
         try {
@@ -143,6 +143,14 @@ export default function GroupPage() {
     async function startVote() {
         if (!group) return;
         await send("start", `/api/user/matching/${group._id}/shortlist`);
+    }
+
+    /* Straight through send(): booking is card-level like starting and closing,
+       and it takes no body — the route derives the restaurant, the time and the
+       head count from the group rather than trusting anything sent here. */
+    async function bookTable() {
+        if (!group) return;
+        await send("book", `/api/user/matching/${group._id}/reservation`);
     }
 
     async function submitVote() {
@@ -209,6 +217,7 @@ export default function GroupPage() {
                         onOpenVote={openVoteSheet}
                         onClose={closeEarly}
                         onAnswerRequest={answerRequest}
+                        onBook={bookTable}
                     />
                 ) : (
                     <div className={styles.empty}>
@@ -261,6 +270,7 @@ function GroupCard({
     onOpenVote,
     onClose,
     onAnswerRequest,
+    onBook,
 }: {
     group: matching;
     meVoted: boolean;
@@ -269,13 +279,14 @@ function GroupCard({
     maxVotes: number;
     remaining: string;
     deadlinePassed: boolean;
-    busy: null | "start" | "vote" | "close";
+    busy: null | "start" | "vote" | "close" | "book";
     busyRequest: string | null;
     userId: string;
     onStart: () => void;
     onOpenVote: () => void;
     onClose: () => void;
     onAnswerRequest: (targetId: string, action: "approve" | "deny") => void;
+    onBook: () => void;
 }) {
     const pillClass =
         group.status === "open"
@@ -439,6 +450,60 @@ function GroupCard({
                         </a>
                     ) : null}
                 </div>
+            ) : null}
+
+            {/* Only once a winner exists. A vote that closed with nobody voting
+                has nothing to book, and the route answers 409 for exactly that —
+                so there is no button to press. */}
+            {group.status === "closed" && group.winner ? (
+                group.reservation ? (
+                    <div className={styles.bookedRow}>
+                        <i className="ph-fill ph-calendar-check" />
+                        <span>
+                            Table booked for {group.reservation.partySize} ·{" "}
+                            {new Date(group.reservation.date).toLocaleString("en-US", {
+                                weekday: "short",
+                                hour: "numeric",
+                                minute: "2-digit",
+                            })}
+                        </span>
+                        {/* Everyone in the group gets the booking on their own
+                            account — the reservation carries all of them in
+                            users[] — so this link is worth showing to members,
+                            not just to whoever pressed the button. */}
+                        <Link href="/reservation" className={styles.bookedLink}>
+                            See it <i className="ph-bold ph-arrow-up-right" />
+                        </Link>
+                    </div>
+                ) : isAdmin ? (
+                    <div className={styles.bookRow}>
+                        <span className={styles.bookHint}>
+                            {"Booking adds the table to everyone's reservations."}
+                        </span>
+                        {/* Disabled while in flight: a second click loses the
+                            compare-and-set on `reservation: null` and comes back
+                            409 "another admin booked first" — which, when the
+                            other admin is you, is a baffling thing to read. */}
+                        <button
+                            className={styles.primaryBtn}
+                            onClick={onBook}
+                            disabled={busy !== null}
+                        >
+                            {busy === "book" ? (
+                                <>
+                                    <i className="ph ph-circle-notch" /> Booking…
+                                </>
+                            ) : (
+                                "Book the table"
+                            )}
+                        </button>
+                    </div>
+                ) : (
+                    <p className={styles.note}>
+                        <i className="ph ph-hourglass" /> Waiting on the organiser to book
+                        the table.
+                    </p>
+                )
             ) : null}
 
             {group.restaurants.length > 0 ? (
