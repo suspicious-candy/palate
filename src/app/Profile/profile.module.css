@@ -245,6 +245,56 @@
   font: 500 13px var(--sans);
   color: var(--muted2);
 }
+
+/* Per-row controls on a saved address. flex: none so they keep their width and
+   the address line is what shrinks — the buttons must stay reachable, and a
+   truncated street is still recognisable while a truncated "Remove" is not. */
+.rowActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowBtn {
+  border: 1px solid var(--line2);
+  background: #fff;
+  color: var(--muted2);
+  font: 600 12px var(--sans);
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rowBtn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* Remove reads as destructive only on hover — tinting it permanently would make
+   every saved address look like a warning. */
+.rowBtnDanger:hover:not(:disabled) {
+  background: var(--red-tint);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.rowBtn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+@media (max-width: 520px) {
+  /* Stack, so the address line gets the full width instead of being squeezed
+     to nothing beside two buttons. */
+  .row {
+    flex-wrap: wrap;
+  }
+  .rowActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 .note {
   font: italic 400 12.5px/1.5 var(--sans);
   color: var(--muted);

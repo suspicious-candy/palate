@@ -1,7 +1,10 @@
 "use client"
 import React from "react";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 import Nav from "@/components/Nav";
 import EditProfileModal from "@/components/EditProfileModal";
+import AddressModal from "@/components/AddressModal";
 import styles from "./profile.module.css";
 import {
     useUser,
@@ -80,10 +83,12 @@ function SectionHead({
     numeral,
     title,
     action,
+    onAction,
 }: {
     numeral: string;
     title: string;
     action?: string;
+    onAction?: () => void;
 }) {
     return (
         <div className={styles.sectionHead}>
@@ -91,7 +96,7 @@ function SectionHead({
             <h2 className={styles.sectionTitle}>{title}</h2>
             <span className={styles.rule} />
             {action && (
-                <button type="button" className={styles.headLink}>
+                <button type="button" className={styles.headLink} onClick={onAction}>
                     {action}
                 </button>
             )}
@@ -101,8 +106,40 @@ function SectionHead({
 
 // ---------- Page ----------
 export default function UserProfile() {
-    const { user, loading } = useUser();
+    const { user, loading, refreshUser } = useUser();
     const [editOpen, setEditOpen] = React.useState(false);
+
+    /* Two pieces rather than one clever union: `addressOpen` says whether the
+       sheet is up, `addressEditing` says which address it is editing (null =
+       creating a new one). Collapsing them into a single nullable value would
+       make "closed" and "creating" the same state. */
+    const [addressOpen, setAddressOpen] = React.useState(false);
+    const [addressEditing, setAddressEditing] = React.useState<Address | null>(null);
+    // Per-row, so removing one address does not disable the others' buttons.
+    const [removingId, setRemovingId] = React.useState<string | null>(null);
+
+    function openAddress(editing: Address | null) {
+        setAddressEditing(editing);
+        setAddressOpen(true);
+    }
+
+    async function removeAddress(a: Address) {
+        /* Deleting an address is not recoverable from this screen, and the row
+           gives no second chance once it is gone — so ask before, not after. */
+        if (!window.confirm(`Remove this address?\n\n${formatAddress(a.address)}`)) return;
+
+        setRemovingId(a._id);
+        try {
+            await axios.delete(
+                `/api/user/addresses?addressId=${encodeURIComponent(a._id)}`
+            );
+            await refreshUser();
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error ?? "Couldn't remove that address.");
+        } finally {
+            setRemovingId(null);
+        }
+    }
 
     if (loading) {
         return (
@@ -230,7 +267,12 @@ export default function UserProfile() {
 
                 {/* Saved Addresses */}
                 <section className={styles.card}>
-                    <SectionHead numeral="IV." title="Saved addresses" action="+ Add New" />
+                    <SectionHead
+                        numeral="IV."
+                        title="Saved addresses"
+                        action="+ Add New"
+                        onAction={() => openAddress(null)}
+                    />
                     {addresses.length === 0 ? (
                         <div className={styles.empty}>
                             <i className={`ph ph-map-pin ${styles.emptyIcon}`} />
@@ -245,6 +287,27 @@ export default function UserProfile() {
                                             {a.label ?? <Placeholder text="Address" />}
                                         </p>
                                         <p className={styles.rowMeta}>{formatAddress(a.address)}</p>
+                                    </div>
+                                    {/* Disabled per row via removingId, not a single
+                                        page-wide flag — one delete in flight must not
+                                        freeze the other rows. */}
+                                    <div className={styles.rowActions}>
+                                        <button
+                                            type="button"
+                                            className={styles.rowBtn}
+                                            onClick={() => openAddress(a)}
+                                            disabled={removingId === a._id}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`${styles.rowBtn} ${styles.rowBtnDanger}`}
+                                            onClick={() => removeAddress(a)}
+                                            disabled={removingId === a._id}
+                                        >
+                                            {removingId === a._id ? "Removing…" : "Remove"}
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -297,6 +360,18 @@ export default function UserProfile() {
                 CURRENT user every time rather than holding whatever the profile
                 looked like when this page first rendered. */}
             {editOpen ? <EditProfileModal onClose={() => setEditOpen(false)} /> : null}
+
+            {/* Keyed on the address id so switching straight from editing one
+                address to another remounts the sheet — without it React reuses
+                the component and its lazy draft initializer never re-runs, so
+                the second address opens showing the first one's values. */}
+            {addressOpen ? (
+                <AddressModal
+                    key={addressEditing?._id ?? "new"}
+                    editing={addressEditing}
+                    onClose={() => setAddressOpen(false)}
+                />
+            ) : null}
         </div>
     );
 }
