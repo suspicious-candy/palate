@@ -31,18 +31,19 @@ export default function onBoarding(){
     const [userfood, setuserfood] = React.useState<{fsqid:number;name:string}[]>([]);
     const [saving, setSaving] = React.useState(false);
 
+    /* No localStorage check. This used to read a `userId` the signup flow left
+       behind and bounce to /signup if it was missing — but the server has never
+       looked at it: the JWT cookie is what identifies the caller, and the
+       preferences route decides for itself. Two sources of truth about whether
+       you are signed in, and the weaker one held the door.
+
+       It failed in both directions. A cleared localStorage (or a different
+       browser, or a private window) threw a perfectly good session back to
+       signup; and the stale string it left behind kept letting people through
+       after logout, only for the request to 401. The 401 below is now the
+       single answer, and it comes from the same place every other route gets
+       it. */
     const savePreferences = async () => {
-        const userId =
-            typeof window !== "undefined" ? localStorage.getItem("userId") : null;
-
-        // Guard against the literal strings "undefined"/"null" that a bad
-        // localStorage.setItem call can leave behind.
-        if (!userId || userId === "undefined" || userId === "null") {
-            toast.error("Please sign up first");
-            router.push("/signup");
-            return;
-        }
-
         try {
             setSaving(true);
             await toast.promise(
@@ -62,7 +63,15 @@ export default function onBoarding(){
             );
             router.push(safeNext(readNextParam()));
         } catch (error: any) {
-            // toast.promise already surfaced the error; just log here.
+            /* Signed out. Carry the destination so signing in returns them here
+               rather than dropping their picks — safeNext validates it on the
+               way back, see lib/safeNext.ts for why an unvalidated `next` is an
+               open redirect. */
+            if (error?.response?.status === 401) {
+                router.push("/login?next=/onBoarding");
+                return;
+            }
+            // toast.promise already surfaced anything else; just log here.
             console.log("save preferences failed, " + error.message);
         } finally {
             setSaving(false);

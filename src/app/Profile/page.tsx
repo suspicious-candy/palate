@@ -1,6 +1,7 @@
 "use client"
 import React from "react";
 import Nav from "@/components/Nav";
+import EditProfileModal from "@/components/EditProfileModal";
 import styles from "./profile.module.css";
 import {
     useUser,
@@ -101,6 +102,7 @@ function SectionHead({
 // ---------- Page ----------
 export default function UserProfile() {
     const { user, loading } = useUser();
+    const [editOpen, setEditOpen] = React.useState(false);
 
     if (loading) {
         return (
@@ -161,7 +163,11 @@ export default function UserProfile() {
                         </div>
                     </div>
                     <div className={styles.actions}>
-                        <button type="button" className={styles.btn}>
+                        <button
+                            type="button"
+                            className={styles.btn}
+                            onClick={() => setEditOpen(true)}
+                        >
                             Edit Profile
                         </button>
                         <button type="button" className={`${styles.btn} ${styles.btnPrimary}`}>
@@ -286,6 +292,11 @@ export default function UserProfile() {
                     © {new Date().getFullYear()} Palate
                 </footer>
             </main>
+
+            {/* Mounted only while open, so the modal seeds its draft from the
+                CURRENT user every time rather than holding whatever the profile
+                looked like when this page first rendered. */}
+            {editOpen ? <EditProfileModal onClose={() => setEditOpen(false)} /> : null}
         </div>
     );
 }
