@@ -1,0 +1,159 @@
+/* Edit profile. Shares its chrome with CreateGroupModal and the group page's
+   vote sheet — same overlay, same 18px sheet, same head/body/foot split — so
+   the three read as one component family rather than three dialogs. */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(26, 26, 26, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: var(--font-hanken), system-ui, sans-serif;
+}
+
+.sheet {
+    width: 480px;
+    max-width: 100%;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.head {
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid #f0e6e2;
+}
+
+.titleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.title {
+    font: 600 21px var(--font-cormorant), serif;
+    color: #1a1a1a;
+}
+
+.closeBtn {
+    border: none;
+    background: #f6efec;
+    color: #7a6058;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+
+.hint {
+    font: 400 13px/1.5 var(--font-hanken), sans-serif;
+    color: #8a6f68;
+}
+
+.body {
+    overflow: auto;
+    padding: 18px 24px;
+    flex: 1;
+}
+
+.label {
+    font: 700 11px var(--font-plex-mono), monospace;
+    letter-spacing: 0.08em;
+    color: #b09a92;
+    margin-bottom: 8px;
+}
+
+.input {
+    width: 100%;
+    border: 1px solid #ecdcd6;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: 600 15px var(--font-hanken), sans-serif;
+    color: #1a1a1a;
+    outline: none;
+    margin-bottom: 18px;
+    box-sizing: border-box;
+    background: #fff;
+}
+.input:focus {
+    border-color: #c1272d;
+}
+
+/* First and last name share a line. min-width: 0 on the columns because a flex
+   child defaults to min-width: auto and would refuse to shrink below its
+   input's intrinsic width, pushing the second field out of the sheet. */
+.row {
+    display: flex;
+    gap: 10px;
+}
+
+.col {
+    flex: 1;
+    min-width: 0;
+}
+
+.error {
+    margin: 0 0 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fdf0ee;
+    color: #c1272d;
+    font: 600 12.5px/1.5 var(--font-hanken), sans-serif;
+}
+
+.foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid #f0e6e2;
+}
+
+.cancelBtn {
+    border: 1px solid #e0cec8;
+    background: none;
+    color: #5c5049;
+    font: 700 12.5px var(--font-hanken), sans-serif;
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.saveBtn {
+    border: none;
+    background: #c1272d;
+    color: #fff;
+    font: 700 13px var(--font-hanken), sans-serif;
+    padding: 10px 20px;
+    border-radius: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cancelBtn:disabled,
+.saveBtn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+@media (max-width: 460px) {
+    /* Two name fields side by side stop being usable on a phone. */
+    .row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
