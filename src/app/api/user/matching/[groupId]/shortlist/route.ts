@@ -7,6 +7,7 @@ import { findGroupById } from "@/lib/activeGroup";
 import User from "@/models/userModel.js";
 import { groupSearchArea, findGroupCandidates, type Point } from "@/lib/groupGeo";
 import { buildTasteQuery } from "@/lib/tasteQuery";
+import { loadLearnedCuisines } from "@/lib/tasteSignal";
 
 /* matching.js is untyped, so `group` is `any` and every field access would
    typecheck no matter how it was spelled. Naming the shape locally is the only
@@ -148,13 +149,21 @@ export async function POST(
            service z-scores each member's row before aggregating — which would
            promote that noise to a full-strength vote and, since blend is half
            least-misery, let it set the minimum. */
+        /* One batched query for the whole group, hoisted out of the loop below.
+           The per-user shape of loadLearnedCuisines exists for exactly this —
+           calling it inside the loop would be a database round trip per member. */
+        const learnedByUser = await loadLearnedCuisines(
+            participantIds.map((id) => id.toString())
+        );
+
         const queries: string[] = [];
         const memberIds: string[] = [];
         for (const u of users as any[]) {
-            const query = buildTasteQuery(u.preferences ?? null);
+            const id = u._id.toString();
+            const query = buildTasteQuery(u.preferences ?? null, learnedByUser.get(id) ?? []);
             if (query !== null) {
                 queries.push(query);
-                memberIds.push(u._id.toString());
+                memberIds.push(id);
             }
         }
         const skippedMembers = participants.length - memberIds.length;

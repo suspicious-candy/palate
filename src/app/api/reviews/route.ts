@@ -4,6 +4,7 @@ import Review from "@/models/reviewModel.js";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 import { completeDueReservations } from "@/lib/completeReservations";
+import { applyReviewToRestaurant } from "@/lib/applyReviewToRestaurant";
 import mongoose from "mongoose";
 import { z } from "zod";
 
@@ -123,6 +124,17 @@ export async function POST(request: NextRequest) {
                 );
             }
             throw err;
+        }
+
+        /* Awaited so the ordering and the error are both visible, but never
+           fatal. The review is already written and there is no transaction
+           across the two collections — returning 500 here would tell the user
+           it failed while the unique index refuses their retry with a 409. The
+           tips entry and palateRating are derived and can be rebuilt. */
+        try {
+            await applyReviewToRestaurant(review);
+        } catch (err: any) {
+            console.error("Review enrichment failed:", review._id, err?.message ?? err);
         }
 
         return NextResponse.json({ success: true, review }, { status: 201 });

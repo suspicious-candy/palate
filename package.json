@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "seed:restaurants": "node --env-file=.env scripts/seedRestaurants.mjs",
-    "seed:foursquare": "node --env-file=.env scripts/syncFoursquareAreas.mjs"
+    "seed:foursquare": "node --env-file=.env scripts/syncFoursquareAreas.mjs",
+    "seed:testmeal": "node --env-file=.env scripts/seedTestMeal.mjs",
+    "inspect:reviews": "node --env-file=.env scripts/inspectReviews.mjs",
+    "fix:reviews": "node --env-file=.env scripts/backfillReviewEnrichment.mjs"
   },
   "dependencies": {
     "@phosphor-icons/web": "^2.1.2",

@@ -5,6 +5,7 @@ import { searchFoursquarePlaces, mapFoursquarePlace } from "@/lib/foursquare";
 import { getUserFromToken } from "@/lib/auth";
 import UserModel from "@/models/userModel.js";
 import { buildTasteQuery, type UserPreferences } from "@/lib/tasteQuery";
+import { loadLearnedCuisines } from "@/lib/tasteSignal";
 
 const radius = 20000;
 
@@ -25,11 +26,17 @@ export async function GET(request:NextRequest) {
             : null;
 
         const prefs = dbUser?.preferences;
+        /* What they have actually eaten and rated 4+, on top of what they said
+           at onboarding. Only for a signed-in caller — there is no anonymous
+           history to read. */
+        const learned = authPayload
+            ? (await loadLearnedCuisines([authPayload.id])).get(authPayload.id) ?? []
+            : [];
         /* Shared with the group shortlist route, so both rank a person by the
            same sentence. Two drifting definitions of "what this user's taste
            sounds like" would rank two users by different rules, and nothing
            would ever surface it. */
-        const preferenceQuery = buildTasteQuery(prefs ?? null);
+        const preferenceQuery = buildTasteQuery(prefs ?? null, learned);
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return NextResponse.json({ error: "lat and lng query params are required" }, { status: 400 });
         }

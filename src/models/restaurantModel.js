@@ -18,6 +18,12 @@ const tipSchema = new mongoose.Schema(
     fsqTipId: String,
     text: String,
     createdAt: String,
+    /* Which side wrote this tip. Foursquare tips and Palate post-meal reviews
+       share one array and are otherwise indistinguishable, so nothing could
+       recompute one without clobbering the other. `type` is not optional here:
+       a bare { enum: [...] } is read as a NESTED OBJECT and silently creates a
+       path called `source.enum` instead. */
+    source: { type: String, enum: ["foursquare", "palate"] },
   },
   { _id: false }
 );
@@ -38,6 +44,9 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    avg:{type:Number},
+    count:{type:Number},
 
     categories: [categorySchema],
     cuisine: [String], // optional flattened convenience field
@@ -76,6 +85,19 @@ const restaurantSchema = new mongoose.Schema(
     // Ratings & reviews (kept from Premium tier)
     rating: Number, // 0 - 10
     tips: [tipSchema],
+
+    /* Palate's own diners, kept apart from `rating` above rather than blended
+       into it. That field holds the Yelp/Foursquare score and build_text turns
+       it into "Has a good rating"; mixing our stars in would destroy the
+       provenance, and the two come from different populations anyway.
+
+       Left on the raw 1-5 star scale, deliberately unlike `rating`'s 0-10 — the
+       mismatch is the reminder that averaging the two would be meaningless.
+       Recomputed from the reviews collection on every write, never incremented. */
+    palateRating: {
+      avg: Number,
+      count: { type: Number, default: 0 },
+    },
 
     dateClosed: String,
 
