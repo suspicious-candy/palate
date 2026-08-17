@@ -3,7 +3,18 @@
    redirect: a link to /signup?next=https://evil.com/login lets someone sign up
    on the real site and land on a lookalike that asks for the password again.
 
-   No imports here on purpose — proxy.ts runs on the Edge runtime. */
+   No imports here on purpose. The Edge-runtime constraint that originally
+   forced this is gone — Next 16 runs proxy on Node, and setting the `runtime`
+   option in a proxy file now throws — but the rule is worth keeping for a
+   better reason: this is a security primitive called from proxy.ts, both auth
+   pages and JoinGroupButton, and a file with no dependencies is one you can
+   read top to bottom and be certain about.
+
+   Relatedly: the Node runtime means jwt.verify would now WORK in proxy.ts.
+   Deliberately not done. It puts a crypto operation on every page navigation,
+   and proxy still is not the authorization boundary — its matcher excludes
+   /api entirely, so lib/withAuth.ts remains the only thing standing between a
+   request and the data. */
 export function safeNext(
     next: string | null | undefined,
     fallback = "/dashboard"

@@ -1,8 +1,7 @@
-import { connect } from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js";
 import matchingModel from "@/models/matching.js";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import { listFriends } from "@/lib/friends";
 import { findActiveGroup, findGroupById } from "@/lib/activeGroup";
@@ -32,23 +31,8 @@ export const postSchema = z.object({
     friendsIds: z.array(z.string()).default([]),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        /* proxy.ts only checks that a cookie named "token" exists — it never
-           verifies the signature, so it is a UX gate, not an authorization
-           boundary. Every route re-establishes identity for itself. */
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         let group = await findActiveGroup(user.id);
         if(group!=null){
             try{
@@ -70,21 +54,10 @@ export async function GET(request: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const userId = user.id;
 
         const result = postSchema.safeParse(await request.json());
@@ -206,4 +179,4 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

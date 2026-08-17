@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { safeNext } from "@/lib/safeNext";
-
-const PROTECTED = ["/dashboard", "/profile", "/onBoarding", "/matching"];
+import { isProtectedPath } from "@/lib/protectedRoutes";
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasToken = request.cookies.has("token");
 
-  if (PROTECTED.some((p) => pathname.startsWith(p)) && !hasToken) {
+  if (isProtectedPath(pathname) && !hasToken) {
     // Carry where they were headed so login can send them back there.
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname + search);

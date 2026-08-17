@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { admissionVerdict, type AdmissionOutcome } from "@/lib/groupAdmission";
-import { connect } from "@/dbConfig/dbConfig";
-import { getUserFromToken } from "@/lib/auth";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import { findGroupByInviteCode, findGroupById } from "@/lib/activeGroup";
 import { areFriendsWithAny } from "@/lib/friends";
@@ -67,19 +66,8 @@ function success(outcome: AdmissionOutcome, group: matching | null) {
     }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const userId = user.id;
 
         let body: unknown;
@@ -179,4 +167,4 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-}
+});

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import  jwt  from "jsonwebtoken";
 import { z } from "zod";
+import { hit, clientKey, tooManyRequests, LIMITS } from "@/lib/rateLimit";
 
 export const signupSchema = z.object({
   username: z.string().min(3),
@@ -21,6 +22,17 @@ export const signupSchema = z.object({
 export async function POST(request: NextRequest) {
     
     try{
+
+        /* Before connect() and before bcrypt.hash. Abuse here costs more than
+           CPU: every accepted request also leaves a permanent row in the users
+           collection, so the cost outlives the request that caused it. */
+        const verdict = hit(`signup:${clientKey(request)}`, LIMITS.signup);
+        if (!verdict.allowed) {
+            return tooManyRequests(
+                verdict.retryAfterSeconds,
+                "Too many sign-up attempts. Try again later."
+            );
+        }
 
         await connect();
 

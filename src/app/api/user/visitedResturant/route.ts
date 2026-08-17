@@ -1,32 +1,18 @@
-import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
-import { NextRequest, NextResponse } from "next/server";
-import {getUserFromToken} from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import Restaurant from "@/models/restaurantModel.js";
 import { markVisited } from "@/lib/visited";
-
-connect();
 
 export const argSchema = z.object({
     fsqId:z.string()
 });
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request, user) => {
 
     try{
 
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const userId = user.id;
 
         const reqBody = await request.json();
@@ -58,5 +44,5 @@ export async function PATCH(request: NextRequest) {
         )
     }
 
-}
+});
 

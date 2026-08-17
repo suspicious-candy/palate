@@ -1,6 +1,5 @@
-import { connect } from "@/dbConfig/dbConfig";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import User from "@/models/userModel.js";
 
@@ -54,20 +53,8 @@ const argSchema = z
     .partial()
     .strict();
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         /* request.json() THROWS on malformed input rather than resolving to
            something falsy, so a truthiness check afterwards can never fire —
            the try/catch is the only thing that turns bad JSON into a 400
@@ -162,4 +149,4 @@ export async function PATCH(request: NextRequest) {
         }
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

@@ -1,6 +1,5 @@
-import { connect } from "@/dbConfig/dbConfig";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import Restaurant from "@/models/restaurantModel.js";
 import Reservation from "@/models/reservationModel.js";
 import User from "@/models/userModel.js";
@@ -18,16 +17,8 @@ const patchSchema = z.object({
   status: z.enum(["confirmed", "cancelled", "completed"]),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request, user) => {
   try {
-    await connect();
-
-    const token = request.cookies.get("token")?.value;
-    const user = getUserFromToken(token);
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
     await completeDueReservations(user.id);
 
     const reservations = await Reservation.find({ users: user.id })
@@ -38,18 +29,10 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
   try {
-    await connect();
-
-    const token = request.cookies.get("token")?.value;
-    const user = getUserFromToken(token);
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
@@ -84,24 +67,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request, user) => {
 
     try{
-
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-        const userId = user.id;
 
         const reqBody = await request.json();
 
@@ -136,4 +106,4 @@ export async function PATCH(request: NextRequest) {
         )
     }
 
-}
+});

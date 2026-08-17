@@ -1,7 +1,6 @@
-import { connect } from "@/dbConfig/dbConfig";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import User from "@/models/userModel.js";
 import address from "@/models/addressModel.js";
@@ -68,20 +67,8 @@ async function readJson(request: NextRequest) {
 
 /* ---------- POST: save a new address ---------- */
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         const parsedBody = await readJson(request);
         if (!parsedBody.ok) {
             return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
@@ -142,24 +129,12 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});
 
 /* ---------- PATCH: edit an existing address ---------- */
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         const parsedBody = await readJson(request);
         if (!parsedBody.ok) {
             return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
@@ -236,24 +211,12 @@ export async function PATCH(request: NextRequest) {
         }
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});
 
 /* ---------- DELETE: remove an address ---------- */
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         /* Query param rather than a body, matching friends/route.ts — a DELETE
            carrying one id needs nothing richer, and bodies on DELETE are
            awkward for plenty of HTTP clients. */
@@ -292,4 +255,4 @@ export async function DELETE(request: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

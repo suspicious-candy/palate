@@ -1,8 +1,7 @@
-import { connect } from "@/dbConfig/dbConfig";
 import mongoose from "mongoose";
 import matchingModel from "@/models/matching.js";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { findGroupById } from "@/lib/activeGroup";
 import z from "zod"
 import { requestVerdict, type RequestOutcome } from "@/lib/groupRequest";
@@ -61,21 +60,12 @@ function respond(outcome: RequestOutcome, group: matching | null) {
     }
 }
 
-export async function POST(
-    request: NextRequest,
-    context: RouteContext<'/api/user/matching/[groupId]/requests'>)
+export const POST = withAuth(async (
+    request,
+    user,
+    context: RouteContext<'/api/user/matching/[groupId]/requests'>) =>
 {
     try{
-        await connect();
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-        
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         
         const { groupId } = await context.params;
         if (!mongoose.isValidObjectId(groupId)) {
@@ -155,4 +145,4 @@ export async function POST(
     catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 
-type TokenPayload = {
+/* Exported because withAuth hands it to every route handler — one definition,
+   so a claim added to the token cannot drift out of sync with what routes
+   believe they are given. */
+export type TokenPayload = {
     id: string;
     username: string;
     role: string;

@@ -1,8 +1,7 @@
-import { connect } from "@/dbConfig/dbConfig";
 import mongoose from "mongoose";
 import matchingModel from "@/models/matching.js";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import { findGroupById } from "@/lib/activeGroup";
 
@@ -16,19 +15,8 @@ export const patchSchema = z.object({
     })
 });
 
-export async function PATCH(request: NextRequest, context: RouteContext<'/api/user/matching/[groupId]/location'>) {
+export const PATCH = withAuth(async (request, user, context: RouteContext<'/api/user/matching/[groupId]/location'>) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         const { groupId } = await context.params;
         if (!mongoose.isValidObjectId(groupId)) {
             return NextResponse.json({ error: "Invalid group id" }, { status: 400 });
@@ -83,4 +71,4 @@ export async function PATCH(request: NextRequest, context: RouteContext<'/api/us
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

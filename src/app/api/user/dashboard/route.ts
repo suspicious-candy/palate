@@ -1,28 +1,16 @@
-import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
 import "@/models/restaurantModel.js";
 import "@/models/reservationModel.js";
 import "@/models/addressModel.js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { closeVote } from "@/lib/closeVote";
-import {getUserFromToken} from "@/lib/auth";
+import { withAuth } from "@/lib/withAuth";
 import { findActiveGroup,findGroupById } from "@/lib/activeGroup";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request, user) => {
 
     try{
 
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const userId = user.id;
 
         const authUser = await User.findById(userId)
@@ -73,4 +61,4 @@ export async function GET(request: NextRequest) {
         },{status:500})
     }
 
-}
+});

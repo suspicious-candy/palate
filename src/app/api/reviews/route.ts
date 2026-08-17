@@ -1,8 +1,7 @@
-import { connect } from "@/dbConfig/dbConfig";
 import Reservation from "@/models/reservationModel.js";
 import Review from "@/models/reviewModel.js";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { completeDueReservations } from "@/lib/completeReservations";
 import { applyReviewToRestaurant } from "@/lib/applyReviewToRestaurant";
 import mongoose from "mongoose";
@@ -18,20 +17,8 @@ const postSchema = z.object({
     text: z.string().max(999).optional(),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
     try {
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-
         /* No User.findById here. The token carries the id, nothing in this
            handler needs the user document, and a lookup that exists only to be
            checked for null is a round trip buying nothing. */
@@ -141,4 +128,4 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-}
+});

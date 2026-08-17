@@ -2,6 +2,7 @@ import { connect } from "@/dbConfig/dbConfig";
 import Restaurant from "@/models/restaurantModel.js";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod"
+import { hit, clientKey, tooManyRequests, LIMITS } from "@/lib/rateLimit";
 
 const radius = 70000;
 
@@ -15,6 +16,13 @@ function escapeRegex(str: string) {
 
 export async function GET(request:NextRequest) {
     try{
+        /* The only unauthenticated read endpoint, and not a cheap one: a regex
+           scan plus a $near geo query, serializing up to 50 documents. */
+        const verdict = hit(`search:${clientKey(request)}`, LIMITS.search);
+        if (!verdict.allowed) {
+            return tooManyRequests(verdict.retryAfterSeconds, "Slow down a moment.");
+        }
+
         await connect();
 
         const { searchParams } = new URL(request.url);

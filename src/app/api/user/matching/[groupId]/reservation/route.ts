@@ -1,7 +1,6 @@
-import { connect } from "@/dbConfig/dbConfig";
 import mongoose from "mongoose";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import Reservation from "@/models/reservationModel.js";
 import matchingModel from "@/models/matching.js";
 import User from "@/models/userModel.js";
@@ -14,21 +13,12 @@ import { findGroupById } from "@/lib/activeGroup";
    declares its own Participant. */
 type Participant = { user: mongoose.Types.ObjectId };
 
-export async function POST(
-    request: NextRequest,
-    context: RouteContext<'/api/user/matching/[groupId]/reservation'>)
+export const POST = withAuth(async (
+    request,
+    user,
+    context: RouteContext<'/api/user/matching/[groupId]/reservation'>) =>
 {
     try{
-        await connect();
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
 
         const { groupId } = await context.params;
         if (!mongoose.isValidObjectId(groupId)) {
@@ -189,4 +179,4 @@ export async function POST(
     catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

@@ -1,7 +1,6 @@
-import {connect} from "@/dbConfig/dbConfig";
 import User from "@/models/userModel.js"
-import { NextRequest, NextResponse } from "next/server";
-import {getUserFromToken} from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
 import {friends, InvalidFriendshipError, type FriendOutcome,listFriends,listPending,removePendingRequest} from "@/lib/friends";
 
@@ -20,21 +19,10 @@ const OUTCOME_MESSAGES: Record<FriendOutcome, string> = {
     nothing_to_remove: "No pending request with this user",
 };
 
-export async function  POST(request: NextRequest) {
+export const POST = withAuth(async (request, user) => {
 
     try{
 
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const requesterId = user.id;
 
         const reqBody = await request.json();
@@ -73,23 +61,12 @@ export async function  POST(request: NextRequest) {
         )
     }
 
-}
+});
 
-export async function  GET(request: NextRequest) {
+export const GET = withAuth(async (request, user) => {
 
     try{
 
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
         const requesterId = user.id;
 
         const [confirmed, pending] = await Promise.all([
@@ -110,24 +87,11 @@ export async function  GET(request: NextRequest) {
         )
     }
 
-}
+});
 
-export async function  DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request, user) => {
 
     try{
-
-        await connect();
-
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
 
         const requesterId = user.id;
 
@@ -169,4 +133,4 @@ export async function  DELETE(request: NextRequest) {
         )
     }
 
-}
+});

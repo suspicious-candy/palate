@@ -1,27 +1,16 @@
-import { connect } from "@/dbConfig/dbConfig";
 import mongoose from "mongoose";
-import { NextRequest, NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/withAuth";
 import { findGroupById } from "@/lib/activeGroup";
 import { closeVote } from "@/lib/closeVote";
 import { totalCount, votedCount } from "@/lib/groupVote";
 
-export async function POST(
-    request: NextRequest,
-    context: RouteContext<'/api/user/matching/[groupId]/close'>)
+export const POST = withAuth(async (
+    request,
+    user,
+    context: RouteContext<'/api/user/matching/[groupId]/close'>) =>
 {
     try{
-        await connect();
-        if (!process.env.TOKEN_SECRET) {
-            return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-        }
-        
-        const token = request.cookies.get("token")?.value;
-        const user = getUserFromToken(token);
-        if (!user) {
-            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-        }
-        
         const { groupId } = await context.params;
         if (!mongoose.isValidObjectId(groupId)) {
             return NextResponse.json({ error: "Invalid group id" }, { status: 400 });
@@ -123,4 +112,4 @@ export async function POST(
     catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }
-}
+});

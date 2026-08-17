@@ -1,6 +1,11 @@
 "use client"
 import React from "react";
 import axios from "axios";
+/* Side-effect import, not dead code: this registers the global axios response
+   interceptor that rescues a dead session. Imported HERE because this provider
+   is mounted in the root layout, so the interceptor is installed before the
+   first request below goes out. */
+import "@/lib/sessionExpiry";
 
 export type tip = { fsqTipId: string; text: string };
 
