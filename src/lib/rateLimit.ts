@@ -124,6 +124,12 @@ export const LIMITS = {
        collection, so the cost of abuse outlives the request. */
     signup: { limit: 5, windowMs: 60 * 60_000 },
 
+    /* The token is 256 bits, so guessing it is not the threat — the limit is
+       here so an unauthenticated endpoint cannot be used to hammer the users
+       collection with lookups. Loose enough that a real person clicking a link
+       twice, or a mail scanner pre-fetching it, never notices. */
+    verifyEmail: { limit: 20, windowMs: 15 * 60_000 },
+
     /* Unauthenticated, and every call is a regex scan plus a $near geo query.
        SearchModal debounces at 300ms, so a fast typer genuinely produces ~3/sec
        — a limit that punishes that punishes real users. */

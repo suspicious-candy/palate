@@ -1,0 +1,73 @@
+/* Same surface as join/[code]/join.module.css — verification and invites are
+   both single-purpose screens arrived at from a link, and should read as the
+   same product. Its own file rather than a cross-route import so a change to
+   the invite card cannot silently restyle this one. */
+
+.screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1c0d09;
+    background-image: url("/resturant.jpg");
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding: 24px 16px;
+}
+
+.card {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    padding: 28px 26px 26px;
+    box-sizing: border-box;
+}
+
+.brand {
+    align-self: flex-start;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    color: #c1272d;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 28px 0 4px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #777;
+    margin: 0 0 6px;
+    line-height: 1.45;
+}
+
+.linkButton {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 18px;
+    padding: 15px 0;
+    border-radius: 14px;
+    background: #a41e22;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.linkButton:hover {
+    background: #8e1a1d;
+}
