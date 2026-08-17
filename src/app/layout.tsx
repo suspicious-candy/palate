@@ -10,6 +10,7 @@ import { UserProvider } from "@/lib/userContext";
 import { GeolocationProvider } from "@/lib/GeolocationContext";
 import { NearbyRestaurantsProvider } from "@/lib/nearbyRestuant";
 import { ReservationTracker } from "@/lib/ReservationTracker";
+import { PendingReviews } from "@/components/PendingReviews";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,8 +67,9 @@ export default function RootLayout({
           <UserProvider>
             <NearbyRestaurantsProvider>
               <ReservationTracker>
+                <PendingReviews />
                 {children}
-              </ReservationTracker>  
+              </ReservationTracker>
             </NearbyRestaurantsProvider>
           </UserProvider>
         </GeolocationProvider>

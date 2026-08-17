@@ -30,6 +30,8 @@ const reservationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+reservationSchema.index({ users: 1, date: -1 });
+
 const Reservation =
   mongoose.models.reservations ||
   mongoose.model("reservations", reservationSchema);

@@ -3,6 +3,7 @@ import Reservation from "@/models/reservationModel.js";
 import Review from "@/models/reviewModel.js";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
+import { completeDueReservations } from "@/lib/completeReservations";
 import mongoose from "mongoose";
 import { z } from "zod";
 
@@ -33,6 +34,13 @@ export async function POST(request: NextRequest) {
         /* No User.findById here. The token carries the id, nothing in this
            handler needs the user document, and a lookup that exists only to be
            checked for null is a round trip buying nothing. */
+
+        /* Bring this user's past bookings up to date FIRST, so the status check
+           below reads a current value. Without it a meal an hour in the past is
+           still "confirmed" until something happens to load
+           GET /api/reservations, and the review is refused for a meal that
+           plainly already happened. */
+        await completeDueReservations(user.id);
 
         /* .json() THROWS on a malformed or absent body rather than returning
            null, so it needs its own catch — otherwise a bad request lands in
@@ -79,14 +87,9 @@ export async function POST(request: NextRequest) {
         }
 
         /* 409, not 400: the request is well-formed, it just conflicts with the
-           state of this booking.
-
-           NOTE the coupling — `status` only becomes "completed" inside the
-           sweep at the top of GET /api/reservations, so a meal an hour in the
-           past still reads "confirmed" until something loads that route. The UI
-           reaches review from the Completed tab, which forces that GET first,
-           so this holds today. Step 3 lifts the sweep into lib/ so both routes
-           share one definition of "the meal happened". */
+           state of this booking. completeDueReservations above has already
+           retired anything genuinely past, so this now only rejects future
+           bookings and cancellations. */
         if (reservation.status !== "completed") {
             return NextResponse.json(
                 { error: "You can only review a meal you've had" },

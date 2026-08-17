@@ -5,7 +5,7 @@ import Restaurant from "@/models/restaurantModel.js";
 import Reservation from "@/models/reservationModel.js";
 import User from "@/models/userModel.js";
 import { z } from "zod";
-import { markVisited } from "@/lib/visited";
+import { completeDueReservations } from "@/lib/completeReservations";
 
 const bodySchema = z.object({
   fsqId: z.string(),
@@ -28,31 +28,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const now = new Date();
-
-    const justCompleted = await Reservation.find({
-      users: user.id,
-      status: "confirmed",
-      date: { $lt: now },
-    }).select("_id restaurant");
-
-    if (justCompleted.length) {
-      // Both user-side writes happen BEFORE the status flip: if either fails,
-      // the rows stay "confirmed" and the next GET retries. $addToSet makes the
-      // retry a no-op for anything already recorded.
-      await markVisited(user.id, justCompleted.map((r) => r.restaurant));
-
-      await User.findByIdAndUpdate(user.id, {
-        $addToSet: {
-          reservationHistory: { $each: justCompleted.map((r) => r._id) },
-        },
-      });
-
-      await Reservation.updateMany(
-        { _id: { $in: justCompleted.map((r) => r._id) } },
-        { $set: { status: "completed" } }
-      );
-    }
+    await completeDueReservations(user.id);
 
     const reservations = await Reservation.find({ users: user.id })
       .populate("restaurant")

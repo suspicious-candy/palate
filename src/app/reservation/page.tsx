@@ -5,6 +5,7 @@ import axios from "axios";
 import Nav from "@/components/Nav";
 import { useUser, Restaurant, Reservation } from "@/lib/userContext";
 import { googleMapsUrl } from "@/lib/mapsUrl";
+import { ReviewPrompt, type PendingReview } from "@/components/ReviewPrompt";
 import styles from "./page.module.css";
 
 function formatReservationDate(date: string | Date) {
@@ -28,6 +29,8 @@ type RowProps = {
   rest: Restaurant;
   note: string;
   onCancel: () => void;
+  canReview?: boolean;
+  onReview?: () => void;
 };
 
 export default function ReservationPage() {
@@ -35,6 +38,8 @@ export default function ReservationPage() {
   const [reservations, setReservations] = React.useState<Reservation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [toGet, setToGet] = React.useState<"upcoming" | "completed" | "cancelled">("upcoming");
+  const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
+  const [reviewing, setReviewing] = React.useState<PendingReview | null>(null);
 
   const loadReservations = React.useCallback(() => {
     setLoading(true);
@@ -45,9 +50,33 @@ export default function ReservationPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const loadPending = React.useCallback(() => {
+    axios
+      .get("/api/reviews/pending")
+      .then((res) =>
+        setPendingIds(
+          new Set<string>(
+            (res.data.pending ?? []).map((p: PendingReview) => p.reservationId)
+          )
+        )
+      )
+      .catch(() => setPendingIds(new Set()));
+  }, []);
+
   React.useEffect(() => {
     loadReservations();
-  }, [loadReservations]);
+    loadPending();
+  }, [loadReservations, loadPending]);
+
+  const markReviewed = React.useCallback((reservationId: string) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(reservationId);
+      return next;
+    });
+  }, []);
+
+  const closeReview = React.useCallback(() => setReviewing(null), []);
 
   async function cancelReservation(res: Reservation) {
     await axios.patch("/api/reservations", {
@@ -113,6 +142,14 @@ export default function ReservationPage() {
                 rest={r.restaurant}
                 note={r.notes ?? ""}
                 onCancel={() => cancelReservation(r)}
+                canReview={pendingIds.has(r._id)}
+                onReview={() =>
+                  setReviewing({
+                    reservationId: r._id,
+                    date: r.date,
+                    restaurant: r.restaurant,
+                  })
+                }
               />
             ))
           ) : (
@@ -123,6 +160,14 @@ export default function ReservationPage() {
           )}
         </div>
       </div>
+
+      {reviewing && (
+        <ReviewPrompt
+          pending={[reviewing]}
+          onClose={closeReview}
+          onSubmitted={markReviewed}
+        />
+      )}
     </div>
   );
 }
@@ -176,13 +221,18 @@ function UpcomingRes({ date, partySize, rest, note, onCancel }: RowProps) {
   );
 }
 
-function CompletedRes({ date, partySize, rest, note }: RowProps) {
+function CompletedRes({ date, partySize, rest, note, canReview, onReview }: RowProps) {
   return (
     <div className={styles.card}>
       <DateTile date={date} />
       <CardBody date={date} partySize={partySize} rest={rest} note={note} />
       <div className={styles.side}>
         <span className={`${styles.status} ${styles.statusCompleted}`}>Completed</span>
+        {canReview && (
+          <button className={styles.btn} onClick={onReview}>
+            <i className="ph ph-star" /> Rate this
+          </button>
+        )}
         <button className={styles.btn}>Book Again</button>
       </div>
     </div>
