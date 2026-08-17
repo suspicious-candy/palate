@@ -7,7 +7,7 @@ import { useGeo } from "@/lib/GeolocationContext";
 import Image from 'next/image';
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useTrackClick } from "@/lib/ReservationTracker";
+import { useTrackClick, useOpenReservation } from "@/lib/ReservationTracker";
 import { googleMapsUrl } from "@/lib/mapsUrl";
 
 
@@ -107,6 +107,7 @@ function RestaurantCard({ restaurant,index }: { restaurant: Restaurant; index:nu
 
     const Rest = restaurant;
     const track = useTrackClick();
+    const openReservation = useOpenReservation();
     const icon = Rest.categories[0]?.icon;
 
     return(
@@ -127,6 +128,13 @@ function RestaurantCard({ restaurant,index }: { restaurant: Restaurant; index:nu
                 {Rest.rating > 0 && <span><i className={`ph-fill ph-star ${styles.starIcon}`} /> {Rest.rating.toFixed(1)}</span>}
             </div>
             <div className={styles.cardActions}>
+                <button
+                    className={styles.heartBtn}
+                    onClick={() => openReservation({ fsqId: Rest.fsqId, name: Rest.name })}
+                    aria-label={`Reserve a table at ${Rest.name}`}
+                >
+                    <i className="ph ph-calendar-plus" />
+                </button>
                 <a
                     href={googleMapsUrl(Rest)}
                     target="_blank"

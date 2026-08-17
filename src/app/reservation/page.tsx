@@ -4,6 +4,7 @@ import React from "react";
 import axios from "axios";
 import Nav from "@/components/Nav";
 import { useUser, Restaurant, Reservation } from "@/lib/userContext";
+import { useOpenReservation } from "@/lib/ReservationTracker";
 import { googleMapsUrl } from "@/lib/mapsUrl";
 import { ReviewPrompt, type PendingReview } from "@/components/ReviewPrompt";
 import styles from "./page.module.css";
@@ -31,10 +32,12 @@ type RowProps = {
   onCancel: () => void;
   canReview?: boolean;
   onReview?: () => void;
+  onBookAgain?: () => void;
 };
 
 export default function ReservationPage() {
   const { user } = useUser();
+  const openReservation = useOpenReservation();
   const [reservations, setReservations] = React.useState<Reservation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [toGet, setToGet] = React.useState<"upcoming" | "completed" | "cancelled">("upcoming");
@@ -150,6 +153,14 @@ export default function ReservationPage() {
                     restaurant: r.restaurant,
                   })
                 }
+                /* Reload after saving — the new table belongs in Upcoming, and
+                   this list is a snapshot taken on mount. */
+                onBookAgain={() =>
+                  openReservation(
+                    { fsqId: r.restaurant.fsqId, name: r.restaurant.name },
+                    { onSaved: loadReservations }
+                  )
+                }
               />
             ))
           ) : (
@@ -221,7 +232,7 @@ function UpcomingRes({ date, partySize, rest, note, onCancel }: RowProps) {
   );
 }
 
-function CompletedRes({ date, partySize, rest, note, canReview, onReview }: RowProps) {
+function CompletedRes({ date, partySize, rest, note, canReview, onReview, onBookAgain }: RowProps) {
   return (
     <div className={styles.card}>
       <DateTile date={date} />
@@ -233,7 +244,7 @@ function CompletedRes({ date, partySize, rest, note, canReview, onReview }: RowP
             <i className="ph ph-star" /> Rate this
           </button>
         )}
-        <button className={styles.btn}>Book Again</button>
+        <button className={styles.btn} onClick={onBookAgain}>Book Again</button>
       </div>
     </div>
   );

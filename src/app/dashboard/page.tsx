@@ -9,7 +9,7 @@ import Nav from "@/components/Nav";
 import { useGeo, GeoState } from "@/lib/GeolocationContext";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
 import { useUser, User, Restaurant } from "@/lib/userContext";
-import { useTrackClick } from "@/lib/ReservationTracker";
+import { useTrackClick, useOpenReservation } from "@/lib/ReservationTracker";
 import InviteModal from "@/components/InviteModal";
 import { votedCount, totalCount, leader, votingClosesAt } from "@/lib/groupVote";
 import { useReportGroupLocation } from "@/lib/useReportGroupLocation";
@@ -414,6 +414,7 @@ export function FriendCard({ friend }: { friend: FriendSummary }){
 }
 export function RestaurantCard({ restaurant, geo, user, setUser, index }: { restaurant: Restaurant; geo: GeoState; user: User | null; setUser: React.Dispatch<React.SetStateAction<User | null>>; index: number }){
     const track = useTrackClick();
+    const openReservation = useOpenReservation();
     const Rest = restaurant;
     const saved = user?.wishlist?.some((w) => w.fsqId === Rest.fsqId) ?? false;
     const icon = Rest.categories?.[0]?.icon;
@@ -446,6 +447,13 @@ export function RestaurantCard({ restaurant, geo, user, setUser, index }: { rest
                 )}
             </div>
             <div className={styles.cardActions}>
+                <button
+                    className={styles.heartBtn}
+                    onClick={() => openReservation({ fsqId: Rest.fsqId, name: Rest.name })}
+                    aria-label={`Reserve a table at ${Rest.name}`}
+                >
+                    <i className="ph ph-calendar-plus" />
+                </button>
                 <a
                     href={googleMapsUrl(Rest)}
                     target="_blank"

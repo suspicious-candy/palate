@@ -127,15 +127,6 @@
   background: var(--red-tint);
   border-color: #e6cfca;
 }
-.btnPrimary {
-  background: var(--red);
-  border-color: var(--red);
-  color: #fff;
-}
-.btnPrimary:hover {
-  background: var(--red-dark);
-  border-color: var(--red-dark);
-}
 
 /* sections ---------------------------------------------------------- */
 .grid {

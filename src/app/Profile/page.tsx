@@ -207,9 +207,6 @@ export default function UserProfile() {
                         >
                             Edit Profile
                         </button>
-                        <button type="button" className={`${styles.btn} ${styles.btnPrimary}`}>
-                            Book Table
-                        </button>
                     </div>
                 </header>
 
