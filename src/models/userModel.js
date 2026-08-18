@@ -53,6 +53,16 @@ const userSchema = new mongoose.Schema({
         type: Date,
     },
 
+    /* IANA zone name, captured from the browser at signup and refreshed on each
+       login so it follows someone who moves. Used to render times in outgoing
+       email as the recipient would read them — without it the server's own zone
+       is the only guess available, which is correct on a laptop and wrong on a
+       UTC host. Validated by lib/timezone.ts before it is ever written. */
+    timeZone: {
+        type: String,
+        default: "",
+    },
+
     reservations: [
         { type: mongoose.Schema.Types.ObjectId, ref: "reservations" },
     ],

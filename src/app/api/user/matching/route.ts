@@ -1,7 +1,7 @@
 import User from "@/models/userModel.js";
 import matchingModel from "@/models/matching.js";
 import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/withAuth";
+import { withAuth, withVerified } from "@/lib/withAuth";
 import { z } from "zod";
 import { listFriends } from "@/lib/friends";
 import { findActiveGroup, findGroupById } from "@/lib/activeGroup";
@@ -56,7 +56,9 @@ export const GET = withAuth(async (request, user) => {
     }
 });
 
-export const POST = withAuth(async (request, user) => {
+/* Verified-only: creating a group mints an invite code that gets forwarded to
+   other people. GET stays open so an unverified user can still see a group. */
+export const POST = withVerified(async (request, user) => {
     try {
         const userId = user.id;
 

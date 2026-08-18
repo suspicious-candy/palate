@@ -13,8 +13,19 @@ export const GET = withAuth(async (request, user) => {
 
         const userId = user.id;
 
+        /* The token fields are excluded alongside the password because they are
+           the same kind of secret: anyone holding verifyToken can verify the
+           account, and forgotPasswordToken can reset it. "-password" alone was
+           shipping both to the browser on every dashboard load, where they sit
+           in memory and in any logged network response.
+
+           isVerified is deliberately still included — the profile page reads it
+           to show the badge and the resend button. */
         const authUser = await User.findById(userId)
-            .select("-password")
+            .select(
+                "-password -verifyToken -verifyTokenExpiry " +
+                "-forgotPasswordToken -forgotPasswordTokenExpiry"
+            )
             .populate("wishlist")
             // `lists` is a Map of name -> [restaurant refs]; `$*` is mongoose's
             // wildcard for map VALUES. Without it the page receives raw ObjectIds.

@@ -3,6 +3,7 @@ import User from "@/models/userModel.js"
 import { NextRequest, NextResponse, after } from "next/server";
 import { sendMail } from "@/lib/mailer";
 import { verificationEmail } from "@/lib/emailTemplates";
+import { normalizeTimeZone } from "@/lib/timezone";
 import bcrypt from "bcryptjs";
 import  jwt  from "jsonwebtoken";
 import { z } from "zod";
@@ -20,6 +21,10 @@ export const signupSchema = z.object({
     (v) => (v === "" || v == null ? undefined : v),
     z.coerce.date().optional()
   ),
+  /* Optional and unvalidated here on purpose — normalizeTimeZone decides
+     whether it is storable. A browser reporting a zone we do not recognise
+     should not fail an otherwise valid signup. */
+  timeZone: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
         );
         }
-        const { username, firstName, lastName, email, password, phone, dob } = result.data;
+        const { username, firstName, lastName, email, password, phone, dob, timeZone } = result.data;
 
         if (!process.env.TOKEN_SECRET) {
             return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
@@ -73,6 +78,7 @@ export async function POST(request: NextRequest) {
             password: hashedPassword,
             phone,
             dob,
+            timeZone: normalizeTimeZone(timeZone) ?? "",
             verifyToken: verificationToken,
             verifyTokenExpiry: new Date(Date.now() + 60 * 60 * 1000),
 

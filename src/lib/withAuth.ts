@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connect } from "@/dbConfig/dbConfig";
 import { getUserFromToken, type TokenPayload } from "@/lib/auth";
+import User from "@/models/userModel.js";
 
 /* THIS is the authorization boundary, not proxy.ts. Proxy only checks that a
    cookie named "token" exists — it never verifies the signature — so it is a UX
@@ -75,6 +76,39 @@ export function withAuth<C>(handler: AuthedHandler<C>) {
       throw error;
     }
   };
+}
+
+/* Authentication says WHO. This says the address they claimed is theirs, and it
+   wraps withAuth rather than sitting inside it because most routes do not need
+   it — reading your own dashboard is not an action that reaches anybody else.
+   Reserved for the ones that do: committing to a booking, forming a group,
+   joining someone else's.
+
+   Read from the database, NOT from the JWT. Putting isVerified in the token
+   looks cheaper and is wrong: the token is minted at signup while the flag is
+   still false and lives for a day, so a user who verifies would keep being
+   refused until the cookie happened to expire. A claim that can go stale must
+   not be the thing an authorization check reads.
+
+   403 and not 401 — the session is perfectly valid, the account just is not
+   cleared for this yet, and telling the client to re-authenticate would send it
+   round a loop that cannot help. */
+export function withVerified<C>(handler: AuthedHandler<C>) {
+  return withAuth<C>(async (request, user, context) => {
+    const account = await User.findById(user.id).select("isVerified").lean();
+
+    if (!account?.isVerified) {
+      return NextResponse.json(
+        {
+          error: "Verify your email address to do this.",
+          code: "EMAIL_UNVERIFIED",
+        },
+        { status: 403 }
+      );
+    }
+
+    return handler(request, user, context);
+  });
 }
 
 /* Set on the RESPONSE, which is what makes it visible to the browser. The

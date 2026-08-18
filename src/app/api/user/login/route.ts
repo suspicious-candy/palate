@@ -5,10 +5,15 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import  jwt  from "jsonwebtoken";
 import { hit, peek, clientKey, tooManyRequests, LIMITS } from "@/lib/rateLimit";
+import { normalizeTimeZone } from "@/lib/timezone";
 
 export const loginSchema = z.object({
   identifier: z.string().min(3),
   password: z.string().min(8),
+  /* Refreshed on every sign-in rather than only at signup: it backfills every
+     account created before this field existed, and it follows a user who
+     moves. Optional because a non-browser client has no zone to report. */
+  timeZone: z.string().optional(),
 });
 
 /* A real bcrypt hash of nothing anyone knows, compared against when the account
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { identifier, password } = result.data;
+        const { identifier, password, timeZone } = result.data;
 
         // If the identifier parses as an email, look the user up by email;
         // otherwise treat it as a username.
@@ -104,6 +109,15 @@ export async function POST(request: NextRequest) {
 
         if (!process.env.TOKEN_SECRET) {
             return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+
+        /* Written only after `valid` — updating on a failed attempt would let an
+           unauthenticated caller rewrite a stranger's stored zone by guessing at
+           their username. Skipped when unchanged so a normal sign-in stays a
+           read. */
+        const zone = normalizeTimeZone(timeZone);
+        if (zone && zone !== user.timeZone) {
+            await User.updateOne({ _id: user._id }, { $set: { timeZone: zone } });
         }
 
         const tokenData = {

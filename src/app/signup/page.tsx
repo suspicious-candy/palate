@@ -8,6 +8,7 @@ import styles from "./signup.module.css";
 import { toast } from "react-hot-toast";
 import { useUser } from "@/lib/userContext";
 import { safeNext, readNextParam } from "@/lib/safeNext";
+import { browserTimeZone } from "@/lib/timezone";
 
 
 export default function SignupPage(){
@@ -51,7 +52,10 @@ export default function SignupPage(){
         try{
 
             setloading(true);
-            const res = await toast.promise(axios.post("/api/user/signup", user), {
+            const res = await toast.promise(axios.post("/api/user/signup", {
+                ...user,
+                timeZone: browserTimeZone(),
+            }), {
                 loading: "Creating your account...",
                 success: "Account created! Redirecting...",
                 error: (err) => err.response?.data?.error ?? "Signup failed",

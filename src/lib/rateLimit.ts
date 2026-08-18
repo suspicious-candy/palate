@@ -124,6 +124,12 @@ export const LIMITS = {
        collection, so the cost of abuse outlives the request. */
     signup: { limit: 5, windowMs: 60 * 60_000 },
 
+    /* Keyed by user id, not IP: this endpoint is authenticated, and the thing
+       being rationed is outbound email charged to our SMTP reputation. Three an
+       hour covers "it went to spam, try again" twice over; anything more is a
+       script. */
+    resendVerification: { limit: 3, windowMs: 60 * 60_000 },
+
     /* The token is 256 bits, so guessing it is not the threat — the limit is
        here so an unauthenticated endpoint cannot be used to hammer the users
        collection with lookups. Loose enough that a real person clicking a link

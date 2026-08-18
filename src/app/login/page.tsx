@@ -7,6 +7,7 @@ import axios from "axios"
 import styles from "./login.module.css";
 import { useUser } from "@/lib/userContext";
 import { safeNext, readNextParam } from "@/lib/safeNext";
+import { browserTimeZone } from "@/lib/timezone";
 import { toast } from "react-hot-toast";
 
 export default function LoginPage(){
@@ -41,7 +42,10 @@ export default function LoginPage(){
         try{
 
             setloading(true);
-            const res = await toast.promise(axios.post("/api/user/login", user), {
+            const res = await toast.promise(axios.post("/api/user/login", {
+                ...user,
+                timeZone: browserTimeZone(),
+            }), {
                     loading: "Logging in to your account...",
                     success: "Login Successful!! Redirecting...",
                     error: (err) => err.response?.data?.error ?? "Login failed",

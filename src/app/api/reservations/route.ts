@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/withAuth";
+import { NextResponse, after } from "next/server";
+import { withAuth, withVerified } from "@/lib/withAuth";
 import Restaurant from "@/models/restaurantModel.js";
 import Reservation from "@/models/reservationModel.js";
 import User from "@/models/userModel.js";
 import { z } from "zod";
 import { completeDueReservations } from "@/lib/completeReservations";
+import { sendMail } from "@/lib/mailer";
+import { reservationEmail, reservationCancelledEmail } from "@/lib/emailTemplates";
+import { buildReservationIcs, googleCalendarUrl } from "@/lib/calendar";
 
 const bodySchema = z.object({
   fsqId: z.string(),
@@ -31,7 +34,10 @@ export const GET = withAuth(async (request, user) => {
   }
 });
 
-export const POST = withAuth(async (request, user) => {
+/* Verified-only: booking is the first action here that reaches a third party.
+   GET and PATCH stay on withAuth — reading and cancelling your own reservations
+   must keep working even while the address is unconfirmed. */
+export const POST = withVerified(async (request, user) => {
   try {
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -63,6 +69,44 @@ export const POST = withAuth(async (request, user) => {
       $addToSet: { reservations: reservation._id },
     });
 
+    /* Same contract as signup: scheduled after the response so the booking UI
+       never waits on SMTP, and swallowed on failure because the reservation is
+       already committed — a mail outage must not turn a successful booking into
+       a 500 the user retries into a duplicate.
+
+       `rest` is reused rather than re-queried; it has been in scope since the
+       lookup above. */
+    after(async () => {
+      try {
+        /* The JWT carries username and email but no first name, and its email
+           can be a day stale if the address changed. One extra read, paid after
+           the response has already gone out. */
+        const account = await User.findById(user.id).select("firstName email timeZone").lean();
+        if (!account) return;
+
+        const { subject, html } = reservationEmail({
+          firstName: account.firstName,
+          restaurantName: rest.name,
+          address: rest.location?.formattedAddress,
+          date: reservation.date,
+          partySize: reservation.partySize,
+          notes: reservation.notes,
+          timeZone: account.timeZone || undefined,
+          googleUrl: googleCalendarUrl(reservation, rest),
+        });
+
+        await sendMail(account.email, subject, html, [
+          {
+            filename: "reservation.ics",
+            content: buildReservationIcs(reservation, rest),
+            contentType: "text/calendar",
+          },
+        ]);
+      } catch (mailError) {
+        console.error("[reservations] confirmation email failed:", mailError);
+      }
+    });
+
     return NextResponse.json({ success: true, reservation }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -85,11 +129,13 @@ export const PATCH = withAuth(async (request, user) => {
 
         const { reservationId, status } = result.data;
 
+        /* Populated so the cancellation email has a restaurant name and address
+           to work with — findOneAndUpdate alone returns the bare ObjectId ref. */
         const updated = await Reservation.findOneAndUpdate(
           { _id: reservationId, users: user.id },
           { $set: { status } },
           { new: true, runValidators: true }
-        );
+        ).populate("restaurant");
 
         if(!updated){
             return NextResponse.json(
@@ -97,6 +143,43 @@ export const PATCH = withAuth(async (request, user) => {
                 {status:404}
             )
         }
+
+        /* Only on cancellation. "completed" is a bookkeeping transition run by
+           completeDueReservations on a timer, and mailing someone about a dinner
+           they already ate is noise. */
+        if (status === "cancelled") {
+            after(async () => {
+                try {
+                    const account = await User.findById(user.id)
+                        .select("firstName email timeZone")
+                        .lean();
+                    if (!account) return;
+
+                    const { subject, html } = reservationCancelledEmail({
+                        firstName: account.firstName,
+                        restaurantName: updated.restaurant.name,
+                        date: updated.date,
+                        timeZone: account.timeZone || undefined,
+                    });
+
+                    /* Same UID as the confirmation, SEQUENCE bumped, METHOD
+                       CANCEL — that trio is what makes the recipient's calendar
+                       withdraw the original entry instead of adding a second,
+                       contradictory one beside it. buildReservationIcs derives
+                       all three from status, which is already "cancelled" here. */
+                    await sendMail(account.email, subject, html, [
+                        {
+                            filename: "reservation.ics",
+                            content: buildReservationIcs(updated, updated.restaurant),
+                            contentType: "text/calendar",
+                        },
+                    ]);
+                } catch (mailError) {
+                    console.error("[reservations] cancellation email failed:", mailError);
+                }
+            });
+        }
+
          return NextResponse.json({ success: true, reservation: updated });
     }
 

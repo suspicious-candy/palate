@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { admissionVerdict, type AdmissionOutcome } from "@/lib/groupAdmission";
-import { withAuth } from "@/lib/withAuth";
+import { withVerified } from "@/lib/withAuth";
 import { z } from "zod";
 import { findGroupByInviteCode, findGroupById } from "@/lib/activeGroup";
 import { areFriendsWithAny } from "@/lib/friends";
@@ -66,7 +66,9 @@ function success(outcome: AdmissionOutcome, group: matching | null) {
     }
 }
 
-export const POST = withAuth(async (request, user) => {
+/* Verified-only: joining puts you in front of other people — the organiser sees
+   a request, or the roster gains a name. */
+export const POST = withVerified(async (request, user) => {
     try {
         const userId = user.id;
 

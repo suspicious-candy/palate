@@ -67,6 +67,17 @@ export type User = {
     numVisits?: number;
     firstOrderDate?: string | Date;
     StarmembershipStatus?: boolean;
+    /* Whether the address on this account has been confirmed. Drives the badge
+       and the resend button on the profile page, and mirrors the server-side
+       check in withVerified — but it is display only. The gate that actually
+       refuses a booking reads the database on every request; this flag is a
+       copy in the browser and must never be what an authorization decision
+       trusts. */
+    isVerified?: boolean;
+    /* IANA zone name, or "" for accounts that have not signed in since this was
+       added. Server-side email rendering is the only consumer today — the
+       browser formats with the viewer's own zone implicitly. */
+    timeZone?: string;
     visitedResturants: Restaurant[];
     wishlist: Restaurant[];
     reservations:Reservation[];

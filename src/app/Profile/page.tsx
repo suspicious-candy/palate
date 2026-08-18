@@ -22,6 +22,63 @@ const STATUS_CLASS: Record<ReservationStatus, string> = {
     cancelled: styles.statusCancelled,
 };
 
+/* Sits beside the Star Member chip because it answers the same kind of question
+   about the account, and because next to the name is where someone looks to
+   find out what state their profile is in.
+
+   One component for both states rather than a badge and a separate button:
+   they are mutually exclusive, and splitting them would let a future edit
+   render both at once. */
+function VerificationChip({ isVerified }: { isVerified?: boolean }) {
+    const [sending, setSending] = React.useState(false);
+    /* Latches after a successful send so the button stops inviting clicks that
+       the 3-per-hour limit would start refusing. */
+    const [sent, setSent] = React.useState(false);
+
+    if (isVerified) {
+        return (
+            <span className={styles.verified}>
+                <i className="ph-fill ph-seal-check" aria-hidden="true" />
+                Verified
+            </span>
+        );
+    }
+
+    const resend = async () => {
+        setSending(true);
+        try {
+            const res = await axios.post("/api/user/resend-verification");
+            /* The route answers 200 with alreadyVerified when the address was
+               confirmed in another tab — success, but a different sentence. */
+            if (res.data?.alreadyVerified) {
+                toast.success("Already verified — refresh to update.");
+            } else {
+                toast.success("Verification email sent.");
+            }
+            setSent(true);
+        } catch (error: any) {
+            toast.error(
+                error.response?.data?.error ?? "Could not send the email."
+            );
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <button
+            type="button"
+            className={styles.unverified}
+            onClick={resend}
+            disabled={sending || sent}
+            title="Confirm your email to book tables and join groups"
+        >
+            <i className="ph-fill ph-warning-circle" aria-hidden="true" />
+            {sending ? "Sending…" : sent ? "Email sent" : "Verify email"}
+        </button>
+    );
+}
+
 // ---------- Helpers ----------
 // Every date here crosses the wire as an ISO string, so each helper normalises
 // with `new Date(...)` rather than trusting the declared type.
@@ -190,6 +247,7 @@ export default function UserProfile() {
                                 {user.StarmembershipStatus && (
                                     <span className={styles.star}>Star Member</span>
                                 )}
+                                <VerificationChip isVerified={user.isVerified} />
                             </div>
                             <p className={styles.handle}>@{user.username}</p>
                             <p className={styles.tagline}>
