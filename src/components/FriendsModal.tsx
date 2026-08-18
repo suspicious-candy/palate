@@ -18,8 +18,8 @@ function displayName(person: FriendSummary): string {
     );
 }
 
-/* One row, two uses: friends pass no children, requests pass the timestamp
-   and the buttons. Keeps the avatar/name markup in one place while leaving
+/* One row, two uses: friends pass no children, requests pass the timestamp and
+   the buttons. This keeps the avatar and name markup in one place while leaving
    the difference between the two lists visible at the call site. */
 function PersonRow({
     person,
@@ -52,9 +52,9 @@ export default function FriendsModal({ onClose }: { onClose: () => void }) {
     const router = useRouter();
     const { user, pending, confirmed, refreshFriends, refreshUser } = useUser();
 
-    /* Lazy initializer, deliberately not a useEffect: this is computed once on
-       open. An effect would re-run when accepting the last request empties
-       `pending`, yanking the user off the tab they are looking at. */
+    /* A lazy initializer rather than a useEffect, deliberately: this is computed
+       once on open. An effect would re-run when accepting the last request
+       empties `pending`, pulling the user off the tab they are looking at. */
     const [tab, setTab] = React.useState<"friends" | "requests">(() =>
         pending.length > 0 ? "requests" : "friends"
     );
@@ -71,7 +71,7 @@ export default function FriendsModal({ onClose }: { onClose: () => void }) {
 
     async function act(request: PendingReq, action: "accept" | "decline") {
         const username = request.user.username;
-        // Per-row, not per-modal: a single flag would disable every other row.
+        // Per row rather than per modal: a single flag would disable every row.
         setBusyId(request._id);
         try {
             const res =
@@ -81,10 +81,11 @@ export default function FriendsModal({ onClose }: { onClose: () => void }) {
                           `/api/user/friends?identifier=${encodeURIComponent(username)}`
                       );
 
-            // The server already picked the wording via OUTCOME_MESSAGES.
+            // The server already chose the wording, via OUTCOME_MESSAGES.
             toast.success(res.data?.message ?? "Done");
 
-            // One fetch fills both lists, so this updates Friends and Requests.
+            // One fetch fills both lists, so this updates Friends and Requests
+            // together.
             await refreshFriends();
             if (action === "accept") await refreshUser();
         } catch (error: any) {
@@ -111,9 +112,9 @@ export default function FriendsModal({ onClose }: { onClose: () => void }) {
         }
     }
 
-    /* No `mounted` guard: Nav renders this only when inboxOpen is true, which
-       can only happen after a click, so it never runs during server render and
-       document.body is always there. */
+    /* No `mounted` guard is needed: Nav renders this only when inboxOpen is true,
+       which can only happen after a click, so it never runs during server render
+       and document.body is always there. */
     return createPortal(
         <div className={styles.overlay} onClick={onClose}>
             <div
@@ -174,8 +175,8 @@ export default function FriendsModal({ onClose }: { onClose: () => void }) {
                     ) : (
                         <ul className={styles.list}>
                             {confirmed.map((person) => (
-                                /* Keyed by id, never by index: accepting a request removes
-                                   an item mid-list and shifts everything after it. */
+                                /* Keyed by id and never by index: accepting a request
+                                   removes an item mid-list and shifts the rest. */
                                 <PersonRow key={person._id} person={person} />
                             ))}
                         </ul>

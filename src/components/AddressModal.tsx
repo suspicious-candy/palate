@@ -6,10 +6,10 @@ import axios from "axios";
 import styles from "./EditProfileModal.module.css";
 import { useUser, type Address } from "@/lib/userContext";
 
-/* One modal for both create and edit — `editing` decides which. Two components
-   would mean two copies of the same seven inputs, and the pair would drift the
-   moment a field is added. The only real differences are the verb, the HTTP
-   method, and whether addressId rides along. */
+/* One modal for both create and edit, with `editing` deciding which. Two
+   components would mean two copies of the same seven inputs, and the pair would
+   drift the moment a field is added. The only real differences are the verb, the
+   HTTP method, and whether addressId rides along. */
 
 type Draft = {
     label: "" | "Home" | "Office";
@@ -69,8 +69,9 @@ export default function AddressModal({
 }) {
     const { refreshUser } = useUser();
 
-    // Lazy initializer, not an effect: seeding in an effect renders once with
-    // blank inputs and again with the real ones, losing anything typed between.
+    // A lazy initializer rather than an effect: seeding in an effect renders once
+    // with blank inputs and again with the real ones, losing anything typed
+    // between.
     const [draft, setDraft] = React.useState<Draft>(() =>
         editing ? draftFrom(editing) : EMPTY
     );
@@ -93,10 +94,11 @@ export default function AddressModal({
         setBusy(true);
         setError(null);
         try {
-            /* pincode is a NUMBER on the model, so an empty box must be omitted
-               rather than sent as "" or NaN — both fail the schema. Number("")
-               is 0, which would silently store a real postcode of zero, hence
-               the explicit emptiness check rather than a truthiness one. */
+            /* pincode is a number on the model, so an empty box must be omitted
+               rather than sent as "" or NaN, both of which fail the schema.
+               Number("") is 0, which would silently store a real postcode of
+               zero, hence the explicit emptiness check rather than a truthiness
+               one. */
             const pincode =
                 draft.pincode.trim() === "" ? undefined : Number(draft.pincode);
 
@@ -110,8 +112,8 @@ export default function AddressModal({
                 city: draft.city.trim(),
                 state: draft.state.trim(),
                 country: draft.country.trim(),
-                // Optional fields are OMITTED when blank, never sent as "" —
-                // the route's schema has no empty-string branch for them.
+                // Optional fields are omitted when blank, never sent as "": the
+                // route's schema has no empty-string branch for them.
                 ...(draft.aptNumber.trim() ? { aptNumber: draft.aptNumber.trim() } : {}),
                 ...(pincode !== undefined ? { pincode } : {}),
                 ...(draft.label ? { label: draft.label } : {}),

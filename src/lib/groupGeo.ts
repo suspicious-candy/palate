@@ -1,38 +1,45 @@
 import Restaurant from "@/models/restaurantModel.js";
+import { haversineKm, type Point } from "@/lib/distance";
 
-/* Where should a group's restaurant search be centred, and how wide?
+/* Re-exported rather than redefined. The dashboard needs haversine without
+   dragging the Restaurant model into the client bundle, so the math lives in
+   lib/distance.ts; re-exporting keeps existing importers of this module
+   working. */
+export { haversineKm };
+export type { Point };
 
-   The rule: anchor on the admin (the person organising). If every other
+/* Where a group's restaurant search is centred, and how wide it goes.
+
+   The rule: anchor on the admin, the person organising. If every other
    participant is within BASE_RADIUS_KM of them, use exactly that — the common
    case is friends who live near each other, and a fixed radius keeps the
-   shortlist predictable. Only when someone falls outside does the circle grow,
-   to their distance plus BUFFER_KM so there is somewhere to eat near them too.
+   shortlist predictable. The circle grows only when someone falls outside, to
+   their distance plus BUFFER_KM so there is somewhere to eat near them too.
 
-   Note the asymmetry this accepts: the circle always grows around the ADMIN,
+   This accepts a known asymmetry: the circle always grows around the admin and
    never re-centres. A member 40km east gets a 45km circle centred on the admin,
-   which includes plenty of restaurants 45km *west* of them. Step 3 chose
-   least-misery for taste (maximise the worst-off member's satisfaction); the
-   consistent extension would be least-misery for travel — minimise the farthest
-   member's trip, which means anchoring nearer the middle. Worth revisiting once
-   groups are real; admin-anchored is the simpler, more predictable start. */
+   which includes plenty of restaurants 45km west of them. Taste ranking uses
+   least-misery, maximising the worst-off member's satisfaction; the consistent
+   extension would be least-misery for travel too, minimising the farthest
+   member's trip, which means anchoring nearer the middle. Admin-anchored is the
+   simpler and more predictable start, and is worth revisiting once groups see
+   real use. */
 
 export const BASE_RADIUS_KM = 30;
 export const BUFFER_KM = 5;
 
 /* A participant travelling in another city would otherwise inflate the radius
-   without limit, and since Mongo returns the nearest N *to the admin*, their
+   without limit, and since Mongo returns the nearest N to the admin, their
    local restaurants would not make the cut anyway — the group would just get a
    worse shortlist for everyone. Past this they are dropped from the geometry
-   and reported, so the UI can say so rather than silently ignoring them. */
+   and reported, so the UI can say so rather than ignoring them silently. */
 export const MAX_RADIUS_KM = 100;
 
 /* Chroma's candidate filter builds one predicate per id (MAX_CANDIDATES=500 in
-   service.py), so the pool is capped here too. `$near` returns nearest-first,
-   making this a sane truncation rather than an arbitrary one. */
+   service.py), so the pool is capped here to match. `$near` returns
+   nearest-first, which makes this a sane truncation rather than an arbitrary
+   one. */
 export const MAX_CANDIDATES = 500;
-
-/** GeoJSON order: [longitude, latitude]. Matches restaurants.geo.coordinates. */
-export type Point = [number, number];
 
 export type SearchArea = {
     center: Point;
@@ -43,30 +50,12 @@ export type SearchArea = {
     excludedMembers: number[];
 };
 
-export function haversineKm(a: Point, b: Point): number {
-    const R = 6371;
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-    // Destructure in GeoJSON order so the lng/lat swap can't happen silently.
-    const [lngA, latA] = a;
-    const [lngB, latB] = b;
-
-    const dLat = toRad(latB - latA);
-    const dLng = toRad(lngB - lngA);
-
-    const h =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLng / 2) ** 2;
-
-    return 2 * R * Math.asin(Math.sqrt(h));
-}
-
 /**
- * Size the search circle for a group.
+ * Sizes the search circle for a group.
  *
- * @param admin   the organiser's location — always the centre
- * @param members every other participant's location; `null` for anyone who
- *                hasn't opened the group yet, and simply skipped
+ * @param admin   the organiser's location, always the centre
+ * @param members every other participant's location; `null` for anyone who has
+ *                not opened the group yet, and skipped
  */
 export function groupSearchArea(admin: Point, members: (Point | null)[]): SearchArea {
     const excludedMembers: number[] = [];
@@ -93,9 +82,9 @@ export function groupSearchArea(admin: Point, members: (Point | null)[]): Search
 /**
  * The restaurants a group could actually go to, nearest first.
  *
- * Restricted to `source: "foursquare"` because only those are in places_v2 —
- * a shortlist entry with no vector cannot be taste-ranked, and for a list of
- * ~7 that is worse than omitting it. This differs on purpose from
+ * Restricted to `source: "foursquare"` because only those rows are in places_v2.
+ * A shortlist entry with no vector cannot be taste-ranked, and in a list of
+ * around seven that is worse than omitting it. This differs on purpose from
  * /api/Restaurants/nearby, where ranking must reorder the geo results without
  * dropping any of them.
  */

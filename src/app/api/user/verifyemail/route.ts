@@ -6,10 +6,10 @@ import { hit, clientKey, tooManyRequests, LIMITS } from "@/lib/rateLimit";
 
 const bodySchema = z.object({ token: z.string().min(1) });
 
-/* POST, not GET, and not a click-through on the page itself.
+/* POST rather than GET, and not a click-through on the page itself.
 
-   Mail clients and corporate security scanners PRE-FETCH links to check them
-   for malware. If loading the URL performed the verification, a scanner would
+   Mail clients and corporate security scanners pre-fetch links to check them for
+   malware. If loading the URL performed the verification, a scanner would
    silently consume the token before the user ever clicked, and the real click
    would land on "invalid link". A page that renders first and then POSTs is
    invisible to that. */
@@ -30,16 +30,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing token" }, { status: 400 });
         }
 
-        /* One atomic findOneAndUpdate rather than find → mutate → save.
+        /* One atomic findOneAndUpdate rather than find, mutate, save.
 
-           Both conditions live in the FILTER, so an expired token simply does
-           not match and there is no window between checking the expiry and
-           acting on it. Atomicity also settles the double-click: two concurrent
-           requests carrying the same token cannot both match, because the first
-           $unset removes the field the second is filtering on.
+           Both conditions live in the filter, so an expired token simply does not
+           match and there is no window between checking the expiry and acting on
+           it. Atomicity also settles the double-click: two concurrent requests
+           carrying the same token cannot both match, because the first $unset
+           removes the field the second is filtering on.
 
            The token is unset rather than kept, which is what makes the link
-           single-use — otherwise the URL sitting in an inbox stays a live
+           single-use. Otherwise the URL sitting in an inbox stays a live
            credential forever. */
         const user = await User.findOneAndUpdate(
             {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
             { new: true }
         ).select("email username isVerified");
 
-        /* Deliberately one message for both "never existed" and "already spent".
+        /* One message for both "never existed" and "already spent", deliberately.
            They are indistinguishable after the $unset, and the page offers a
            sign-in link so someone who simply clicked twice is not stranded. */
         if (!user) {

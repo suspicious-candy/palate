@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
-// Cache the connection across hot-reloads in dev so we don't open a new
-// connection (and leak sockets) on every request / file change.
+// Caches the connection across hot reloads in dev, so a new connection is not
+// opened — and sockets not leaked — on every request or file change.
 type MongooseCache = {
     conn: typeof mongoose | null;
     promise: Promise<typeof mongoose> | null;
@@ -23,7 +23,7 @@ export async function connect() {
         }
 
         cached.promise = mongoose.connect(process.env.mongo_url, {
-            // Fail fast (5s) instead of letting model calls buffer for 10s.
+            // Fails fast at 5s rather than letting model calls buffer for 10s.
             serverSelectionTimeoutMS: 5000,
         });
     }
@@ -31,7 +31,7 @@ export async function connect() {
     try {
         cached.conn = await cached.promise;
     } catch (error) {
-        // Reset so the next request can retry instead of reusing a rejected promise.
+        // Reset so the next request retries rather than reusing a rejected promise.
         cached.promise = null;
         throw error;
     }

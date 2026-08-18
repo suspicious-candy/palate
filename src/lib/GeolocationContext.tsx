@@ -31,9 +31,9 @@ export function GeolocationProvider({ children }: { children: React.ReactNode })
                 setState({ status: "error", message: error.message || "Location permission denied" });
             },
             {
-                enableHighAccuracy: false, // city-level precision is enough; avoids a slow GPS fix
+                enableHighAccuracy: false, // city-level precision is enough, and avoids a slow GPS fix
                 timeout: 10000,
-                maximumAge: 5 * 60 * 1000, // reuse a fix from the last 5 minutes instead of re-prompting the OS
+                maximumAge: 5 * 60 * 1000, // reuses a fix from the last 5 minutes rather than re-prompting the OS
             }
         );
     }, []);

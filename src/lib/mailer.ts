@@ -5,10 +5,10 @@ import type Mail from "nodemailer/lib/mailer";
    port has to be coerced before nodemailer sees it. */
 const port = Number(process.env.SMTP_PORT);
 
-/* Port 465 speaks TLS from the first byte (`secure: true`); 587 and 2525 open
-   in plaintext and upgrade via STARTTLS (`secure: false`). Getting this wrong
-   does not error — the socket just hangs until it times out — so it is derived
-   from the port rather than left to a separate env var that can drift. */
+/* Port 465 speaks TLS from the first byte (`secure: true`), while 587 and 2525
+   open in plaintext and upgrade via STARTTLS (`secure: false`). Getting this
+   wrong does not error; the socket simply hangs until it times out. So it is
+   derived from the port rather than left to a separate env var that can drift. */
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port,
@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/* One transporter for the whole process: creating it per call would re-open a
+/* One transporter for the whole process. Creating it per call would re-open a
    connection to the mail server every time. */
 export async function sendMail(
   to: string,
@@ -40,8 +40,8 @@ export async function sendMail(
   });
 
   /* Ethereal accepts mail and then discards it, handing back a URL where the
-     rendered message can be read instead. Nothing to log against a real SMTP
-     provider, where getTestMessageUrl returns false. */
+     rendered message can be read instead. There is nothing to log against a real
+     SMTP provider, where getTestMessageUrl returns false. */
   const preview = nodemailer.getTestMessageUrl(info);
   if (preview) {
     console.log(`[mailer] preview: ${preview}`);

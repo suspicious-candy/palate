@@ -24,7 +24,7 @@ export default function InviteModal({
 
     React.useEffect(() => setMounted(true), []);
 
-    // The origin is only known in the browser, so the link is built after mount
+    // The origin is known only in the browser, so the link is built after mount
     // rather than during render.
     React.useEffect(() => {
         if (!user?.username) return;

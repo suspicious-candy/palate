@@ -1,8 +1,8 @@
 "use client"
 import React from "react";
 import axios from "axios";
-/* Side-effect import, not dead code: this registers the global axios response
-   interceptor that rescues a dead session. Imported HERE because this provider
+/* Side-effect import, not dead code. This registers the global axios response
+   interceptor that rescues a dead session. Imported here because this provider
    is mounted in the root layout, so the interceptor is installed before the
    first request below goes out. */
 import "@/lib/sessionExpiry";
@@ -69,13 +69,12 @@ export type User = {
     StarmembershipStatus?: boolean;
     /* Whether the address on this account has been confirmed. Drives the badge
        and the resend button on the profile page, and mirrors the server-side
-       check in withVerified — but it is display only. The gate that actually
-       refuses a booking reads the database on every request; this flag is a
-       copy in the browser and must never be what an authorization decision
-       trusts. */
+       check in withVerified, but it is display only. The gate that actually
+       refuses a booking reads the database on every request; this flag is a copy
+       in the browser and must never be what an authorization decision trusts. */
     isVerified?: boolean;
     /* IANA zone name, or "" for accounts that have not signed in since this was
-       added. Server-side email rendering is the only consumer today — the
+       added. Server-side email rendering is the only consumer today, since the
        browser formats with the viewer's own zone implicitly. */
     timeZone?: string;
     visitedResturants: Restaurant[];
@@ -88,11 +87,11 @@ export type User = {
         allergines: string[];
         diet: string[];
     };
-    /* The soonest group whose dinner has not passed, or null. Not a field on
-       the user document — /api/user/dashboard attaches it from a query against
-       the matching collection, so there is no pointer here to drift out of
-       sync with participants[]. A user may be in several groups at once; this
-       is the one worth showing. */
+    /* The soonest group whose dinner has not passed, or null. Not a field on the
+       user document: /api/user/dashboard attaches it from a query against the
+       matching collection, so there is no pointer here to drift out of sync with
+       participants[]. A user may be in several groups at once, and this is the
+       one worth showing on the dashboard. */
     matchingGroup: matching | null;
     friendlist:User[];
     lists: Record<string, Restaurant[]>;
@@ -103,31 +102,31 @@ export type participant = {
     hasVoted:boolean,
     approvals: Restaurant[],
     votedAt:string | Date,
-    /* Optional, not defaulted: a participant who has not opened the group — or
-       who denied permission — has no coordinates at all. Modelling that as
-       absent rather than as a zeroed point is what stops [0, 0] (a real place
-       off West Africa) from ever reading as "unknown". */
+    /* Optional rather than defaulted. A participant who has not opened the group,
+       or who denied permission, has no coordinates at all. Modelling that as
+       absent rather than as a zeroed point is what stops [0, 0] — a real place
+       off West Africa — from ever reading as "unknown". */
     location?:{ type: "Point"; coordinates: [number, number] },
     locationAt?:string|Date
 };
 /* Someone who followed the invite link but was not auto-admitted. Shaped like
-   PendingReq below rather than like `participant`: there is no vote, no
+   PendingReq below rather than like `participant`, because there is no vote, no
    location and no approvals until they are actually let in. */
 export type pendingRequest = {
     user:FriendSummary,
     requestedAt:string | Date,
 };
 /* Narrow on purpose. GROUP_POPULATE fills this one level deep, so the
-   reservation's own `restaurant` and `users` are still raw ObjectIds — typing
-   it as the full Reservation would claim fields the populate chain does not
-   fill, and `group.reservation.restaurant.name` would typecheck while being
-   undefined at runtime. The group screen needs to know the table exists and
-   when; /reservation is where the whole booking lives. */
+   reservation's own `restaurant` and `users` are still raw ObjectIds. Typing it
+   as the full Reservation would claim fields the populate chain does not fill,
+   and `group.reservation.restaurant.name` would typecheck while being undefined
+   at runtime. The group screen only needs to know the table exists and when;
+   /reservation is where the whole booking lives. */
 export type groupReservation = {
     _id:string,
     date:string|Date,
     partySize:number,
-    // The model's enum, not a bare string — otherwise any typo compares equal.
+    // The model's enum rather than a bare string, so a typo cannot compare equal.
     status:"confirmed"|"cancelled"|"completed",
 };
 
@@ -135,8 +134,8 @@ export type matching = {
     _id:string,
     admins:FriendSummary[],
     membershipOpen:boolean,
-    /* Optional because it is: every group created before invite links existed
-       has no code, and a plain `string` here would let callers assume one. */
+    /* Genuinely optional: every group created before invite links existed has no
+       code, and a plain `string` here would let callers assume one. */
     inviteCode?:string,
     name:string,
     participants:participant[],
@@ -146,6 +145,35 @@ export type matching = {
     status:"open"|"voting"|"closed",
     winner:Restaurant|null,
     reservation: groupReservation | null,
+};
+
+/* What the groups list receives, which is deliberately less than `matching`.
+
+   A list row needs a name, a date, a status, avatars and "3 of 5 voted". It does
+   not need every participant's ballot, the whole shortlist, or the reservation,
+   and populating those for every group a user has ever joined ships tens of KB
+   that nothing on the page reads.
+
+   The cost of the smaller shape is that the pure helpers divide in two.
+   votingClosesAt, groupIsStale, votedCount and totalCount accept this, while
+   tally, leader and closeVote do not: those key restaurants by `fsqId`, which a
+   bare ObjectId does not have. That split is why the list route re-fetches a
+   group in full before it closes anything. */
+export type GroupSummary = {
+    _id: string;
+    name: string;
+    date: string | Date;
+    status: "open" | "voting" | "closed";
+    /* Raw ObjectIds rather than populated users. They serialize to strings over
+       JSON, and the list only ever asks whether the viewer is among them. */
+    admins: string[];
+    participants: { user: FriendSummary; hasVoted: boolean }[];
+    /* Populated, but only far enough to name it: a closed group's row says
+       where you went. */
+    winner: { _id: string; name: string } | null;
+    /* Ids only. The row shows how many are on the shortlist, never which. */
+    restaurants: string[];
+    reservation: string | null;
 };
 
 type UserContextValue = {
@@ -158,16 +186,16 @@ type UserContextValue = {
     confirmed:FriendSummary[];
 };
 
-// Mirrors what listPending() actually sends: the friendship row plus the five
-// user fields the route selects. Widening `user` to the full User would let
-// callers reference fields the server never sends.
+// Mirrors what listPending() actually sends: the friendship row plus the user
+// fields the route selects. Widening `user` to the full User would let callers
+// reference fields the server never sends.
 export type PendingReq = {
     user: Pick<User, "_id" | "username" | "firstName" | "lastName" | "profilePic">;
     _id:string;
     requestedAt:string | Date;
 };
-// listFriends() maps straight to user documents, so these arrive flat — there
-// is no request left to wrap them in, unlike PendingReq above.
+// listFriends() maps straight to user documents, so these arrive flat. There is
+// no request left to wrap them in, unlike PendingReq above.
 export type FriendSummary = Pick<User, "_id" | "username" | "firstName" | "lastName" | "profilePic">;
 
 const userContext = React.createContext<UserContextValue>({

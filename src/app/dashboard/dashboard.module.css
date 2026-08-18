@@ -308,7 +308,34 @@
 .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    /* Tighter than the 10px this was drafted at: the sidebar gives the row
+       286px of usable width, so a looser gap pushes the chip set to an extra
+       line without fitting another chip on the ones above. */
+    gap: 8px;
+}
+
+/* Deliberately quieter than .inviteBtn, which it sits directly under and
+   otherwise mirrors — solid rather than dashed, muted rather than red. Two
+   full-width bordered buttons in the same accent, stacked, would read as a
+   pair of equal choices when one is a primary action and the other is an
+   undo. */
+.clearAllBtn {
+    width: 100%;
+    margin-top: 16px;
+    border: 1px solid var(--cream-line);
+    border-radius: 12px;
+    background: transparent;
+    color: #8a7f77;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 10px 0;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.clearAllBtn:hover {
+    color: var(--red);
+    border-color: var(--red);
 }
 
 .chip {
@@ -333,6 +360,41 @@
     border-color: transparent;
     color: var(--red);
     font-weight: 600;
+}
+
+.emptyFilter {
+    padding: 18px 2px;
+    font-size: 14px;
+    color: #8a7f77;
+}
+
+.clearFilters {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--red);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.showAllBtn {
+    width: 100%;
+    margin-top: 12px;
+    border: none;
+    background: none;
+    color: #8a7f77;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 10px 0;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.showAllBtn:hover {
+    color: var(--red);
 }
 
 /* ---------- recommended restaurant rows ---------- */

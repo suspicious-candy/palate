@@ -12,15 +12,15 @@ const postSchema = z.object({
     action: z.enum(["deny", "approve"]),
 });
 
-/* Refusals only — the three success tags are handled by the switch below.
-   A table rather than a chain of ifs for the same reason join/route.ts uses
-   one: the wording lives in exactly one place, and there is no `||` anywhere
-   for the "always truthy string" mistake to hide in.
+/* Refusals only; the three success tags are handled by the switch below. A table
+   rather than a chain of ifs, for the same reason join/route.ts uses one: the
+   wording lives in exactly one place, and there is no `||` anywhere for the
+   always-truthy-string mistake to hide in.
 
-   409 throughout rather than 403: the request is well formed and the caller is
-   permitted to make it — the group's STATE is what is incompatible. 404 for
-   group_not_found is deliberately worded the same as any other missing group,
-   so the endpoint cannot be used to probe which group ids are real. */
+   409 throughout rather than 403, since the request is well formed and the caller
+   is permitted to make it, and the group's state is what is incompatible. 404 for
+   group_not_found is deliberately worded the same as any other missing group, so
+   the endpoint cannot be used to probe which group ids are real. */
 const REFUSALS: Partial<Record<RequestOutcome, { status: number; error: string }>> = {
     group_not_found: { status: 404, error: "Group not found" },
     not_admin: { status: 403, error: "Only a group admin can answer join requests." },
@@ -29,8 +29,8 @@ const REFUSALS: Partial<Record<RequestOutcome, { status: number; error: string }
     dinner_passed: { status: 409, error: "This dinner has already happened." },
 };
 
-/* One tag -> one response, so the main path and the lost-race path below cannot
-   drift apart. That matters more than it looks: the retry path re-runs the
+/* One tag maps to one response, so the main path and the lost-race path below
+   cannot drift apart. That matters more than it looks: the retry path re-runs the
    verdict against freshly read data, and if it mapped tags differently the same
    outcome would reach the admin worded two ways depending on timing. */
 function respond(outcome: RequestOutcome, group: matching | null) {
@@ -40,9 +40,9 @@ function respond(outcome: RequestOutcome, group: matching | null) {
         case "denied":
             return NextResponse.json({ message: "Request declined", success: true, outcome, group });
         case "already_participant":
-            /* 200, not an error. The admin wanted this person in the group and
-               they are — another admin simply got there first. Deny lands here
-               too, and the wording is neutral on purpose: it reports the state
+            /* 200 rather than an error. The admin wanted this person in the group
+               and they are; another admin simply got there first. Deny lands here
+               too, and the wording is neutral on purpose, reporting the state
                rather than pretending either button did something. */
             return NextResponse.json({
                 message: "They're already in the group.",
@@ -92,19 +92,19 @@ export const POST = withAuth(async (
             return NextResponse.json({ error: "Group not found" }, { status: 404 });
         }
 
-        /* Populated group, so `admins` holds user objects — hence ._id.toString().
-           shortlist/route.ts reads a RAW group and so compares a.toString() on
-           the same field; copying that line here would compare against
+        /* A populated group, so `admins` holds user objects, hence ._id.toString().
+           shortlist/route.ts reads a raw group and so compares a.toString() on the
+           same field; copying that line here would compare against
            "[object Object]" and no admin would ever match. */
         const isAdmin = group.admins.some(
             (a) => a._id.toString() === user.id
         );
 
         /* No separate `if (!isAdmin) return 403` above this. The verdict takes
-           isAdmin precisely so that authorisation is one branch among the others
-           rather than a special case — checking it here as well would make the
-           table's not_admin entry unreachable, which is how a refusal quietly
-           ends up with two different wordings. */
+           isAdmin precisely so authorisation is one branch among the others rather
+           than a special case. Checking it here as well would make the table's
+           not_admin entry unreachable, which is how a refusal quietly ends up with
+           two different wordings. */
         const reqVerdict = requestVerdict(result.data.targetId, group, isAdmin, result.data.action);
         if (reqVerdict !== "approved" && reqVerdict !== "denied") {
             return respond(reqVerdict, group);
@@ -122,16 +122,16 @@ export const POST = withAuth(async (
                     { _id: groupId, "pendingRequests.user": result.data.targetId },
                     { $pull: { pendingRequests: { user: result.data.targetId } } });
 
-        /* matchedCount, not modifiedCount: re-denying someone already gone from
-           the queue matches nothing, but re-approving is not the same shape —
-           every clause in both filters above corresponds to a verdict tag, so
-           zero matched always means one of those preconditions stopped holding
-           between the verdict and the write.
+        /* matchedCount rather than modifiedCount. Re-denying someone already gone
+           from the queue matches nothing, and re-approving is not the same shape:
+           every clause in both filters above corresponds to a verdict tag, so zero
+           matched always means one of those preconditions stopped holding between
+           the verdict and the write.
 
-           Which is why this re-reads and re-runs the verdict instead of guessing.
-           The result object cannot say WHICH clause failed; fresh data can. And
-           because the mapping is total, the re-run always lands on a refusal —
-           it cannot come back "approved" and report a write that never happened. */
+           That is why this re-reads and re-runs the verdict instead of guessing.
+           The result object cannot say which clause failed; fresh data can. And
+           because the mapping is total, the re-run always lands on a refusal — it
+           cannot come back "approved" and report a write that never happened. */
         if (updated.matchedCount === 0) {
             const fresh = await findGroupById(groupId);
             return respond(

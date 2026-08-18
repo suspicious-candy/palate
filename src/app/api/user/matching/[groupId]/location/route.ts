@@ -6,8 +6,9 @@ import { z } from "zod";
 import { findGroupById } from "@/lib/activeGroup";
 
 /* Named {lng, lat} rather than a positional pair. GeoJSON stores [lng, lat],
-   which is the reverse of how everyone says it out loud, so the array is built
-   from named fields at exactly one place — below — and never travels as one. */
+   which is the reverse of how the pair is usually said out loud, so the array is
+   built from named fields in exactly one place, below, and never travels as
+   one. */
 export const patchSchema = z.object({
     coord:z.object({
         lng:z.number().min(-180).max(180),
@@ -51,11 +52,11 @@ export const PATCH = withAuth(async (request, user, context: RouteContext<'/api/
             }
         })
 
-        /* matchedCount, never modifiedCount. The filter requires the caller to
-           be a participant, so zero matches means "no such group, or not
-           yours" — deliberately one answer, so this cannot be used to probe
-           which group ids exist. modifiedCount is 0 whenever someone reopens
-           the group from the same spot, which is success, not failure. */
+        /* matchedCount, never modifiedCount. The filter requires the caller to be
+           a participant, so zero matches means "no such group, or not yours" —
+           deliberately one answer, so this cannot be used to probe which group
+           ids exist. modifiedCount is 0 whenever someone reopens the group from
+           the same spot, which is success rather than failure. */
         if(locUpdate.matchedCount===0){
             return NextResponse.json(
                 { error: "No group with that id found" },

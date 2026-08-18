@@ -30,8 +30,8 @@ export async function GET(request:NextRequest) {
         const lng = Number(searchParams.get("lng"));
 
         /* No user lookup. This route read `preferences` only to apply the
-           `disliked` exclusion; with that field gone, name search is the same
-           answer for everybody and there is nothing to personalise. */
+           `disliked` exclusion, and with that field gone, name search returns the
+           same answer for everybody and there is nothing to personalise. */
         const parsed = argSchema.safeParse({ query: searchParams.get("query") });
 
         if (!parsed.success) {

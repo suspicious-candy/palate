@@ -15,6 +15,10 @@ export default function JoinGroupButton({ code }: { code: string }) {
        "done" flag would tell an auto-admitted friend their request is awaiting
        approval and leave them with nowhere to go. */
     const [result, setResult] = React.useState<null | "joined" | "pending">(null);
+    /* The id of the group actually joined, so the link below can point AT it.
+       Nullable because "joined" also covers already_participant, and a future
+       change to that payload must degrade to the list rather than to /undefined. */
+    const [joinedId, setJoinedId] = React.useState<string | null>(null);
 
     const onJoin = async () => {
         setLoading(true);
@@ -29,6 +33,7 @@ export default function JoinGroupButton({ code }: { code: string }) {
                "admitted" and "already a participant", and both mean joined. */
             if (res.data?.state === "joined") {
                 setResult("joined");
+                setJoinedId(res.data?.group?._id ?? null);
                 toast.success("You're in");
             } else {
                 setResult("pending");
@@ -50,16 +55,23 @@ export default function JoinGroupButton({ code }: { code: string }) {
     };
 
     if (result === "joined") {
-        /* Deliberately NOT an automatic redirect to /matching/group. That page
-           renders findActiveGroup, which returns the SOONEST non-stale dinner —
-           not necessarily the one just joined. Someone who accepts an invite for
-           next Friday while already holding a group tomorrow would be dropped
-           onto tomorrow's group with no sign the join worked. A link they choose
-           to follow cannot be wrong in that way. */
+        /* Points at the group actually joined, which it could not do before:
+           /matching/group used to render findActiveGroup — the SOONEST non-stale
+           dinner — so someone accepting an invite for next Friday while already
+           holding a group tomorrow landed on tomorrow's group with no sign the
+           join had worked. Groups now have their own routes, so the id from the
+           join response goes straight there and the ambiguity is gone.
+
+           Still a link rather than a redirect: "You're in" is worth showing, and
+           bouncing the page out from under someone hides the one confirmation
+           they came here for. */
         return (
             <>
                 <p className={styles.status}>You&apos;re in.</p>
-                <Link href="/matching/group" className={styles.linkButton}>
+                <Link
+                    href={joinedId ? `/matching/group/${joinedId}` : "/matching/group"}
+                    className={styles.linkButton}
+                >
                     Go to your group
                 </Link>
             </>

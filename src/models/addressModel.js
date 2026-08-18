@@ -36,7 +36,7 @@ const addressSchema = new mongoose.Schema({
     },
 });
 
-// Guard against model recompilation on hot-reload (matches the other models).
+// Guards against model recompilation on hot reload, matching the other models.
 const address =
     mongoose.models.address || mongoose.model("address", addressSchema);
 export default address;

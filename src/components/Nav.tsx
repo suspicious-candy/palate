@@ -60,9 +60,13 @@ export default function Nav({ user }: { user?: { firstName?: string; lastName?: 
                     >
                         Home
                     </Link>
+                    {/* startsWith, not equality: the tab has to stay lit on
+                        /matching/group/[groupId] too, which is where the list
+                        sends you. Every other link here is a leaf route and
+                        equality is still right for them. */}
                     <Link
                         href="/matching/group"
-                        className={`${styles.navLink} ${pathname === "/matching/group" ? styles.navLinkActive : ""}`}
+                        className={`${styles.navLink} ${pathname.startsWith("/matching/group") ? styles.navLinkActive : ""}`}
                     >
                         Groups
                     </Link>

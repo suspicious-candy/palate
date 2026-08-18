@@ -1,6 +1,6 @@
-/* `node:crypto`, NOT the `crypto` global — that one is WebCrypto and has no
-   randomBytes at all. Importing the module makes this file server-only, which
-   is correct: nothing in the browser has any business minting invite codes. */
+/* `node:crypto`, not the `crypto` global — that one is WebCrypto and has no
+   randomBytes at all. Importing the module makes this file server-only, which is
+   correct: nothing in the browser has any business minting invite codes. */
 import { randomBytes } from "node:crypto";
 
 /* 32 symbols, and the count is load-bearing rather than aesthetic — see the
@@ -12,15 +12,15 @@ import { randomBytes } from "node:crypto";
    which character that was. */
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ123456789";
 
-/* Ten symbols at 5 bits each — 32^10, about 50 bits. Far past guessing over
+/* Ten symbols at 5 bits each, so 32^10 or about 50 bits. Far past guessing over
    HTTP, and short enough to fit on a phone screen next to a QR code. */
 const CODE_LENGTH = 10;
 
-/* MODULO BIAS. Mapping a random byte with `byte % n` is only uniform when n
-   divides 256. At 32 it does: every symbol is produced by exactly 8 of the 256
-   byte values. Drop one character from the alphabet and 256 % 31 is 8, so the
-   first nine symbols get an extra byte value each and turn up ~3% more often
-   than the rest — a silent loss of entropy that nothing downstream would ever
+/* Guards against modulo bias. Mapping a random byte with `byte % n` is uniform
+   only when n divides 256. At 32 it does: every symbol is produced by exactly 8
+   of the 256 byte values. Drop one character from the alphabet and 256 % 31 is
+   8, so the first nine symbols get an extra byte value each and turn up about 3%
+   more often than the rest — a silent loss of entropy nothing downstream would
    surface. Throwing at import is deliberate: a biased code generator that still
    returns plausible codes is exactly the kind of thing that ships. */
 if (256 % ALPHABET.length !== 0) {

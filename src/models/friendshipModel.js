@@ -25,7 +25,7 @@ const friendshipSchema = new mongoose.Schema({
 },{ timestamps: true });
 
 // Mongoose 9 no longer passes `next` to pre hooks: return to continue, throw to
-// reject. The old `function (next) { ... next() }` form fails at runtime.
+// reject. The older `function (next) { ... next() }` form fails at runtime.
 friendshipSchema.pre("validate", function () {
     if (!this.userA || !this.userB) return;
 

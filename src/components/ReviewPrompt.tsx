@@ -67,7 +67,7 @@ export function ReviewPrompt({
       onSubmitted?.(item.reservationId);
       advance();
     } catch (err: any) {
-      // A stale queue — another tab already reviewed this meal. Nothing to fix.
+      // A stale queue: another tab already reviewed this meal. Nothing to fix.
       if (err?.response?.status === 409) {
         onSubmitted?.(item.reservationId);
         advance();

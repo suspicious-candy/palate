@@ -7,9 +7,9 @@ import { initials } from "@/lib/initials";
 import { VOTE_LEAD_MINUTES } from "@/lib/groupVote";
 
 /* Declared structurally rather than reusing userContext's FriendSummary. That
-   type is Pick<User, …>, so it claims profilePic/firstName/lastName are always
-   present — but /api/user/friends selects them and a user who never set an
-   avatar simply has none. Optional here matches what actually arrives. */
+   type is Pick<User, …>, so it claims profilePic, firstName and lastName are
+   always present, whereas /api/user/friends selects them and a user who never
+   set an avatar simply has none. Optional here matches what actually arrives. */
 type Friend = {
     _id: string;
     username: string;
@@ -18,22 +18,22 @@ type Friend = {
     profilePic?: string;
 };
 
-/* The only way into the whole group feature — without it both empty states
-   ("Start a Group Dinner" on the dashboard, "You're not in a group right now"
-   on the group page) point at each other and nothing can be created. */
+/* The only way into the whole group feature. Without it both empty states —
+   "Start a Group Dinner" on the dashboard and the groups tab's own empty
+   state — point at each other and nothing can be created. */
 
 /* POST /api/user/matching refuses a dinner less than VOTE_LEAD_MINUTES + 60
    away, because voting closes VOTE_LEAD_MINUTES before the table and a group
-   born inside that window has no usable voting period. Defaulting past it
-   means the common case never sees that error at all. */
+   born inside that window has no usable voting period. Defaulting past it means
+   the common case never sees that error at all. */
 const MIN_LEAD_MINUTES = VOTE_LEAD_MINUTES + 60;
 const DEFAULT_LEAD_MINUTES = MIN_LEAD_MINUTES + 30;
 
 /** Local date and time strings for the two inputs, defaulted far enough ahead
  *  to satisfy the server's lead-time rule.
  *
- *  Built from local getters rather than toISOString(): the inputs are local
- *  wall-clock, and ISO is UTC, so anyone west of Greenwich would open the modal
+ *  Built from local getters rather than toISOString(). The inputs are local
+ *  wall-clock and ISO is UTC, so anyone west of Greenwich would open the modal
  *  pre-filled with tomorrow's date. */
 function defaultWhen(): { date: string; time: string } {
     const d = new Date(Date.now() + DEFAULT_LEAD_MINUTES * 60_000);
@@ -54,8 +54,8 @@ export default function CreateGroupModal({
     onClose: () => void;
     onCreated: () => void | Promise<void>;
 }) {
-    // Inline arrow: the lint rule wants the memo's factory written at the call
-    // site, and passing a bare reference reads as a dependency-free constant.
+    // An inline arrow, because the lint rule wants the memo's factory written at
+    // the call site; a bare reference reads as a dependency-free constant.
     const initial = React.useMemo(() => defaultWhen(), []);
     const [name, setName] = React.useState("");
     const [date, setDate] = React.useState(initial.date);
@@ -76,9 +76,9 @@ export default function CreateGroupModal({
         setBusy(true);
         setError(null);
         try {
-            /* new Date("YYYY-MM-DDTHH:MM") with no zone suffix is parsed as
-               LOCAL time, which is what the two inputs mean. Appending "Z" or
-               using Date.UTC here would silently shift the dinner by the user's
+            /* new Date("YYYY-MM-DDTHH:MM") with no zone suffix parses as local
+               time, which is what the two inputs mean. Appending "Z" or using
+               Date.UTC here would silently shift the dinner by the user's
                offset. */
             const when = new Date(`${date}T${time}`);
             if (Number.isNaN(when.getTime())) {
@@ -94,7 +94,7 @@ export default function CreateGroupModal({
             await onCreated();
             onClose();
         } catch (err) {
-            /* The route's own message where there is one — it explains the
+            /* The route's own message where there is one. It explains the
                lead-time rule in terms of the vote, which no generic string can. */
             const e = err as {
                 response?: { data?: { error?: unknown; message?: string } };

@@ -14,7 +14,7 @@ function key(r: Restaurant): string {
 
 /* The three time helpers below read `date` and nothing else, so they ask for
    exactly that rather than for a whole `matching`. The public join page holds a
-   narrowly-projected group — deliberately, since it must not fetch anyone's
+   narrowly projected group — deliberately, since it must not fetch anyone's
    ballots — and a `matching` parameter would have forced a cast that lies about
    what was actually loaded. `matching` still satisfies this structurally, so
    every existing caller is unaffected. */
@@ -34,24 +34,24 @@ export function votingDeadlinePassed(
 }
 
 /** How long a group stays current after its booked time. Relevance is about
-    whether the dinner is still ahead of you, not about the vote's status — a
-    settled vote for tonight is the most useful thing on the dashboard, and an
+    whether the dinner is still ahead of the user, not about the vote's status:
+    a settled vote for tonight is the most useful thing on the dashboard, and an
     un-started vote for last Tuesday is noise. The grace window keeps the
-    winner's directions reachable while you are actually at the table.
+    winner's directions reachable while the group is actually at the table.
 
-    Lives here rather than in activeGroup so that pure callers can reach it
-    without dragging a Mongoose model in behind it. */
+    Lives here rather than in activeGroup so pure callers can reach it without
+    dragging a Mongoose model in behind it. */
 export const STALE_AFTER_HOURS = 6;
 
 /**
  * Whether the dinner is far enough in the past that the group is no longer a
  * live thing anyone can act on.
  *
- * Distinct from `status`, and the distinction matters: nothing forces a group
- * to ever reach "closed". closeVote only runs when somebody happens to load the
- * page, so a group nobody opened sits at "voting" indefinitely — and a check
- * that trusts `status` alone would happily admit someone to last month's
- * dinner. This asks the calendar instead.
+ * Distinct from `status`, and the distinction matters: nothing forces a group to
+ * ever reach "closed". closeVote runs only when somebody happens to load a page,
+ * so a group nobody opened sits at "voting" indefinitely, and a check trusting
+ * `status` alone would happily admit someone to last month's dinner. This asks
+ * the calendar instead.
  */
 export function groupIsStale(
     group: Dated | null | undefined,
@@ -63,12 +63,19 @@ export function groupIsStale(
     return now.getTime() > staleAt;
 }
 
-export function votedCount(group: matching | null | undefined): number {
+/* Same reasoning as `Dated` above. These two read `hasVoted` and nothing else,
+   and the groups list holds a GroupSummary whose participants carry no ballots.
+   Asking for a whole `matching` would have forced a cast that lies about what
+   was loaded. `matching` satisfies this structurally, so every existing caller
+   is unaffected. */
+type Balloted = { participants: { hasVoted: boolean }[] };
+
+export function votedCount(group: Balloted | null | undefined): number {
     if (!group) return 0;
     return group.participants.filter((p) => p.hasVoted).length;
 }
 
-export function totalCount(group: matching | null | undefined): number {
+export function totalCount(group: Balloted | null | undefined): number {
     return group?.participants.length ?? 0;
 }
 
@@ -99,19 +106,19 @@ export function tally(group: matching | null | undefined): TallyRow[] {
         pct: 0,
     }));
 
-    /* HOW TIES BREAK, and it is deliberate rather than arbitrary — but it holds
-       only because of two facts worth writing down.
+    /* This sort is how ties break, and the behaviour is deliberate rather than
+       arbitrary — but it holds only because of two facts worth writing down.
 
-       Array.prototype.sort has been STABLE since ES2019, so rows with equal
+       Array.prototype.sort has been stable since ES2019, so rows with equal
        votes keep the order they already had. That order comes from
        `group.restaurants`, which the shortlist route writes in the order
-       /recommend/group ranked them. So a tie resolves to whichever restaurant
-       the group's aggregated taste scored higher — the same least-misery
-       ordering that built the ballot.
+       /recommend/group ranked them. A tie therefore resolves to whichever
+       restaurant the group's aggregated taste scored higher — the same
+       least-misery ordering that built the ballot.
 
-       Re-sort `rows` before this line, or store restaurants[] in any order
-       other than rank order, and this quietly becomes a coin flip. Nothing
-       would fail; the group would just start being told a different answer. */
+       Re-sorting `rows` before this line, or storing restaurants[] in any order
+       other than rank order, turns this into a coin flip. Nothing would fail;
+       the group would just start being told a different answer. */
     rows.sort((a, b) => b.votes - a.votes);
 
     const max = rows[0]?.votes ?? 0;

@@ -9,7 +9,7 @@ import { useUser, type User } from "@/lib/userContext";
 /* The six fields PATCH /api/user accepts. Kept in step with that route's Zod
    allowlist deliberately: a field added here but not there is silently dropped,
    and one added there but not here is simply uneditable. `username` and `email`
-   are absent from both — see the note on argSchema for why. */
+   are absent from both, for the reasons noted on argSchema. */
 type Draft = {
     firstName: string;
     lastName: string;
@@ -19,11 +19,11 @@ type Draft = {
     dob: string; // "YYYY-MM-DD", the format <input type="date"> speaks
 };
 
-/* A stored dob is midnight UTC — profile/page.tsx formats it with
-   timeZone: "UTC" for exactly this reason. Slicing the ISO string keeps that
-   convention; going through local getters would roll the date back a day for
-   anyone west of Greenwich, so simply opening this modal and pressing Save
-   would walk their birthday backwards one day at a time. */
+/* A stored dob is midnight UTC, which is why profile/page.tsx formats it with
+   timeZone: "UTC". Slicing the ISO string keeps that convention. Going through
+   local getters would roll the date back a day for anyone west of Greenwich, so
+   simply opening this modal and pressing Save would walk their birthday
+   backwards one day at a time. */
 function toDateInput(value: string | Date | undefined): string {
     if (!value) return "";
     const d = new Date(value);
@@ -41,10 +41,10 @@ function draftFrom(user: User): Draft {
     };
 }
 
-/** The route answers `{ error: fieldErrors, formErrors }` — fieldErrors keyed by
- *  field, formErrors for anything not attached to one (a .strict() rejection
- *  lands there). Reading only one of the two is how a 400 ends up displayed as
- *  an empty message. */
+/** The route answers `{ error: fieldErrors, formErrors }`: fieldErrors keyed by
+ *  field, formErrors for anything not attached to one, where a .strict()
+ *  rejection lands. Reading only one of the two is how a 400 ends up displayed
+ *  as an empty message. */
 function readError(err: unknown): string {
     const data = (err as { response?: { data?: unknown } })?.response?.data as
         | { error?: unknown; formErrors?: string[]; message?: string }
@@ -64,10 +64,10 @@ function readError(err: unknown): string {
 export default function EditProfileModal({ onClose }: { onClose: () => void }) {
     const { user, refreshUser } = useUser();
 
-    /* Lazy initializer, not an effect. Seeding from an effect renders once with
-       empty inputs and again with the real values, and any keystroke landing in
-       between is discarded. Opening the modal is an event, so the state belongs
-       in the initializer. */
+    /* A lazy initializer rather than an effect. Seeding from an effect renders
+       once with empty inputs and again with the real values, and any keystroke
+       landing in between is discarded. Opening the modal is an event, so the
+       state belongs in the initializer. */
     const [draft, setDraft] = React.useState<Draft>(() =>
         user ? draftFrom(user) : {
             firstName: "", lastName: "", favDish: "",
@@ -92,10 +92,10 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
     async function save() {
         if (!user) return;
 
-        /* Send ONLY what changed. PATCH means "change these fields", and the
-           route builds its $set from the keys actually present — so a diff here
-           is what makes "absent means unchanged" true end to end rather than
-           just technically supported.
+        /* Sends only what changed. PATCH means "change these fields", and the
+           route builds its $set from the keys actually present, so a diff here is
+           what makes "absent means unchanged" true end to end rather than merely
+           supported in principle.
 
            It also means a stray value the user never touched cannot be
            re-written on every save, which is what would eventually overwrite a
@@ -107,14 +107,14 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
             const next = draft[key].trim();
             if (next === original[key].trim()) continue;
 
-            /* A cleared date cannot be "" — that will not cast to a Date. The
-               route turns null into an $unset; every other field clears with an
-               empty string. */
+            /* A cleared date cannot be "", which will not cast to a Date. The
+               route turns null into an $unset, while every other field clears
+               with an empty string. */
             patch[key] = key === "dob" && next === "" ? null : next;
         }
 
-        /* Nothing changed. Closing without a request beats sending an empty
-           body and rendering the 400 the route correctly answers to it. */
+        /* Nothing changed. Closing without a request is better than sending an
+           empty body and rendering the 400 the route correctly answers with. */
         if (Object.keys(patch).length === 0) {
             onClose();
             return;
@@ -133,8 +133,8 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
         }
     }
 
-    /* No `mounted` guard: the profile page renders this only after a click, so
-       it never runs during the server pass and document.body always exists. */
+    /* No `mounted` guard is needed: the profile page renders this only after a
+       click, so it never runs during the server pass and document.body exists. */
     return createPortal(
         <div className={styles.overlay} onClick={onClose}>
             <div
@@ -208,7 +208,7 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
                         type="date"
                         value={draft.dob}
                         onChange={(e) => set("dob", e.target.value)}
-                        // The route refuses a future date; stop it at the picker.
+                        // The route refuses a future date, so stop it at the picker.
                         max={new Date().toISOString().slice(0, 10)}
                     />
 

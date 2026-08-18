@@ -17,13 +17,13 @@ export function useReportGroupLocation(group:matching|null){
         if(groupId===null || groupStatus==="closed" || lat === null || lng === null || reportedFor.current === groupId){
             return;
         };
-        /* Claimed before the request, not after: React's Strict Mode runs this
-           effect twice in development, and an await between the check above and
-           this line would let both runs past the guard. */
+        /* Claimed before the request rather than after. React's Strict Mode runs
+           this effect twice in development, and an await between the check above
+           and this line would let both runs past the guard. */
         reportedFor.current = groupId
 
-        /* .catch, not try/catch — the call is not awaited, so the try block has
-           already exited by the time the request fails. */
+        /* .catch rather than try/catch: the call is not awaited, so the try block
+           has already exited by the time the request fails. */
         axios.patch(`/api/user/matching/${groupId}/location`, {coord:{lng,lat}})
             .catch((err:any)=>{
                 console.error(

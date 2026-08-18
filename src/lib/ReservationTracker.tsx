@@ -16,7 +16,7 @@ export const useTrackClick = () => React.useContext(TrackerContext);
 
 /* The prompt already lives here, mounted app-wide by the layout, so anything
    that wants to open it deliberately — a card's reserve button, "Book Again" —
-   asks this rather than standing up a second copy of the modal per screen. */
+   asks this rather than standing up a second copy of the modal on each screen. */
 const OpenReservationContext = React.createContext<
     (r: Item, opts?: { onSaved?: () => void }) => void
 >(() => {});
@@ -27,8 +27,8 @@ export function ReservationTracker({children}:{children:React.ReactNode}){
     const clicksRef = React.useRef<clicked[]>([])
     const firstHiddenRef = React.useRef<number|null>(null);
     const debounceRef     = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    /* Kept in a ref, not state: the caller passes it at open time and only the
-       close/save path reads it, so re-rendering on it would buy nothing. */
+    /* Kept in a ref rather than state. The caller passes it at open time and only
+       the close/save path reads it, so re-rendering on it would buy nothing. */
     const onSavedRef = React.useRef<(() => void) | null>(null);
 
     const [prompt, setPrompt] = React.useState<{ batch: Item[]; mode: "confirm" | "book" } | null>(null);
@@ -84,8 +84,8 @@ export function ReservationTracker({children}:{children:React.ReactNode}){
         <OpenReservationContext.Provider value={openReservation}>
         {children}
         {prompt && (
-            /* Keyed so a second open starts with fresh date/party fields —
-               the prompt seeds its state from `batch` on mount only. */
+            /* Keyed so a second open starts with fresh date and party fields.
+               The prompt seeds its state from `batch` on mount only. */
             <ReservationPrompt
                 key={`${prompt.mode}:${prompt.batch.map((b) => b.fsqId).join(",")}`}
                 batch={prompt.batch}

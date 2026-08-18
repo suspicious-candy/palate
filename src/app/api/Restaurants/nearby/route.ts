@@ -26,16 +26,16 @@ export async function GET(request:NextRequest) {
             : null;
 
         const prefs = dbUser?.preferences;
-        /* What they have actually eaten and rated 4+, on top of what they said
-           at onboarding. Only for a signed-in caller — there is no anonymous
+        /* What the user has actually eaten and rated 4+, on top of what they said
+           at onboarding. Only for a signed-in caller, since there is no anonymous
            history to read. */
         const learned = authPayload
             ? (await loadLearnedCuisines([authPayload.id])).get(authPayload.id) ?? []
             : [];
         /* Shared with the group shortlist route, so both rank a person by the
            same sentence. Two drifting definitions of "what this user's taste
-           sounds like" would rank two users by different rules, and nothing
-           would ever surface it. */
+           sounds like" would rank two users by different rules, and nothing would
+           ever surface it. */
         const preferenceQuery = buildTasteQuery(prefs ?? null, learned);
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return NextResponse.json({ error: "lat and lng query params are required" }, { status: 400 });
@@ -67,18 +67,18 @@ export async function GET(request:NextRequest) {
 
             restaurants = mapped;
 
-            /* Still no /embed — posting our own sentence made a second text
-               template, one that kept the restaurant NAME and so embedded at
-               74% category precision against the index's 95%. We send only the
-               IDS; the recommender reads the text from Mongo and runs the same
-               build_text pipeline rebuild_index.py runs, so there is one
-               template either way.
+            /* Still not /embed. Posting a locally built sentence created a second
+               text template, one that kept the restaurant name and so embedded at
+               74% category precision against the index's 95%. Only the ids are
+               sent; the recommender reads the text from Mongo and runs the same
+               build_text pipeline rebuild_index.py runs, so there is one template
+               either way.
 
                Not awaited. A freshly synced restaurant has no vector until
-               something embeds it, but that is invisible to this request —
+               something embeds it, but that is invisible to this request:
                unscored candidates are appended in distance order below, so the
-               user gets their list now and the vectors exist for the next
-               call (and, more to the point, for the group shortlist). */
+               user gets their list now and the vectors exist for the next call
+               and, more to the point, for the group shortlist. */
             fetch(`${RECOMMENDER_URL}/index/missing`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -91,10 +91,10 @@ export async function GET(request:NextRequest) {
 
         let recommended = restaurants;
         try {
-            /* Filter-then-rank. Previously this asked the recommender for its
+            /* Filter, then rank. An earlier version asked the recommender for its
                top 50 across the whole corpus and intersected that with the 50
-               nearest — two independent draws from ~15k restaurants, which
-               overlap in 0.16 items on average. Measured: the intersection was
+               nearest: two independent draws from roughly 15k restaurants, which
+               overlap in 0.16 items on average. Measured, the intersection was
                empty every time, so `ranked` was always empty and the ranking
                silently never applied. Sending the candidates instead makes the
                vector search order what the geo query already chose. */
@@ -112,10 +112,10 @@ export async function GET(request:NextRequest) {
                     .map((id: string) => byId.get(id))
                     .filter(Boolean);
 
-                /* Not every nearby restaurant has a vector — the 5,444
-                   yelp_seed rows are not in places_v2. Ranking must reorder
-                   candidates, never drop them, so anything unscored keeps its
-                   distance ordering at the end of the list. */
+                /* Not every nearby restaurant has a vector: the 5,444 yelp_seed
+                   rows are not in places_v2. Ranking must reorder candidates and
+                   never drop them, so anything unscored keeps its distance
+                   ordering at the end of the list. */
                 if (ranked.length > 0) {
                     const rankedIds = new Set(ranked.map((r: { fsqId: string }) => r.fsqId));
                     recommended = [

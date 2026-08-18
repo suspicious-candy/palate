@@ -7,15 +7,16 @@ import styles from "./ReservationPrompt.module.css";
 
 type Item = { fsqId: string; name: string };
 type Entry = { booked: boolean; date: string; partySize: number };
-/* "confirm" is the tracker asking after the fact whether a click became a table;
+/* "confirm" is the tracker asking after the fact whether a click became a table.
    "book" is the user deliberately opening this to make one. Same POST, different
-   question — so the copy, the defaults and the checkbox all differ. */
+   question, so the copy, the defaults and the checkbox all differ. */
 type Mode = "confirm" | "book";
 
 function defaultDate(mode: Mode) {
   const d = new Date();
-  /* Confirming a table you already booked is about now-ish; booking one is about
-     later, so round up to the next hour rather than opening on a past minute. */
+  /* Confirming an already-booked table is about roughly now, while booking one
+     is about later, so this rounds up to the next hour rather than opening on a
+     minute that has already passed. */
   if (mode === "book") d.setHours(d.getHours() + 1, 0, 0, 0);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
@@ -37,7 +38,7 @@ export function ReservationPrompt({
     Object.fromEntries(
       batch.map((c) => [
         c.fsqId,
-        /* Nothing to tick in book mode — the user already said which place by
+        /* Nothing to tick in book mode: the user already said which place by
            clicking its button, so the row starts selected. */
         { booked: booking, date: defaultDate(mode), partySize: 2 },
       ])

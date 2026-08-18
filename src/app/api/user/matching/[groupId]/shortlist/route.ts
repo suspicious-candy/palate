@@ -17,11 +17,11 @@ type Participant = {
 };
 
 /* Ballot size. Long enough that the group has a real choice, short enough that
-   everyone actually reads it — groupGeo's comments already assume ~7. */
+   everyone actually reads it. groupGeo's notes already assume around seven. */
 const SHORTLIST_SIZE = 7;
 
 /* The service is fast once warm but loads a sentence-transformer on its first
-   request, so the ceiling is set by the cold start, not the search. */
+   request, so the ceiling is set by the cold start rather than the search. */
 const RECOMMENDER_TIMEOUT_MS = 20_000;
 
 export const POST = withAuth(async (
@@ -36,17 +36,17 @@ export const POST = withAuth(async (
             return NextResponse.json({ error: "Invalid group id" }, { status: 400 });
         }
 
-        /* Raw, not findGroupById: populating would replace participants.user
-           with a summary that carries no preferences, and replace restaurants
-           with documents we are about to overwrite anyway. */
+        /* Raw rather than findGroupById. Populating would replace
+           participants.user with a summary that carries no preferences, and
+           replace restaurants with documents about to be overwritten anyway. */
         const group = await matchingModel.findById(groupId).lean();
         if (!group) {
             return NextResponse.json({ error: "Group not found" }, { status: 404 });
         }
 
-        /* 403, not 404. Unlike the location route there is nothing to hide —
-           the caller is a known participant, they simply are not the organiser.
-           Starting the vote freezes the ballot for everyone. */
+        /* 403 rather than 404. Unlike the location route there is nothing to
+           hide: the caller is a known participant who simply is not the
+           organiser. Starting the vote freezes the ballot for everyone. */
         const isAdmin = group.admins.some(
             (a: mongoose.Types.ObjectId) => a.toString() === user.id
         );
@@ -57,8 +57,8 @@ export const POST = withAuth(async (
             );
         }
 
-        /* Fast-fail courtesy only. The real guarantee is the compare-and-set in
-           the final update — everything between here and there takes long
+        /* A fast-fail courtesy only. The real guarantee is the compare-and-set in
+           the final update, because everything between here and there takes long
            enough for a second admin to arrive. */
         if (group.status !== "open") {
             return NextResponse.json(
@@ -69,10 +69,10 @@ export const POST = withAuth(async (
 
         const participants: Participant[] = group.participants;
 
-        /* The circle is anchored on the admin and only ever grows around them,
-           so without their location there is no search to run at all. Note this
-           is the admin's PARTICIPANT ENTRY — their authorisation was settled
-           above; this is purely about where they are. */
+        /* The circle is anchored on the admin and only ever grows around them, so
+           without their location there is no search to run at all. This reads the
+           admin's participant entry: their authorisation was settled above, and
+           this is purely about where they are. */
         const adminEntry = participants.find((p) => p.user.toString() === user.id);
         const adminPoint = adminEntry?.location?.coordinates;
         if (!adminPoint) {
@@ -83,7 +83,7 @@ export const POST = withAuth(async (
         }
 
         /* Its own array, in a fixed order, because groupSearchArea reports
-           excludedMembers as INDICES INTO IT rather than as user ids. `?? null`
+           excludedMembers as indices into it rather than as user ids. `?? null`
            rather than filtering: dropping locationless members would shorten the
            array and make every excluded index point at the wrong person. */
         const others = participants.filter((p) => p.user.toString() !== user.id);
@@ -104,42 +104,42 @@ export const POST = withAuth(async (
         }
 
         /* Its own query rather than widening USER_SUMMARY, which is the privacy
-           boundary for every group read that ships to the browser. This one
+           boundary for every group read that ships to the browser. This result
            never leaves the server. */
         const participantIds = participants.map((p) => p.user);
         const users = await User.find({ _id: { $in: participantIds } })
             .select("preferences firstName lastName")
             .lean();
 
-        /* Keyed, not indexed: find() gives no ordering guarantee, so position
-           here does not correspond to position in `participants`. Used in the
-           response to name members excluded for distance. */
+        /* Keyed rather than indexed: find() gives no ordering guarantee, so
+           position here does not correspond to position in `participants`. Used
+           in the response to name members excluded for distance. */
         const prefsByUser = new Map(users.map((u: any) => [u._id.toString(), u]));
 
-        /* NO exclusion pass. There used to be one here — a union of every
-           member's `disliked` cuisines, applied as a hard filter before ranking,
-           on the reasoning that one person's refusal disqualifies a restaurant
-           for the whole group. That field is no longer tracked, so the ballot is
-           now shaped by attraction alone: whatever /recommend/group ranks
-           highest across the members who stated a taste.
+        /* No exclusion pass. There used to be one here: a union of every member's
+           `disliked` cuisines, applied as a hard filter before ranking, on the
+           reasoning that one person's refusal disqualifies a restaurant for the
+           whole group. That field is no longer tracked, so the ballot is now
+           shaped by attraction alone — whatever /recommend/group ranks highest
+           across the members who stated a taste.
 
            `allergines` was never folded in and still is not. It is free text
            compared against cuisine names, so "peanuts" cannot match "Thai
-           Restaurant"; filtering on it would look like allergen safety while
+           Restaurant", and filtering on it would look like allergen safety while
            doing nothing. The UI has to say plainly that allergens are not
            checked. */
 
-        /* Two arrays kept in step. /recommend/group returns memberSims in
-           member order, so without the ids there is no way to say whose taste
-           a pick reflects.
+        /* Two arrays kept in step. /recommend/group returns memberSims in member
+           order, so without the ids there is no way to say whose taste a pick
+           reflects.
 
-           Members with no stated taste are SKIPPED, not given a generic
-           sentence: a neutral phrase sits near the corpus centre, and the
-           service z-scores each member's row before aggregating — which would
-           promote that noise to a full-strength vote and, since blend is half
-           least-misery, let it set the minimum. */
+           Members with no stated taste are skipped rather than given a generic
+           sentence. A neutral phrase sits near the corpus centre, and the service
+           z-scores each member's row before aggregating, which would promote that
+           noise to a full-strength vote and — since blend is half least-misery —
+           let it set the minimum. */
         /* One batched query for the whole group, hoisted out of the loop below.
-           The per-user shape of loadLearnedCuisines exists for exactly this —
+           The per-user shape of loadLearnedCuisines exists for exactly this:
            calling it inside the loop would be a database round trip per member. */
         const learnedByUser = await loadLearnedCuisines(
             participantIds.map((id) => id.toString())
@@ -163,10 +163,10 @@ export const POST = withAuth(async (
                 { status: 400 }
             );
         }
-        /* RESTAURANT ids, not member ids. The two arrays are both lists of
-           strings, so swapping them typechecks perfectly and the service would
-           answer 404 ("none of the candidateIds are in the index") — a failure
-           that reads like a stale index rather than a wiring mistake. */
+        /* Restaurant ids, not member ids. Both arrays are lists of strings, so
+           swapping them typechecks perfectly and the service answers 404 — "none
+           of the candidateIds are in the index" — a failure that reads like a
+           stale index rather than a wiring mistake. */
         const candidateIds = candidates.map((r: any) => r.fsqId);
 
         const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
@@ -201,12 +201,12 @@ export const POST = withAuth(async (
 
             ranking = await recRes.json();
         } catch (err: any) {
-            /* 503 and NO shortlist — deliberately the opposite of what
+            /* 503 and no shortlist, deliberately the opposite of what
                nearby/route.ts does when this same service is down. A degraded
-               browsing list is something the user scrolls past; a degraded
+               browsing list is something the user scrolls past. A degraded
                shortlist is seven restaurants picked by proximity, frozen into a
-               ballot, presented as though taste shaped it. Nobody can tell it
-               happened. When the failure is invisible and the artefact is
+               ballot and presented as though taste shaped it, with nobody able to
+               tell it happened. When the failure is invisible and the artefact is
                permanent, fail loudly. */
             console.error("Group recommend unreachable:", err?.message ?? err);
             return NextResponse.json(
@@ -215,9 +215,9 @@ export const POST = withAuth(async (
             );
         }
 
-        /* The service speaks fsqIds; matching.restaurants holds ObjectIds. The
-           map is built from `candidates`, which is where candidateIds came from,
-           so every returned id resolves — .filter(Boolean) is there so a
+        /* The service speaks fsqIds while matching.restaurants holds ObjectIds.
+           The map is built from `candidates`, which is where candidateIds came
+           from, so every returned id resolves. .filter(Boolean) is there so a
            mismatch drops that entry instead of writing an undefined into the
            ballot. */
         const idByFsqId = new Map<string, mongoose.Types.ObjectId>(
@@ -236,16 +236,16 @@ export const POST = withAuth(async (
             );
         }
 
-        /* Compare-and-set. `status: "open"` belongs in the FILTER, not in an
-           if-statement: since the check near the top of this handler we have
-           run a geo query, a user lookup and a network round trip, which is
-           ample time for a second admin to run the same route. Both would pass
-           an early check; here, the first write flips the status and the
+        /* Compare-and-set. `status: "open"` belongs in the filter rather than in
+           an if-statement: since the check near the top of this handler, a geo
+           query, a user lookup and a network round trip have run, which is ample
+           time for a second admin to enter the same route. Both would pass an
+           early check, whereas here the first write flips the status and the
            loser's filter matches nothing.
 
-           Rebuilding a ballot mid-vote would also wedge the group — the
-           pre("save") hook rejects approvals that are no longer in
-           restaurants[], so the document could never be saved again. */
+           Rebuilding a ballot mid-vote would also wedge the group, because the
+           pre("save") hook rejects approvals no longer in restaurants[], so the
+           document could never be saved again. */
         const started = await matchingModel.updateOne(
             { _id: groupId, status: "open" },
             { $set: { restaurants: restaurantIds, status: "voting" } }
@@ -258,9 +258,9 @@ export const POST = withAuth(async (
             );
         }
 
-        /* excludedMembers are INDICES into `others`, so they are resolved back
-           through that array and then through prefsByUser — never by position
-           in `users`, which find() returns in arbitrary order. */
+        /* excludedMembers are indices into `others`, so they are resolved back
+           through that array and then through prefsByUser, never by position in
+           `users`, which find() returns in arbitrary order. */
         const excludedMembers = area.excludedMembers.map((i) => {
             const id = others[i].user.toString();
             const u: any = prefsByUser.get(id);

@@ -1,11 +1,11 @@
 /* Email HTML is a different medium from web HTML. There is no external
-   stylesheet (Gmail strips <link>), no reliable flexbox or grid (Outlook
-   renders through Word's engine), and no CSS variables. Everything below is
-   inline styles on plain block elements — the subset every client agrees on.
+   stylesheet (Gmail strips <link>), no reliable flexbox or grid (Outlook renders
+   through Word's engine), and no CSS variables. Everything below is inline
+   styles on plain block elements, the subset every client agrees on.
 
-   Templates live here rather than inside the routes that send them so signup
-   and the resend endpoint cannot drift into sending two different emails for
-   the same thing. */
+   Templates live here rather than inside the routes that send them, so signup
+   and the resend endpoint cannot drift into sending two different emails for the
+   same thing. */
 
 const BRAND = "#a41e22";
 
@@ -20,11 +20,11 @@ function shell(heading: string, body: string) {
 </div>`.trim();
 }
 
-/* Escaping user- and API-supplied text before it goes into an HTML string.
+/* Escapes user- and API-supplied text before it goes into an HTML string.
    Restaurant names and free-text notes both land in this email, and a name
-   containing "<" would otherwise break the markup — or worse, inject it. The
+   containing "<" would otherwise break the markup, or worse, inject into it. The
    iCalendar escaper in lib/calendar.ts is a different grammar for a different
-   destination; neither substitutes for the other. */
+   destination, and neither substitutes for the other. */
 function escapeHtml(value: string): string {
     return value
         .replace(/&/g, "&amp;")
@@ -33,19 +33,19 @@ function escapeHtml(value: string): string {
         .replace(/"/g, "&quot;");
 }
 
-/* Rendered in the RECIPIENT's zone, taken from user.timeZone — captured from
-   the browser at signup and refreshed on every login.
+/* Rendered in the recipient's zone, taken from user.timeZone, which is captured
+   from the browser at signup and refreshed on every login.
 
    Omitting the option entirely falls back to the server's zone, which is what
-   accounts predating this field get until their next sign-in. timeZoneName is
-   always on for exactly that case: a fallback rendering says which zone it
-   means, so an offset time reads as offset rather than as wrong.
+   accounts predating this field get until their next sign-in. timeZoneName stays
+   on for exactly that case: a fallback rendering says which zone it means, so an
+   offset time reads as offset rather than as wrong.
 
-   The try/catch is not defensive padding. toLocaleString throws RangeError on
-   an unrecognised zone, and this runs inside an after() callback where an
-   exception is invisible — the email would simply never arrive. Values written
-   since lib/timezone.ts landed are validated, but rows written before it was
-   not are not, and neither are hand-edited documents. */
+   The try/catch is not defensive padding. toLocaleString throws RangeError on an
+   unrecognised zone, and this runs inside an after() callback where an exception
+   is invisible, so the email would simply never arrive. Values written since
+   lib/timezone.ts landed are validated, but rows written before it are not, and
+   neither are hand-edited documents. */
 function formatWhen(date: Date | string, timeZone?: string): string {
     const options: Intl.DateTimeFormatOptions = {
         weekday: "long",
@@ -135,9 +135,9 @@ export function reservationCancelledEmail(opts: {
 }
 
 export function verificationEmail(firstName: string, link: string) {
-    /* The raw URL is repeated as text under the button on purpose. Corporate
-       mail filters routinely rewrite or strip anchor hrefs, and when that
-       happens the button is dead while the text URL still works. */
+    /* The raw URL is repeated as text under the button on purpose. Corporate mail
+       filters routinely rewrite or strip anchor hrefs, and when that happens the
+       button is dead while the text URL still works. */
     const body = `
     <p style="font-size:15px;line-height:1.5;color:#444;margin:0 0 20px;">
       Hi ${firstName || "there"} — confirm this address and your Palate account is ready to go.

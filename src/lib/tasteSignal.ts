@@ -3,33 +3,33 @@ import { connect } from "@/dbConfig/dbConfig";
 import Review from "@/models/reviewModel.js";
 import Restaurant from "@/models/restaurantModel.js";
 
-/* What counts as "I liked it". 4+ on a 5-star scale, because only ATTRACTION
-   can go into a taste query — see buildTasteQuery's comment on why a low rating
-   cannot be expressed as text at all. A 3 is not evidence either way. */
+/* What counts as "I liked it". 4+ on a 5-star scale, because only attraction
+   can go into a taste query — buildTasteQuery explains why a low rating cannot
+   be expressed as text at all. A 3 is not evidence either way. */
 const MIN_RATING = 4;
 
-/* How many recent likes shape a person's taste. Uncapped, someone's taste would
-   be whatever they ate two years ago; this is what the {user, createdAt: -1}
-   index on reviewModel exists to serve. */
+/* How many recent likes shape a person's taste. Uncapped, a person's taste
+   would be whatever they ate two years ago. The {user, createdAt: -1} index on
+   reviewModel exists to serve this query. */
 const RECENT_LIKES = 8;
 
 /* How many learned cuisines reach the query. The cap is the whole point: a
    person with 8 reviews and 3 stated cuisines should not have the stated ones
-   drowned out, and a long list of terms dilutes the sentence — every extra
+   drowned out, and a long list of terms dilutes the sentence, since every extra
    token pulls the vector further toward the centre of the corpus. */
 const MAX_LEARNED = 3;
 
 /**
  * Cuisines a person has actually gone out and rated highly, newest first.
  *
- * BATCH BY DESIGN. The group shortlist ranks every member, so a per-user
+ * Batched by design. The group shortlist ranks every member, so a per-user
  * version would be a database round trip inside a loop; both callers go through
  * this one signature. Kept out of buildTasteQuery so that function stays pure
- * and synchronous — it is the single definition of "what this user's taste
- * sounds like" and two callers must not be able to drift apart on it.
+ * and synchronous: it is the single definition of "what this user's taste sounds
+ * like", and two callers must not be able to drift apart on it.
  *
  * @returns userId (as a string) -> cuisine names, most-eaten first. Users with
- *   no qualifying reviews are simply absent from the map.
+ *   no qualifying reviews are absent from the map.
  */
 export async function loadLearnedCuisines(
     userIds: string[]
@@ -41,11 +41,11 @@ export async function loadLearnedCuisines(
 
     const ids = userIds.map((id) => new mongoose.Types.ObjectId(id));
 
-    /* $sort BEFORE $group so $push accumulates in recency order — the per-user
-       slice below depends on it. Done as one aggregation rather than a find()
-       with a limit because a single flat limit is not per-user: one member with
-       40 recent reviews would consume the whole allowance and leave the rest of
-       the group with nothing. */
+    /* $sort runs before $group so $push accumulates in recency order, which the
+       per-user slice below depends on. Written as one aggregation rather than a
+       find() with a limit because a single flat limit is not per-user: one member
+       with 40 recent reviews would consume the whole allowance and leave the rest
+       of the group with nothing. */
     const grouped: { _id: mongoose.Types.ObjectId; restaurants: mongoose.Types.ObjectId[] }[] =
         await Review.aggregate([
             { $match: { user: { $in: ids }, rating: { $gte: MIN_RATING } } },
@@ -60,9 +60,9 @@ export async function loadLearnedCuisines(
         restaurantIds: g.restaurants.slice(0, RECENT_LIKES),
     }));
 
-    /* One query for every restaurant any member liked, not one per user — the
-       same N+1 the pending-review route avoids. Duplicates across members cost
-       nothing here and are resolved through the map below. */
+    /* One query for every restaurant any member liked, rather than one per
+       user — the same N+1 the pending-review route avoids. Duplicates across
+       members cost nothing here and are resolved through the map below. */
     const wanted = [...new Set(perUser.flatMap((u) => u.restaurantIds.map((r) => r.toString())))];
     const restaurants: { _id: mongoose.Types.ObjectId; categories?: { name?: string }[] }[] =
         await Restaurant.find({ _id: { $in: wanted } })
@@ -77,10 +77,10 @@ export async function loadLearnedCuisines(
     );
 
     for (const { userId, restaurantIds } of perUser) {
-        /* Frequency, not presence: three Thai dinners should outrank one Italian
-           when only MAX_LEARNED terms survive. Map preserves insertion order, so
-           a tie falls back to recency — the first restaurant to contribute a
-           category is the most recent one. */
+        /* Counts frequency rather than presence: three Thai dinners should
+           outrank one Italian when only MAX_LEARNED terms survive. Map preserves
+           insertion order, so a tie falls back to recency, the first restaurant
+           to contribute a category being the most recent one. */
         const counts = new Map<string, number>();
         for (const rid of restaurantIds) {
             for (const name of categoriesById.get(rid.toString()) ?? []) {

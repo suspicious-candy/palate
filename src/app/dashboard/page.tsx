@@ -15,6 +15,7 @@ import { votedCount, totalCount, leader, votingClosesAt } from "@/lib/groupVote"
 import { useReportGroupLocation } from "@/lib/useReportGroupLocation";
 import { useTimeLeft } from "@/lib/timeLeft";
 import { googleMapsUrl } from "@/lib/mapsUrl";
+import { haversineMiles, type Point } from "@/lib/distance";
 import Link from "next/link";
 import CreateGroupModal from "@/components/CreateGroupModal";
 
@@ -34,23 +35,28 @@ function initials(first?: string, last?: string): string {
     return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
-function haversineDistance(
-  lat1: number, lon1: number,
-  lat2: number, lon2: number
-): number {
-  const R = 6371; 
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
+/* How many rows section II shows before "show all". The list arriving from
+   /api/Restaurants/nearby is 50 long and was rendered whole; if the taste
+   ranking is worth anything the answer is near the top, and 50 rows asked the
+   user to do the narrowing the recommender is supposed to have done. */
+const VISIBLE_RECOMMENDATIONS = 6;
 
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
+/* Chip thresholds, in miles. "Walkable" is deliberately generous — roughly a
+   20 minute walk — because the geo fix below moved every distance on the card
+   up by 1.6x and a tighter bound now returns almost nothing. */
+const WALKABLE_MILES = 1;
+const SHORT_DRIVE_MILES = 5;
 
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+/** [lng, lat] — the order lib/distance expects, built in one place. */
+function pointOf(r: { geocodes: { latitude: number; longitude: number } }): Point {
+    return [r.geocodes.longitude, r.geocodes.latitude];
+}
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+/* Foursquare category names are shaped for a database, not a chip: the corpus
+   is full of "Italian Restaurant" and "Pizza Place". Trim the noun so six of
+   these fit on one row; the untrimmed name stays the filter value. */
+function chipLabel(category: string): string {
+    return category.replace(/\s+(Restaurant|Place|Joint|Spot)$/i, "");
 }
 
 export function toggleWishlist(rest: Restaurant, saved: boolean, setUser: React.Dispatch<React.SetStateAction<User | null>>){
@@ -157,9 +163,86 @@ export default function Dashboard() {
     });
     const [friends,setFriends] = React.useState<FriendSummary[]>([]);
 
+    /* Narrowing state for section II. All three filters run in the BROWSER,
+       over the 50 rows /api/Restaurants/nearby already sent — no refetch, so
+       the chips are instant.
+
+       That is exactly right for distance and wrong-ish for cuisine, and the
+       difference is worth knowing. `$near` hands back a distance-ORDERED
+       prefix of the 20km set, so the 50 nearest necessarily contain every
+       walkable place: filtering them here gives the same answer the database
+       would. Cuisine has no such property. If 2 of the 50 nearest are Thai we
+       show 2, while the radius may hold 15 that `.limit(50)` cut — the chip
+       under-reports and the user reads it as "barely any Thai near me". Moving
+       cuisine into the Mongo query, BEFORE the limit, is the fix when the
+       corpus gets dense enough for that to bite. */
+    const [cuisine, setCuisine] = React.useState<string | null>(null);
+    const [maxMiles, setMaxMiles] = React.useState<number | null>(null);
+    const [newToMe, setNewToMe] = React.useState(false);
+    const [showAll, setShowAll] = React.useState(false);
+
     React.useEffect(()=>{
         axios.get("/api/user/friends").then((res) => setFriends(res.data.confirmed ?? [])).catch(()=>setFriends([]));
     },[])
+
+    const visitedIds = React.useMemo(
+        () => new Set(user?.visitedResturants?.map((v) => v.fsqId) ?? []),
+        [user?.visitedResturants]
+    );
+
+    /* Derived from what actually came back, never a hardcoded cuisine list — a
+       chip that matches nothing is worse than no chip, and which cuisines
+       exist depends entirely on where the user is standing. Ranked by how many
+       places carry the category so the row leads with the useful cuts. */
+    const cuisineOptions = React.useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const r of nearbyRestaurants) {
+            // Per restaurant, not per tag: a place listed as "Pizza Place"
+            // twice must not count twice toward the ranking.
+            for (const name of new Set((r.categories ?? []).map((c) => c.name))) {
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+            }
+        }
+        /* Four, not five: measured in the 330px sidebar the card lives in,
+           four cuisines plus the three fixed chips wrap to exactly three rows
+           (117px). A fifth spills onto a fourth row that usually holds one
+           lonely chip. Raise this only if the card moves somewhere wider. */
+        return [...counts.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([name]) => name);
+    }, [nearbyRestaurants]);
+
+    const filtered = React.useMemo(() => {
+        return nearbyRestaurants.filter((r) => {
+            if (cuisine && !(r.categories ?? []).some((c) => c.name === cuisine)) return false;
+            if (newToMe && visitedIds.has(r.fsqId)) return false;
+            /* Fail open when there is no fix. A denied or pending permission
+               means no distance can be computed, and dropping every row would
+               render an empty section that looks like "nothing near you"
+               rather than "we don't know where you are". */
+            if (maxMiles !== null && geo.status === "success") {
+                const d = haversineMiles([geo.longitude, geo.latitude], pointOf(r));
+                if (d > maxMiles) return false;
+            }
+            return true;
+        });
+    }, [nearbyRestaurants, cuisine, newToMe, maxMiles, visitedIds, geo]);
+
+    const shown = showAll ? filtered : filtered.slice(0, VISIBLE_RECOMMENDATIONS);
+
+    /* Every chip collapses the list back to six. Someone who expanded to all 50
+       and then picked a cuisine is asking a new question; leaving `showAll` set
+       means clearing that chip silently dumps them back into the 50-row wall
+       this whole section exists to remove — and by then the "show fewer" button
+       has been hidden for a while, so nothing explains it. */
+    const setFilter = (apply: () => void) => { apply(); setShowAll(false); };
+
+    const hasChips =
+        geo.status === "success" || visitedIds.size > 0 || cuisineOptions.length > 0;
+    const filtersActive = cuisine !== null || maxMiles !== null || newToMe;
+    const clearFilters = () =>
+        setFilter(() => { setCuisine(null); setMaxMiles(null); setNewToMe(false); });
 
     const loaded = () => (
         <div className={styles.page}>
@@ -228,7 +311,7 @@ export default function Dashboard() {
                                             minute: "2-digit",
                                         })}
                                     </p>
-                                    <Link href="/matching/group" className={`${styles.ghostBtn} ${styles.ghostLink}`}>
+                                    <Link href={`/matching/group/${group._id}`} className={`${styles.ghostBtn} ${styles.ghostLink}`}>
                                         {isGroupAdmin ? "Begin the voting" : "View group"}
                                     </Link>
                                 </div>
@@ -254,7 +337,7 @@ export default function Dashboard() {
                                         <span className={styles.dot}>·</span>{" "}
                                         {remaining ? `${remaining} left to vote` : "voting has closed"}
                                     </p>
-                                    <Link href="/matching/group" className={`${styles.ghostBtn} ${styles.ghostLink}`}>Cast your vote</Link>
+                                    <Link href={`/matching/group/${group._id}`} className={`${styles.ghostBtn} ${styles.ghostLink}`}>Cast your vote</Link>
                                 </div>
                             ) : null}
 
@@ -292,9 +375,38 @@ export default function Dashboard() {
                             <span className={styles.rule} />
                             <span className={styles.itemTag}>tap <i className="ph ph-heart" /> to save</span>
                         </div>
-                        {nearbyRestaurants.map((r, i) => (
+                        {shown.map((r, i) => (
                             <RestaurantCard key={r.fsqId} restaurant={r} geo={geo} user={user} setUser={setUser} index={i} />
                         ))}
+
+                        {/* Distinguishes "your filters match nothing" from the
+                            empty list you get before geolocation resolves —
+                            they look identical otherwise, and only one of them
+                            is something the user can act on. */}
+                        {nearbyRestaurants.length > 0 && filtered.length === 0 && (
+                            <p className={styles.emptyFilter}>
+                                Nothing matches those filters.{" "}
+                                <button
+                                    type="button"
+                                    className={styles.clearFilters}
+                                    onClick={clearFilters}
+                                >
+                                    Clear them
+                                </button>
+                            </p>
+                        )}
+
+                        {filtered.length > VISIBLE_RECOMMENDATIONS && (
+                            <button
+                                type="button"
+                                className={styles.showAllBtn}
+                                onClick={() => setShowAll((v) => !v)}
+                            >
+                                {showAll
+                                    ? "Show fewer"
+                                    : `Show all ${filtered.length} nearby`}
+                            </button>
+                        )}
                     </div>
                     <div className={styles.section}>
                         <div className={styles.sectionHead}>
@@ -357,6 +469,67 @@ export default function Dashboard() {
                             + Invite more
                         </button>
                     </div>
+
+                    {/* The chips live here rather than above the list they
+                        filter, which costs them their adjacency — you can no
+                        longer see a chip and its effect in one glance, and on
+                        a narrow screen the sidebar drops BELOW the results
+                        entirely. The count line is what pays that back: it is
+                        the only remaining feedback that a chip did anything,
+                        so it states the filtered total against the unfiltered
+                        one rather than just labelling the card. */}
+                    {hasChips && (
+                        <div className={styles.sideCard}>
+                            <h3 className={styles.sideTitle}>Narrow it down</h3>
+                            <p className={styles.sideSub}>
+                                {filtersActive
+                                    ? `${filtered.length} of ${nearbyRestaurants.length} spots`
+                                    : `${nearbyRestaurants.length} spots nearby`}
+                            </p>
+
+                            <div className={styles.chips}>
+                                {/* Only offered once we can actually measure —
+                                    these chips are unanswerable without a fix. */}
+                                {geo.status === "success" && (
+                                    <>
+                                        <Chip
+                                            label="Walkable"
+                                            active={maxMiles === WALKABLE_MILES}
+                                            onClick={() => setFilter(() => setMaxMiles((m) => (m === WALKABLE_MILES ? null : WALKABLE_MILES)))}
+                                        />
+                                        <Chip
+                                            label="Short drive"
+                                            active={maxMiles === SHORT_DRIVE_MILES}
+                                            onClick={() => setFilter(() => setMaxMiles((m) => (m === SHORT_DRIVE_MILES ? null : SHORT_DRIVE_MILES)))}
+                                        />
+                                    </>
+                                )}
+                                {/* A first-time diner has nothing to exclude, so
+                                    the chip would be a no-op control. */}
+                                {visitedIds.size > 0 && (
+                                    <Chip
+                                        label="New to me"
+                                        active={newToMe}
+                                        onClick={() => setFilter(() => setNewToMe((v) => !v))}
+                                    />
+                                )}
+                                {cuisineOptions.map((c) => (
+                                    <Chip
+                                        key={c}
+                                        label={chipLabel(c)}
+                                        active={cuisine === c}
+                                        onClick={() => setFilter(() => setCuisine((cur) => (cur === c ? null : c)))}
+                                    />
+                                ))}
+                            </div>
+
+                            {filtersActive && (
+                                <button className={styles.clearAllBtn} onClick={clearFilters}>
+                                    Clear filters
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </aside>
             </div>
 
@@ -389,6 +562,21 @@ export default function Dashboard() {
 }
 
 const swatchClasses = [styles.swatchSage, styles.swatchBlush, styles.swatchSand];
+
+/* aria-pressed, not aria-selected: each chip is an independent toggle the user
+   can turn back off, which is what a screen reader needs to announce. */
+function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }){
+    return (
+        <button
+            type="button"
+            className={`${styles.chip} ${active ? styles.chipActive : ""}`}
+            onClick={onClick}
+            aria-pressed={active}
+        >
+            {label}
+        </button>
+    );
+}
 
 export function FriendCard({ friend }: { friend: FriendSummary }){
     const name =
@@ -437,11 +625,9 @@ export function RestaurantCard({ restaurant, geo, user, setUser, index }: { rest
                 {Rest.rating > 0 && <span><i className={`ph-fill ph-star ${styles.starIcon}`} /> {Rest.rating.toFixed(1)}</span>}
                 {geo.status === "success" && (
                     <span>
-                        · {haversineDistance(
-                            geo.latitude,
-                            geo.longitude,
-                            Rest.geocodes.latitude,
-                            Rest.geocodes.longitude
+                        · {haversineMiles(
+                            [geo.longitude, geo.latitude],
+                            pointOf(Rest)
                         ).toFixed(1)} mi
                     </span>
                 )}

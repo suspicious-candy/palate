@@ -1,0 +1,319 @@
+/* "Bill of Fare" — the groups index.
+
+   Tokens duplicated from [groupId]/group.module.css rather than imported: CSS
+   modules have no cross-file variable sharing without a :global or a shared
+   import, and these two screens are siblings that must look identical. If the
+   palette moves, both move. The alternative — a shared tokens file — is worth
+   doing the moment a third screen in this family appears. */
+
+.page {
+    --ink: #1a1a1a;
+    --claret: #c1272d;
+    --claret-soft: #fdf0ee;
+    --cocoa: #8a6f68;
+    --clay: #b09a92;
+    --rose-line: #efe4e0;
+    --rose-line-2: #e0cec8;
+    --paper: #f2eae5;
+    --olive: #4c7a3f;
+    --olive-soft: #eaf1e6;
+    --amber-soft: #efe6da;
+    --amber-ink: #8a6f4a;
+
+    min-height: 100%;
+    background: var(--paper);
+    font-family: var(--font-hanken), system-ui, sans-serif;
+    color: var(--ink);
+}
+
+.layout {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 34px 20px 80px;
+}
+
+/* ---------- header ---------- */
+
+.head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 26px;
+}
+
+.title {
+    font: 600 32px var(--font-cormorant), serif;
+    letter-spacing: 0.3px;
+    margin: 0;
+}
+
+.subtitle {
+    font: italic 500 14px var(--font-cormorant), serif;
+    color: var(--cocoa);
+    margin: 2px 0 0;
+}
+
+.newBtn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    border-radius: 999px;
+    background: var(--claret);
+    color: #fff;
+    font: 600 13.5px var(--font-hanken), sans-serif;
+    padding: 11px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.newBtn:hover {
+    background: #a51f25;
+}
+
+/* ---------- section headings ---------- */
+
+.sectionHead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 12px;
+}
+
+.sectionTitle {
+    font: 700 12px var(--font-plex-mono), monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cocoa);
+    margin: 0;
+}
+
+.rule {
+    flex: 1;
+    height: 1px;
+    background: var(--rose-line);
+}
+
+.sectionCount {
+    font: 700 12px var(--font-plex-mono), monospace;
+    color: var(--clay);
+}
+
+/* ---------- one group ---------- */
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #fff;
+    border: 1px solid var(--rose-line);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.row:hover {
+    border-color: var(--rose-line-2);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(120, 60, 20, 0.06);
+}
+
+/* Finished dinners stay legible but stop competing with the live ones — the
+   whole point of the split is that Upcoming is where the actions are. */
+.rowPast {
+    background: transparent;
+    border-style: dashed;
+}
+
+.rowMain {
+    flex: 1;
+    min-width: 0;
+}
+
+.rowTop {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.groupName {
+    font: 700 16px var(--font-hanken), sans-serif;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font: 700 10px var(--font-plex-mono), monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.pillOpen {
+    background: var(--amber-soft);
+    color: var(--amber-ink);
+}
+
+.pillVoting {
+    background: var(--claret-soft);
+    color: var(--claret);
+}
+
+.pillClosed {
+    background: var(--olive-soft);
+    color: var(--olive);
+}
+
+.organiserTag {
+    font: 600 10px var(--font-plex-mono), monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--clay);
+    border: 1px solid var(--rose-line);
+    border-radius: 999px;
+    padding: 3px 9px;
+}
+
+.rowMeta {
+    font: 400 12.5px var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    margin: 6px 0 0;
+}
+
+.dot {
+    margin: 0 6px;
+    color: var(--clay);
+}
+
+.rowNote {
+    font: 600 12.5px var(--font-hanken), sans-serif;
+    color: var(--claret);
+    margin: 3px 0 0;
+}
+
+.rowPast .rowNote {
+    color: var(--cocoa);
+    font-weight: 400;
+}
+
+/* ---------- participant faces ---------- */
+
+.faces {
+    flex: none;
+    display: flex;
+    align-items: center;
+}
+
+.face,
+.faceMore {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    /* Overlapped, and the white ring is what keeps them readable as separate
+       people rather than one smear. */
+    margin-left: -8px;
+    border: 2px solid #fff;
+    background: var(--claret-soft);
+    color: var(--claret);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 10.5px var(--font-hanken), sans-serif;
+    overflow: hidden;
+}
+
+.faceMore {
+    background: var(--rose-line);
+    color: var(--cocoa);
+}
+
+.faceImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chevron {
+    flex: none;
+    font-size: 14px;
+    color: var(--clay);
+}
+
+/* ---------- empty / loading ---------- */
+
+.centered {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--cocoa);
+    font: 400 14px var(--font-hanken), sans-serif;
+}
+
+.empty {
+    margin-top: 22px;
+    background: #fff;
+    border: 1px dashed var(--rose-line-2);
+    border-radius: 14px;
+    padding: 34px 24px;
+    text-align: center;
+}
+
+.emptyIcon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--claret-soft);
+    color: var(--claret);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 14px;
+}
+
+.emptyTitle {
+    font: 700 17px var(--font-hanken), sans-serif;
+    margin: 0 0 5px;
+}
+
+.emptyBody {
+    font: 400 13px/1.5 var(--font-hanken), sans-serif;
+    color: var(--cocoa);
+    margin: 0 0 18px;
+}
+
+.primaryBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    border-radius: 999px;
+    background: var(--claret);
+    color: #fff;
+    font: 600 13.5px var(--font-hanken), sans-serif;
+    padding: 11px 22px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.primaryBtn:hover {
+    background: #a51f25;
+}
+
+@media (max-width: 560px) {
+    .head {
+        flex-direction: column;
+    }
+    /* The faces are the first thing worth losing on a narrow row — the name,
+       the status and the note all still need to fit. */
+    .faces {
+        display: none;
+    }
+}

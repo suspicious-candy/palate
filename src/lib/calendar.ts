@@ -1,10 +1,10 @@
 /* iCalendar (RFC 5545) generation for reservation emails.
 
-   Deliberately takes documents rather than ids: POST /api/reservations already
-   holds both the reservation it just created and the restaurant it looked up,
-   so re-fetching them here would be two queries for data sitting in scope. It
-   also keeps this file pure — no database, no async, testable by reading the
-   string it returns. */
+   Takes documents rather than ids, deliberately. POST /api/reservations already
+   holds both the reservation it just created and the restaurant it looked up, so
+   re-fetching them here would be two queries for data already in scope. It also
+   keeps this file pure: no database, no async, testable by reading the string it
+   returns. */
 
 const MEAL_DURATION_MINUTES = 90;
 
@@ -22,12 +22,12 @@ type RestaurantForIcs = {
     geocodes?: { latitude?: number; longitude?: number };
 };
 
-/* YYYYMMDDTHHMMSSZ — no dashes, no colons, no milliseconds. Not ISO 8601's
+/* YYYYMMDDTHHMMSSZ: no dashes, no colons, no milliseconds. Not ISO 8601's
    punctuated form, which parsers reject or silently misread.
 
-   Always UTC. Writing local times would mean shipping a VTIMEZONE block
-   defining that zone's rules; the recipient's calendar converts a UTC instant
-   to their own zone for free. */
+   Always UTC. Writing local times would mean shipping a VTIMEZONE block defining
+   that zone's rules, whereas the recipient's calendar converts a UTC instant to
+   their own zone for free. */
 function formatIcsDate(value: Date | string): string {
     return new Date(value)
         .toISOString()
@@ -36,9 +36,9 @@ function formatIcsDate(value: Date | string): string {
 }
 
 /* Comma and semicolon separate multiple values in iCalendar, so an unescaped
-   address — "1463 Sunset Blvd, Los Angeles" — parses as three locations.
+   address such as "1463 Sunset Blvd, Los Angeles" parses as three locations.
 
-   Backslash is replaced FIRST. Doing it later would re-escape the backslashes
+   Backslash is replaced first. Doing it later would re-escape the backslashes
    introduced by the comma and semicolon rules and double them all. */
 function escapeText(value: string): string {
     return value
@@ -48,10 +48,10 @@ function escapeText(value: string): string {
         .replace(/\r?\n/g, "\\n");
 }
 
-/* Content lines are capped at 75 octets; longer ones are continued on the next
-   line with a single leading space. Most clients tolerate over-long lines, but
-   a strict one will reject the file — and DESCRIPTION with a user's notes in it
-   is exactly where the limit gets crossed. Continuations carry 74 characters
+/* Content lines are capped at 75 octets, and longer ones continue on the next
+   line with a single leading space. Most clients tolerate over-long lines, but a
+   strict one rejects the file, and DESCRIPTION carrying a user's notes is
+   exactly where the limit gets crossed. Continuations carry 74 characters
    because the leading space counts. */
 function fold(line: string): string {
     if (line.length <= 75) return line;
@@ -67,9 +67,9 @@ function fold(line: string): string {
     return parts.join("\r\n ");
 }
 
-/* The .ics and the Google link describe the SAME event, so the values they
-   share are derived once here. Two copies of "Dinner at ${name}" would drift
-   the first time anyone edited one of them. */
+/* The .ics and the Google link describe the same event, so the values they share
+   are derived once here. Two copies of "Dinner at ${name}" would drift the first
+   time anyone edited one of them. */
 function eventFields(
     reservation: ReservationForIcs,
     restaurant: RestaurantForIcs
@@ -80,7 +80,7 @@ function eventFields(
         start,
         end: new Date(start.getTime() + MEAL_DURATION_MINUTES * 60 * 1000),
         title: `Dinner at ${restaurant.name}`,
-        /* Same preference as lib/mapsUrl.ts: an address resolves to the right
+        /* The same preference as lib/mapsUrl.ts: an address resolves to the right
            branch of a chain, where bare coordinates land on an unnamed pin.
            formattedAddress is not required on the schema, hence the fallback. */
         where:
@@ -107,8 +107,8 @@ export function buildReservationIcs(
         restaurant
     );
 
-    /* Stable UID, incrementing SEQUENCE. This pair is what makes a cancellation
-       REPLACE the original event instead of landing beside it — the calendar
+    /* Stable UID, incrementing SEQUENCE. That pair is what makes a cancellation
+       replace the original event instead of landing beside it: the calendar
        matches on UID and accepts the higher sequence as newer. */
     const lines = [
         "BEGIN:VCALENDAR",
@@ -129,17 +129,17 @@ export function buildReservationIcs(
         "END:VCALENDAR",
     ].filter((line): line is string => line !== null);
 
-    /* CRLF, not \n. The spec requires it, and getting this wrong is the single
-       most common reason a hand-built .ics imports as empty with no error. */
+    /* CRLF, not \n. The spec requires it, and getting this wrong is the most
+       common reason a hand-built .ics imports as empty with no error. */
     return lines.map(fold).join("\r\n") + "\r\n";
 }
 
-/* One-tap alternative to the attachment, for the Google majority. The .ics is
+/* A one-tap alternative to the attachment, for the Google majority. The .ics is
    still what makes this work everywhere else, so both go in the email.
 
-   Note what is NOT here: escapeText. Backslash-escaping commas is iCalendar
-   grammar, and this is a URL — URLSearchParams does the only encoding a URL
-   needs, and pre-escaping would put literal backslashes in the event title. */
+   Note what is absent here: escapeText. Backslash-escaping commas is iCalendar
+   grammar and this is a URL. URLSearchParams does the only encoding a URL needs,
+   and pre-escaping would put literal backslashes in the event title. */
 export function googleCalendarUrl(
     reservation: ReservationForIcs,
     restaurant: RestaurantForIcs
@@ -153,7 +153,7 @@ export function googleCalendarUrl(
         action: "TEMPLATE",
         text: title,
         /* Both stamps in the same compact UTC form as the .ics, joined by a
-           slash — Google's own quirk, not an iCalendar convention. */
+           slash. That is Google's own quirk, not an iCalendar convention. */
         dates: `${formatIcsDate(start)}/${formatIcsDate(end)}`,
         details: description,
     });

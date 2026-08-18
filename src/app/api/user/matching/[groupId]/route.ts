@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/withAuth";
 import matchingModel from "@/models/matching.js";
 import { findGroupById } from "@/lib/activeGroup";
+import { closeVote } from "@/lib/closeVote";
 import { z } from "zod";
 
 /* matching.js is untyped, so `group` arrives as `any` and every field access
@@ -10,13 +11,64 @@ import { z } from "zod";
    thing standing between a typo and a 500. */
 type Participant = { user: mongoose.Types.ObjectId };
 
-/* Explicit boolean, not a bare "toggle" action. A toggle derives the new value
-   from whatever the server currently holds, so two admins tapping at the same
-   moment flip it twice and land back where they started — with both of their
-   screens showing the opposite. Sending the INTENDED state makes the last
-   writer win, which is the behaviour a switch is expected to have. */
+/* An explicit boolean, not a bare "toggle" action. A toggle derives the new
+   value from whatever the server currently holds, so two admins tapping at the
+   same moment flip it twice and land back where they started, with both of their
+   screens showing the opposite. Sending the intended state makes the last writer
+   win, which is the behaviour a switch is expected to have. */
 const patchSchema = z.object({
     membershipOpen: z.boolean(),
+});
+
+/* One group, for the detail page.
+ *
+ * The page used to read `user.matchingGroup` off the dashboard payload, which
+ * could only ever be the soonest group. Now that the groups tab lists all of
+ * them, any one has to be openable, so it fetches its own.
+ *
+ * This is also where the vote actually closes for this group: closeVote runs
+ * only when somebody loads a page, and this is now that page.
+ */
+export const GET = withAuth(async (
+    request,
+    user,
+    context: RouteContext<'/api/user/matching/[groupId]'>) =>
+{
+    try {
+        const { groupId } = await context.params;
+        if (!mongoose.isValidObjectId(groupId)) {
+            return NextResponse.json({ error: "Invalid group id" }, { status: 400 });
+        }
+
+        let group = await findGroupById(groupId);
+        /* Membership is the read gate. A group carries every participant's ballot
+           and the shortlist, so it is not public to anyone holding an id.
+           Non-members get the same 404 as a group that does not exist; the PATCH
+           below already set that convention, and it is what stops this being used
+           to probe which ids are real. */
+        const isMember = group?.participants.some((p) => p.user?._id === user.id);
+        if (!group || !isMember) {
+            return NextResponse.json({ error: "Group not found" }, { status: 404 });
+        }
+
+        try {
+            if ((await closeVote(group)) === "closed") {
+                group = await findGroupById(groupId);
+            }
+        } catch (error: any) {
+            /* A vote that failed to close leaves a stale status, which the page
+               can still render. Losing the whole group over it could not be. */
+            console.error("closeVote failed for group", groupId, error?.message);
+        }
+
+        return NextResponse.json({
+            message: "Group fetch successful",
+            success: true,
+            group,
+        });
+    } catch (error: any) {
+        return NextResponse.json({ message: error.message }, { status: 500 });
+    }
 });
 
 export const PATCH = withAuth(async (
@@ -45,9 +97,10 @@ export const PATCH = withAuth(async (
             );
         }
 
-        /* Raw: this handler only compares ids. On a lean document
-           participants.user and admins[] are ObjectIds themselves — .toString()
-           on them, never ._id.toString(), which is the populated spelling. */
+        /* Raw, because this handler only compares ids. On a lean document
+           participants.user and admins[] are ObjectIds themselves, so .toString()
+           applies to them directly, never ._id.toString(), which is the populated
+           spelling. */
         const group = await matchingModel.findById(groupId).lean();
         if (!group) {
             return NextResponse.json({ error: "Group not found" }, { status: 404 });
@@ -71,14 +124,15 @@ export const PATCH = withAuth(async (
             );
         }
 
-        /* No status gate, deliberately. models/matching.js says membershipOpen is
-           "orthogonal to `status`, which governs the vote" — locking the roster
-           and running the vote are separate decisions, and coupling them here
-           would quietly make that comment false. An admin can freeze the guest
-           list mid-vote, which is the main reason the field exists.
+        /* No status gate, deliberately. models/matching.js records that
+           membershipOpen is orthogonal to `status`, which governs the vote:
+           locking the roster and running the vote are separate decisions, and
+           coupling them here would quietly make that note false. An admin can
+           freeze the guest list mid-vote, which is the main reason the field
+           exists.
 
-           No compare-and-set either: the request carries the intended value
-           rather than a flip, so there is no read-modify-write to lose. Two
+           No compare-and-set either. The request carries the intended value
+           rather than a flip, so there is no read-modify-write to lose, and two
            admins racing both write a value they actually chose. */
         await matchingModel.updateOne(
             { _id: groupId },

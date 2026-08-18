@@ -16,10 +16,10 @@ export const GET = withAuth(async (request, user) => {
         /* The token fields are excluded alongside the password because they are
            the same kind of secret: anyone holding verifyToken can verify the
            account, and forgotPasswordToken can reset it. "-password" alone was
-           shipping both to the browser on every dashboard load, where they sit
-           in memory and in any logged network response.
+           shipping both to the browser on every dashboard load, where they sit in
+           memory and in any logged network response.
 
-           isVerified is deliberately still included — the profile page reads it
+           isVerified is still included, deliberately: the profile page reads it
            to show the badge and the resend button. */
         const authUser = await User.findById(userId)
             .select(
@@ -27,8 +27,9 @@ export const GET = withAuth(async (request, user) => {
                 "-forgotPasswordToken -forgotPasswordTokenExpiry"
             )
             .populate("wishlist")
-            // `lists` is a Map of name -> [restaurant refs]; `$*` is mongoose's
-            // wildcard for map VALUES. Without it the page receives raw ObjectIds.
+            // `lists` is a Map of name -> [restaurant refs], and `$*` is
+            // mongoose's wildcard for map values. Without it the page receives
+            // raw ObjectIds.
             .populate("lists.$*")
             .populate("visitedResturants")
             .populate("savedAddresses")
@@ -39,9 +40,9 @@ export const GET = withAuth(async (request, user) => {
                     {error:"Invalid credentials"},{status:401}
                 );
         }
-        /* A second query rather than a populate: membership lives in the
-           matching collection, not on a pointer here. Cheap — it hits the
-           participants.user index — and it is the price of never having two
+        /* A second query rather than a populate, because membership lives in the
+           matching collection rather than on a pointer here. It is cheap, hitting
+           the participants.user index, and it is the price of never having two
            documents that can disagree about who is in a group. */
         let group = await findActiveGroup(userId);
         if(group!=null){
@@ -57,7 +58,7 @@ export const GET = withAuth(async (request, user) => {
         const response = NextResponse.json({
                 message: "Dashboard fetch successful",
                 success: true,
-                // toObject() so the group can be attached; the model has no
+                // toObject() so the group can be attached. The model has no
                 // virtuals or custom toJSON, so this serializes identically.
                 user: { ...authUser.toObject(), matchingGroup: group },
         })

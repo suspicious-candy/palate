@@ -17,8 +17,8 @@ const participantSchema = new mongoose.Schema(
     },
     votedAt: Date,
     // Captured once when this participant opens the group, not tracked
-    // continuously. Scoped to the dinner rather than stored on the user: this
-    // is the only feature that needs it, and it expires with the group.
+    // continuously. Scoped to the dinner rather than stored on the user, since
+    // this is the only feature that needs it and it expires with the group.
     // [lng, lat] — GeoJSON order, matching restaurants.geo.
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
@@ -82,11 +82,11 @@ const matchingSchema = new mongoose.Schema(
       }],
       default:[],
     },
-    /* Whether the roster can still change — orthogonal to `status`, which
-       governs the vote. Added before anything reads it because Mongoose applies
-       defaults at creation only: introduce this later and every group made in
-       the meantime has no value, which reads as falsy, which means locked —
-       the opposite of the default declared here. */
+    /* Whether the roster can still change. Orthogonal to `status`, which governs
+       the vote. Added before anything reads it because Mongoose applies defaults
+       at creation only: introducing this later leaves every group made in the
+       meantime with no value, which reads as falsy, which means locked — the
+       opposite of the default declared here. */
     membershipOpen: {
       type: Boolean,
       default: true,
@@ -101,14 +101,14 @@ const matchingSchema = new mongoose.Schema(
 );
 
 /* Membership is looked up by scanning for the user inside participants[] rather
-   than from a pointer on the user document, so this is the hottest query in the
-   feature. Compound and in this order: the equality match on participants.user
-   narrows first, then `date` serves both the staleness filter and the sort, so
-   Mongo never has to sort in memory. */
+   than from a pointer on the user document, which makes this the hottest query
+   in the feature. Compound, and in this order: the equality match on
+   participants.user narrows first, then `date` serves both the staleness filter
+   and the sort, so Mongo never has to sort in memory. */
 matchingSchema.index({ "participants.user": 1, date: 1 });
 
 // Mongoose 9 no longer passes `next` to pre hooks: return to continue, throw to
-// reject. The old `function (next) { ... next() }` form fails at runtime.
+// reject. The older `function (next) { ... next() }` form fails at runtime.
 matchingSchema.pre("save", function () {
   const allowed = new Set(this.restaurants.map((r) => r.toString()));
 

@@ -8,15 +8,15 @@ export function proxy(request: NextRequest) {
   const hasToken = request.cookies.has("token");
 
   if (isProtectedPath(pathname) && !hasToken) {
-    // Carry where they were headed so login can send them back there.
+    // Carries where they were headed so login can send them back there.
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname + search);
     return NextResponse.redirect(login);
   }
 
   if ((pathname === "/login" || pathname === "/signup") && hasToken) {
-    // An already-signed-in user following an invite link lands here; honour
-    // their destination instead of dumping them on the dashboard.
+    // An already-signed-in user following an invite link lands here, so honour
+    // their destination rather than dropping them on the dashboard.
     return NextResponse.redirect(
       new URL(safeNext(request.nextUrl.searchParams.get("next")), request.url)
     );

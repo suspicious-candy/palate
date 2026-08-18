@@ -96,7 +96,7 @@ export const DELETE = withAuth(async (request, user) => {
         const requesterId = user.id;
 
         // safeParse takes `unknown`, so a bare string here would fail validation
-        // at runtime with no compiler warning. argSchema wants an object.
+        // at runtime with no compiler warning. argSchema expects an object.
         const identifier = request.nextUrl.searchParams.get("identifier");
 
         const result = argSchema.safeParse({ identifier });
