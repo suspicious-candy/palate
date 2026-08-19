@@ -1,3 +1,4 @@
+import { SAFE_USER_FIELDS } from "@/lib/userProjection";
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/withAuth";
 import { z } from "zod";
@@ -35,8 +36,39 @@ const argSchema = z
             .regex(/^[0-9+().\-\s]*$/, "Phone can only contain digits, spaces and + ( ) - ."),
         /* .url() rejects "", so the union is what keeps "remove my photo"
            possible. This value goes straight into an <img src>, hence the
-           constraint at all. */
-        profilePic: z.string().trim().max(2048).url().or(z.literal("")),
+           constraint at all.
+
+           .url() ALONE IS NOT ENOUGH: it accepts any scheme, so
+           "javascript:alert(1)", "data:text/html,..." and "file:///etc/passwd"
+           are all valid URLs by its reckoning and all used to be stored. An
+           <img src> will not execute a javascript: URL in a current browser, so
+           this was not a live XSS — but the value is user-controlled, it is
+           rendered into markup, and the set of places it might get reused
+           (a CSS url(), an <a href>, a share card) is larger than the one place
+           it is used today. Pin the scheme at the boundary rather than trusting
+           every future consumer to re-check.
+
+           https only, not http: a mixed-content image on an https page is
+           blocked by the browser anyway, so allowing it would only produce
+           avatars that silently fail to load. */
+        profilePic: z
+            .string()
+            .trim()
+            .max(2048)
+            .url()
+            .refine((value) => {
+                /* Constructing URL again rather than string-matching the
+                   prefix. "  javascript:..." with leading control characters,
+                   "JaVaScRiPt:", and percent-encoded variants all defeat a
+                   startsWith check; the parser normalises the protocol for us
+                   and .url() has already guaranteed this parses. */
+                try {
+                    return new URL(value).protocol === "https:";
+                } catch {
+                    return false;
+                }
+            }, "Profile picture must be an https:// URL")
+            .or(z.literal("")),
         /* coerce, not z.date(): request.json() yields a string because JSON has
            no date type, so z.date() would reject every request. Plain z.string()
            overcorrects — it accepts "banana" and stores an Invalid Date.
@@ -125,7 +157,7 @@ export const PATCH = withAuth(async (request, user) => {
         const updatedUser = await User.findByIdAndUpdate(user.id, update, {
             new: true,
             runValidators: true,
-        }).select("-password");
+        }).select(SAFE_USER_FIELDS);
 
         /* null means no user matched — a deleted account still holding a live
            cookie. This is the check that belongs here; there is no "did the

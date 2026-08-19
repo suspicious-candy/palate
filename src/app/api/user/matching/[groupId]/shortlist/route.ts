@@ -7,6 +7,7 @@ import User from "@/models/userModel.js";
 import { groupSearchArea, findGroupCandidates, type Point } from "@/lib/groupGeo";
 import { buildTasteQuery } from "@/lib/tasteQuery";
 import { loadLearnedCuisines } from "@/lib/tasteSignal";
+import { RECOMMENDER_URL } from "@/lib/recommender";
 
 /* matching.js is untyped, so `group` is `any` and every field access would
    typecheck no matter how it was spelled. Naming the shape locally is the only
@@ -23,6 +24,16 @@ const SHORTLIST_SIZE = 7;
 /* The service is fast once warm but loads a sentence-transformer on its first
    request, so the ceiling is set by the cold start rather than the search. */
 const RECOMMENDER_TIMEOUT_MS = 20_000;
+
+/* Vercel kills a serverless function at its maxDuration, and the platform
+   default is shorter than the timeout above — so on the default the platform
+   would abort this route BEFORE its own AbortSignal fired, turning a slow
+   recommender into a 504 with no log line from this handler and no chance to
+   answer the 503 the catch below is written to produce.
+
+   30 rather than exactly 20: the recommender call is the long pole, but the geo
+   query, the user lookup and the ballot write all happen around it. */
+export const maxDuration = 30;
 
 export const POST = withAuth(async (
     request,
@@ -169,7 +180,7 @@ export const POST = withAuth(async (
            stale index rather than a wiring mistake. */
         const candidateIds = candidates.map((r: any) => r.fsqId);
 
-        const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
+
 
         let ranking: { businessIds: string[]; agreement?: number };
         try {

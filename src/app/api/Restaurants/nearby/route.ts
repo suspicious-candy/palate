@@ -6,18 +6,45 @@ import { getUserFromToken } from "@/lib/auth";
 import UserModel from "@/models/userModel.js";
 import { buildTasteQuery, type UserPreferences } from "@/lib/tasteQuery";
 import { loadLearnedCuisines } from "@/lib/tasteSignal";
+import { readCoords, geoCell } from "@/lib/coords";
+import { hit, clientKey, tooManyRequests, LIMITS } from "@/lib/rateLimit";
+import { RECOMMENDER_URL, indexMissing } from "@/lib/recommender";
 
 const radius = 20000;
 
+/* This route can run three paginated Foursquare requests, a bulk upsert and a
+   recommender call in one invocation, which is comfortably past the platform's
+   default function timeout on a cold area. Every one of those is already
+   individually non-fatal, but only if the function lives long enough to reach
+   the catch. */
+export const maxDuration = 30;
+
 export async function GET(request:NextRequest) {
     try{
+        /* Before connect(), like the other rate-limited routes: the point is to
+           refuse without paying for the refusal. */
+        const verdict = await hit(`nearby:${clientKey(request)}`, LIMITS.nearby);
+        if (!verdict.allowed) {
+            return tooManyRequests(verdict.retryAfterSeconds, "Slow down a moment.");
+        }
+
         await connect();
-        
-        const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
+
 
         const { searchParams } = new URL(request.url);
-        const lat = Number(searchParams.get("lat"));
-        const lng = Number(searchParams.get("lng"));
+
+        /* Parsed up here, and the request is refused before any database work,
+           rather than being validated halfway down after the user lookup. The
+           old guard sat below the preferences read and used Number.isNaN, which
+           a missing parameter never trips — see lib/coords.ts. */
+        const coords = readCoords(searchParams);
+        if (!coords) {
+            return NextResponse.json(
+                { error: "lat and lng are required, and must be valid coordinates" },
+                { status: 400 }
+            );
+        }
+        const { lat, lng } = coords;
 
         const token = request.cookies.get("token")?.value;
         const authPayload = getUserFromToken(token);
@@ -37,9 +64,6 @@ export async function GET(request:NextRequest) {
            sounds like" would rank two users by different rules, and nothing would
            ever surface it. */
         const preferenceQuery = buildTasteQuery(prefs ?? null, learned);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return NextResponse.json({ error: "lat and lng query params are required" }, { status: 400 });
-        }
 
         let restaurants = await Restaurant.find({
             geo: {
@@ -51,7 +75,47 @@ export async function GET(request:NextRequest) {
         })
         .limit(50)
         .lean();
-        if (restaurants.length === 0) {
+        /* TWO GATES ON THE SYNC, and they guard different things.
+
+           Everything below this point spends money and writes to the restaurants
+           collection: up to three pages of the Foursquare Places API, then an
+           upsert of every place that comes back. The route above it is a plain
+           read and stays open to anonymous callers, which is right — a signed-out
+           visitor should still see restaurants near them.
+
+           `authPayload` — a signed-in caller. Not an authorization decision so
+           much as a cost one: an anonymous request cannot be attributed to
+           anybody, and this is the only path in the app that bills a third party.
+           A signed-out visitor in an unsynced area gets an empty list rather than
+           a populated one, which is a real (small) product cost, and the
+           alternative was an endpoint anyone could loop to run up the bill.
+
+           `foursquareSync` — a per-area cooldown, keyed on a ~1km cell rather
+           than on the caller. Being signed in is not by itself permission to
+           re-sync the same square repeatedly, and ten neighbours in a genuinely
+           new area should cost one sync between them rather than ten. See the
+           note on the limit in rateLimit.ts.
+
+           Both are checked before the call rather than after, so a refusal costs
+           nothing. Neither returns an error: an unsynced area is an empty result,
+           not a failure, and the caller has nothing to do about it either way. */
+        /* THE SHORT-CIRCUIT IS LOAD-BEARING. hit() consumes budget as a side
+           effect, so it must be the last operand: written in any other order, a
+           signed-out visitor or an area that already has restaurants would spend
+           the cell's one sync per hour without ever performing one, and the first
+           real caller would be refused. `&&` still short-circuits across the
+           await, so the call is only made when the first two hold.
+
+           The parentheses around the await are not optional. `await hit(...)
+           .allowed` reads .allowed off the Promise — undefined, therefore falsy,
+           therefore the sync silently never runs and new areas stop being
+           discovered with nothing in the logs to say so. */
+        const maySync =
+            restaurants.length === 0 &&
+            !!authPayload &&
+            (await hit(`fsqsync:${geoCell(coords)}`, LIMITS.foursquareSync)).allowed;
+
+        if (maySync) {
             const places = await searchFoursquarePlaces(lat, lng, radius);
             const mapped = places.map(mapFoursquarePlace);
 
@@ -79,11 +143,7 @@ export async function GET(request:NextRequest) {
                unscored candidates are appended in distance order below, so the
                user gets their list now and the vectors exist for the next call
                and, more to the point, for the group shortlist. */
-            fetch(`${RECOMMENDER_URL}/index/missing`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ businessIds: mapped.map((r) => r.fsqId) }),
-            }).catch((err) => console.error("Index top-up failed:", err));
+            indexMissing(mapped.map((r) => r.fsqId));
         }
 
         const query = searchParams.get("query")?? preferenceQuery ?? "restaurant";

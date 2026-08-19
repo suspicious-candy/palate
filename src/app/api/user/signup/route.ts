@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         /* Before connect() and before bcrypt.hash. Abuse here costs more than
            CPU: every accepted request also leaves a permanent row in the users
            collection, so the cost outlives the request that caused it. */
-        const verdict = hit(`signup:${clientKey(request)}`, LIMITS.signup);
+        const verdict = await hit(`signup:${clientKey(request)}`, LIMITS.signup);
         if (!verdict.allowed) {
             return tooManyRequests(
                 verdict.retryAfterSeconds,
@@ -44,7 +44,14 @@ export async function POST(request: NextRequest) {
 
         await connect();
 
-        const reqBody = await request.json();
+        /* See the note in the login route: a malformed body must be a 400,
+           not a 500 quoting the JSON parser. */
+        let reqBody: unknown;
+        try {
+            reqBody = await request.json();
+        } catch {
+            return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+        }
 
         const result = signupSchema.safeParse(reqBody);
         if (!result.success) {

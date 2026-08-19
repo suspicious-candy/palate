@@ -3,6 +3,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import QRCode from "qrcode";
+import { useHydrated, useClientValue } from "@/lib/useClientValue";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import styles from "./InviteModal.module.css";
@@ -15,21 +16,23 @@ export default function InviteModal({
     user: User | null;
     onClose: () => void;
 }) {
-    const [mounted, setMounted] = React.useState(false);
-    const [link, setLink] = React.useState("");
+    /* useHydrated rather than a mounted flag driven by an effect: the modal is
+       portalled, so it must not render on the server, and this answers the same
+       question one render earlier. See lib/useClientValue.ts. */
+    const mounted = useHydrated();
     const [qr, setQr] = React.useState("");
     const [copied, setCopied] = React.useState(false);
     const [identifier, setIdentifier] = React.useState("");
     const [sending, setSending] = React.useState(false);
 
-    React.useEffect(() => setMounted(true), []);
-
-    // The origin is known only in the browser, so the link is built after mount
-    // rather than during render.
-    React.useEffect(() => {
-        if (!user?.username) return;
-        setLink(`${window.location.origin}/add/${user.username}`);
-    }, [user?.username]);
+    /* Derived, not stored. The origin is browser-only, but once it is available
+       the link is a pure function of it and the username — so there is nothing
+       to keep in state and nothing to keep in sync. The old version held `link`
+       in state and wrote it from an effect, which meant one render with an empty
+       link and a second with the real one, and the QR effect below chained off
+       that. */
+    const origin = useClientValue(() => window.location.origin, "");
+    const link = origin && user?.username ? `${origin}/add/${user.username}` : "";
 
     React.useEffect(() => {
         if (!link) return;
@@ -97,6 +100,7 @@ export default function InviteModal({
                 <div className={styles.qrPanel}>
                     <div className={styles.qrBox}>
                         {qr ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- a data: URI already in memory; nothing for the optimiser to do
                             <img src={qr} alt="QR code for your invite link" className={styles.qr} />
                         ) : null}
                     </div>

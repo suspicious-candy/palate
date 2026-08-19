@@ -31,6 +31,7 @@ function PersonRow({
     return (
         <li className={styles.row}>
             {person.profilePic ? (
+                // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar host; see the images note in next.config.ts
                 <img src={person.profilePic} alt="" className={styles.avatarImg} />
             ) : (
                 <span className={styles.avatar}>

@@ -8,6 +8,7 @@ import styles from "./signup.module.css";
 import { toast } from "react-hot-toast";
 import { useUser } from "@/lib/userContext";
 import { safeNext, readNextParam } from "@/lib/safeNext";
+import { useClientValue } from "@/lib/useClientValue";
 import { browserTimeZone } from "@/lib/timezone";
 
 
@@ -36,12 +37,15 @@ export default function SignupPage(){
 
     const [loading,setloading]= React.useState(false);
 
-    // Read after mount, not during render: the server has no window, so doing
-    // this inline would produce a hydration mismatch.
-    // Sanitised here once, so an invalid `next` collapses to "" rather than
-    // silently turning into an explicit next=/dashboard downstream.
-    const [nextParam, setNextParam] = React.useState("");
-    React.useEffect(() => setNextParam(safeNext(readNextParam(), "")), []);
+    /* Read in the browser, not during server render: the server has no window,
+       so reading inline would be a hydration mismatch. Sanitised here once, so
+       an invalid `next` collapses to "" rather than silently becoming an
+       explicit next=/dashboard downstream.
+
+       useClientValue rather than useState + useEffect. Same hydration safety,
+       but the value is present on the FIRST client render instead of the
+       second — see lib/useClientValue.ts. */
+    const nextParam = useClientValue(() => safeNext(readNextParam(), ""), "");
 
     const loginHref = nextParam
         ? `/login?next=${encodeURIComponent(safeNext(nextParam))}`
@@ -169,13 +173,6 @@ export default function SignupPage(){
                 >
                     {buttonDisabled ? "Cant Sign up yet" : "Sign Up"}
                 </button>
-
-                <div className={styles.divider}>
-                    <span>or</span>
-                </div>
-
-                <button type="button" className={styles.social}>Continue with Google</button>
-                <button type="button" className={styles.social}>Continue with Apple</button>
 
                 <p className={styles.footer}>
                     Already have an account?{" "}

@@ -1,3 +1,4 @@
+import { SAFE_USER_FIELDS } from "@/lib/userProjection";
 import User from "@/models/userModel.js"
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/withAuth";
@@ -32,7 +33,7 @@ export const PATCH = withAuth(async (request, user) => {
             userId,
             { $set: { preferences: result.data } },
             { new: true, runValidators: true }
-        ).select("-password");
+        ).select(SAFE_USER_FIELDS);
 
         if(!updateUser){
             return NextResponse.json(

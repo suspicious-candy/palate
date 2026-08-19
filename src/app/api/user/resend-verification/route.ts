@@ -18,7 +18,7 @@ export const POST = withAuth(async (request, user) => {
         /* Keyed on the account rather than the IP. The cost being rationed is an
            email sent to THIS person's inbox, and a shared office address should
            not spend everyone's budget. */
-        const verdict = hit(`resendverify:${user.id}`, LIMITS.resendVerification);
+        const verdict = await hit(`resendverify:${user.id}`, LIMITS.resendVerification);
         if (!verdict.allowed) {
             return tooManyRequests(
                 verdict.retryAfterSeconds,

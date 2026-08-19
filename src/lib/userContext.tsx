@@ -217,8 +217,15 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
     const [loading, setLoading] = React.useState(true);
     const [pending,setPending] = React.useState<PendingReq[]>([]);
     const [confirmed,setConfirmed] = React.useState<FriendSummary[]>([]);
-    const refreshUser = React.useCallback(async () => {
-    setLoading(true);
+    /* The fetch itself, with no loading flag of its own.
+
+       `loading` already starts true, so the mount path does not need to set it —
+       and setting it there was a setState running synchronously inside an
+       effect, which costs a render pass and is the pattern the React Compiler
+       assumes is absent. Splitting the two means the effect below calls this,
+       while the exported refreshUser (used after an edit, when loading is
+       already false) still flips the flag. */
+    const loadUser = React.useCallback(async () => {
         try {
             const res = await axios.get("/api/user/dashboard");
             setUser(res.data.user ?? null);
@@ -233,6 +240,12 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
             setLoading(false);
         }
     }, []);
+
+    /* The public one: a manual refresh should show the spinner again. */
+    const refreshUser = React.useCallback(async () => {
+        setLoading(true);
+        await loadUser();
+    }, [loadUser]);
 
     const refreshFriends = React.useCallback(async () => {
         try {
@@ -250,8 +263,17 @@ export function UserProvider({ children }:{ children: React.ReactNode }){
         }
     }, []);
 
-    React.useEffect(() => { refreshUser(); }, [refreshUser]);
-    React.useEffect(() => { refreshFriends(); }, [refreshFriends]);
+    /* loadUser, not refreshUser — see the note above.
+
+       The `await` inside an async IIFE is not ceremony. Both of these functions
+       only touch state after their first await, so nothing here updates state
+       synchronously — but react-hooks/set-state-in-effect cannot see through a
+       useCallback boundary and assumes the worst. Awaiting inside the effect
+       states the thing that is already true in a form the analysis can check.
+       Verified: with a bare `loadUser()` the rule fires; with `void loadUser()`
+       and with `.catch()` it still fires; only this form expresses it. */
+    React.useEffect(() => { (async () => { await loadUser(); })(); }, [loadUser]);
+    React.useEffect(() => { (async () => { await refreshFriends(); })(); }, [refreshFriends]);
 
     return (
         <userContext.Provider value={{ user, setUser, loading, refreshUser,refreshFriends,pending,confirmed }}>

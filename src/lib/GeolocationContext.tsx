@@ -14,9 +14,25 @@ export function GeolocationProvider({ children }: { children: React.ReactNode })
 
 
     React.useEffect(() => {
+        /* The unsupported branch used to call setState right here, synchronously
+           inside the effect. Every other path into this state arrives through a
+           getCurrentPosition callback — that is, in a later task — and this one
+           did not, which cost a second render of the whole tree before paint
+           (this provider wraps the app) and is what react-hooks/set-state-in-effect
+           objects to.
+
+           Reporting it through the same error callback the browser would use
+           makes both paths the same shape. A cleared timeout on unmount so a
+           provider torn down in the same tick does not set state afterwards. */
         if (!("geolocation" in navigator)) {
-            setState({ status: "error", message: "Geolocation is not supported by this browser" });
-            return;
+            const id = setTimeout(
+                () => setState({
+                    status: "error",
+                    message: "Geolocation is not supported by this browser",
+                }),
+                0
+            );
+            return () => clearTimeout(id);
         }
 
         navigator.geolocation.getCurrentPosition(

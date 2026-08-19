@@ -6,7 +6,12 @@ import { RestaurantCard, handleList } from "@/app/dashboard/page";
 import Nav from "@/components/Nav";
 import styles from "./lists.module.css";
 
-export default function listPage() {
+/* Capitalised because React only treats a capitalised function as a component.
+   Lowercase, it is an ordinary function that happens to call hooks: the linter
+   cannot verify the rules of hooks inside it, and — since reactCompiler is on in
+   next.config.ts — the compiler skips it entirely, so this page was silently
+   getting none of the memoisation every other page gets. */
+export default function ListPage() {
     const { user, setUser, loading } = useUser();
     const [isAdding, setIsAdding] = React.useState(false);
     const [listName, setListName] = React.useState("");

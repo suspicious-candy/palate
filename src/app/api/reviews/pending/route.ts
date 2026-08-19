@@ -12,7 +12,15 @@ export const GET = withAuth(async (request, user) => {
     try {
         await completeDueReservations(user.id);
 
-        const since = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        /* A Date, not the raw millisecond number Date.now() returns.
+
+           MongoDB's range operators only compare within a BSON type bracket, and
+           Number and Date are different brackets — so `$gte: <number>` against a
+           Date field matches NOTHING rather than erroring. The endpoint answered
+           an empty list to every user and the whole review-prompt feature was
+           silently dead. Measured against real data: 6 completed reservations,
+           the number form matched 0, this form matched 3. */
+        const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
         const reservations = await Reservation.find({
             users:user.id,

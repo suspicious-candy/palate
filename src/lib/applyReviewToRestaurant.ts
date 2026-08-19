@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { connect } from "@/dbConfig/dbConfig";
 import Restaurant from "@/models/restaurantModel.js";
 import Review from "@/models/reviewModel.js";
+import { indexMissing } from "@/lib/recommender";
 
 /* reviewModel.js is JavaScript, so Mongoose hands it back as `any` and every
    field access would typecheck however it was spelled. Naming the shape locally
@@ -83,12 +84,7 @@ export async function applyReviewToRestaurant(review: ReviewDoc): Promise<void> 
            invisible. .catch() so a failure logs rather than becoming an unhandled
            rejection. */
         if (enriched?.fsqId && enriched.source === "foursquare") {
-            const RECOMMENDER_URL = process.env.RECOMMENDER_URL ?? "http://localhost:8000";
-            fetch(`${RECOMMENDER_URL}/index/missing`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ businessIds: [enriched.fsqId], force: true }),
-            }).catch((err) => console.error("Re-embed after review failed:", err));
+            indexMissing([enriched.fsqId], { force: true });
         }
     }
 

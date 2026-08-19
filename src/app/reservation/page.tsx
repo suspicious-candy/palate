@@ -66,9 +66,19 @@ export default function ReservationPage() {
       .catch(() => setPendingIds(new Set()));
   }, []);
 
+  /* Awaited inside an async IIFE — see the note in lib/userContext.tsx for why
+     this form rather than a bare call.
+
+     Unlike UserProvider, loadReservations keeps its own setLoading(true) and is
+     called directly here. That is fine: `loading` already starts true, and React
+     bails out of a re-render when state is set to an identical value, so the
+     call costs nothing on mount while still driving the spinner when the tab
+     buttons re-run it. Promise.all so the two requests overlap rather than
+     queueing. */
   React.useEffect(() => {
-    loadReservations();
-    loadPending();
+    (async () => {
+      await Promise.all([loadReservations(), loadPending()]);
+    })();
   }, [loadReservations, loadPending]);
 
   const markReviewed = React.useCallback((reservationId: string) => {

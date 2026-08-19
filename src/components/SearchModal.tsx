@@ -1,6 +1,7 @@
 "use client"
 import React from "react"
 import {createPortal} from "react-dom"
+import { useHydrated } from "@/lib/useClientValue";
 import styles from "./SearchModal.module.css";
 import { useNearbyRestaurants } from "@/lib/nearbyRestuant";
 import { useGeo } from "@/lib/GeolocationContext";
@@ -46,19 +47,26 @@ export default function SearchModal({ onClose }: { onClose: () => void }){
     const nearbyRestaurants = useNearbyRestaurants().slice(0, 3);
 
     const [searchResults, setSearchResults] = React.useState<Restaurant[]>([]);
-    const [mounted,setMounted] = React.useState(false);
     const [query, setQuery] = React.useState("");
+
+    /* See lib/useClientValue.ts — the same question as the old mounted flag,
+       answered one render earlier and without an effect. */
+    const mounted = useHydrated();
 
     const inputRef = React.useRef<HTMLInputElement>(null)
 
-    React.useEffect(() => setMounted(true), []);
     React.useEffect(() => { inputRef.current?.focus(); }, [mounted])
 
+    /* The empty case is DERIVED below rather than written back into state.
+
+       This used to call setSearchResults([]) inline whenever the query was
+       cleared, which is a setState running synchronously inside an effect —
+       an extra render pass every time someone deletes their query, and the
+       pattern the React Compiler assumes is absent. Returning early leaves the
+       previous results sitting in state, which is harmless because `results`
+       ignores them unless the query is live. */
     React.useEffect(() => {
-        if (!query.trim() || geo.status !== "success") {
-            setSearchResults([]);
-            return;
-        }
+        if (!query.trim() || geo.status !== "success") return;
 
         const timeoutId = setTimeout(() => {
             fetchSearchResults(query, geo.latitude, geo.longitude)
@@ -73,7 +81,15 @@ export default function SearchModal({ onClose }: { onClose: () => void }){
         return null;
     }
 
-    const shown = query.trim() ? searchResults : nearbyRestaurants;
+    /* Stale results from a previous query are filtered out HERE rather than
+       being cleared from state by the effect above. `geo.status === "success"`
+       is part of the condition because that is exactly when the effect declines
+       to fetch — without it, clearing the query would briefly show the results
+       of the last one. */
+    const shown =
+        query.trim()
+            ? (geo.status === "success" ? searchResults : [])
+            : nearbyRestaurants;
 
     return(
         createPortal(

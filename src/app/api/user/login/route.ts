@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
            attacker can pull against every other request the server is serving,
            not just against this route. */
         const ipKey = clientKey(request);
-        const ipVerdict = hit(`login:ip:${ipKey}`, LIMITS.loginByIp);
+        const ipVerdict = await hit(`login:ip:${ipKey}`, LIMITS.loginByIp);
         if (!ipVerdict.allowed) {
             return tooManyRequests(
                 ipVerdict.retryAfterSeconds,
@@ -42,7 +42,16 @@ export async function POST(request: NextRequest) {
 
         await connect();
 
-        const reqBody = await request.json();
+        /* .json() THROWS on a malformed or absent body rather than resolving
+           falsy, so without this the parse error lands in the outer catch and is
+           reported as a 500 quoting the parser — a server fault for what is
+           plainly a bad request. Same guard as PATCH /api/user. */
+        let reqBody: unknown;
+        try {
+            reqBody = await request.json();
+        } catch {
+            return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+        }
 
         const result = loginSchema.safeParse(reqBody);
         if (!result.success) {
@@ -69,7 +78,7 @@ export async function POST(request: NextRequest) {
            below. Charging successful sign-ins would let a user with a busy day
            lock themselves out. */
         const accountKey = `login:account:${identifier.toLowerCase()}`;
-        const accountVerdict = peek(accountKey, LIMITS.loginByAccount);
+        const accountVerdict = await peek(accountKey, LIMITS.loginByAccount);
         if (!accountVerdict.allowed) {
             return tooManyRequests(
                 accountVerdict.retryAfterSeconds,
@@ -103,7 +112,7 @@ export async function POST(request: NextRequest) {
 
         if (!valid) {
             // Only failures spend the per-account budget.
-            hit(accountKey, LIMITS.loginByAccount);
+            await hit(accountKey, LIMITS.loginByAccount);
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 

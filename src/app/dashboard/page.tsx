@@ -127,6 +127,9 @@ export function handleList(addList:boolean,listName:string,setUser: React.Dispat
                 return { ...prev, lists: { ...prev.lists, [listName]: [] } };
             }
 
+            /* Destructure-to-omit: the binding exists only to keep that key out
+               of the rest object, so it is deliberately never read. */
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { [listName]: _removed, ...remainingLists } = prev.lists;
              return { ...prev, lists: remainingLists };
         });
@@ -439,8 +442,10 @@ export default function Dashboard() {
                                     <button type="submit" className={styles.newListBtn}>Add</button>
                                 </form>
 
-                                {Object.entries(user?.lists ?? {}).map(([name, restaurants]) => (
-                                    <EditedListCard key={name} name={name} restaurants={restaurants} setUser={setUser} />
+                                {/* Only the name — the edit card renders a delete control, not the
+                                    restaurants inside the list. Passing them was dead weight. */}
+                                {Object.keys(user?.lists ?? {}).map((name) => (
+                                    <EditedListCard key={name} name={name} setUser={setUser} />
                                 ))}
                             </div>
                             :
@@ -586,6 +591,7 @@ export function FriendCard({ friend }: { friend: FriendSummary }){
     return(
         <div className={styles.friendRow}>
             {friend.profilePic ? (
+                // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar host; see the images note in next.config.ts
                 <img
                     className={styles.friendAvatar}
                     src={friend.profilePic}
@@ -674,7 +680,7 @@ function LoadedListCard({ name, restaurants }: { name: string; restaurants: Rest
 }
 
 
-function EditedListCard({ name, restaurants,setUser }: { name: string; restaurants: Restaurant[];setUser: React.Dispatch<React.SetStateAction<User | null>> }){
+function EditedListCard({ name, setUser }: { name: string; setUser: React.Dispatch<React.SetStateAction<User | null>> }){
     return(
         <div className={styles.listRow}>
             <span className={styles.listName}>{name}</span>

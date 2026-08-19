@@ -52,6 +52,26 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  /* WHY THE AVATARS ARE PLAIN <img> AND STAY THAT WAY.
+
+     next/image only loads a remote host listed here, and `profilePic` is a URL
+     the user types in — it can be any https origin. Supporting it through
+     next/image therefore means `hostname: "**"`, and that turns the image
+     optimiser into an OPEN PROXY: anyone can hand this deployment a URL and
+     have the server fetch it and re-serve it, which is a bandwidth amplifier,
+     an SSRF surface, and on a metered host a bill.
+
+     So @next/next/no-img-element is disabled at those six call sites rather
+     than obeyed, and each carries a pointer back here. The rule stays on
+     everywhere else, which is what caught the genuinely fixable local asset in
+     onBoarding. The QR code in InviteModal is the seventh: it is a data: URI
+     the browser already has in memory, and there is nothing for an optimiser to
+     do with it.
+
+     The real fix, if avatars ever matter enough, is to stop storing foreign
+     URLs — upload to storage this app controls and list that one hostname
+     here. That also lets img-src in the CSP below tighten from `https:` to
+     `self`, which is the same problem wearing a different hat. */
   images: {
     remotePatterns: [
       {
@@ -67,7 +87,28 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
-          { key: "Strict-Transport-Security", value: "max-age=300" },
+          /* HSTS. 300 was a testing value — five minutes of protection is
+             effectively none, since the window an attacker needs is the FIRST
+             request after the header lapses.
+
+             A year is the conventional value and what preload lists require.
+             It is also a commitment: once a browser has seen this, it refuses
+             to talk to the origin over http at all, for a year, and there is no
+             way to reach out and undo that. So it is set only in production —
+             on an http://localhost dev server the header is ignored by browsers
+             anyway, but a developer who later runs local https would otherwise
+             lock their own machine out of the dev server.
+
+             NOT `preload`, deliberately. Submitting to the preload list bakes
+             the domain into browser binaries and removal takes months. That is
+             a decision to make once the deployment has been stable on https for
+             a while, not a side effect of a config tidy-up. `includeSubDomains`
+             is left off for the same reason: it would cover subdomains that may
+             not exist yet or may not be served over https. */
+          {
+            key: "Strict-Transport-Security",
+            value: isDev ? "max-age=0" : "max-age=31536000",
+          },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },

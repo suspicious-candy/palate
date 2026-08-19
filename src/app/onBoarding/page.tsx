@@ -4,12 +4,16 @@ import Link from "next/link";
 import React from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios"
+import Image from "next/image";
 import styles from "./onBoarding.module.css";
 import { toast } from "react-hot-toast";
 import { FOOD_CATEGORIES } from "../../lists/foodCategories";
 import { safeNext, readNextParam } from "@/lib/safeNext";
 
-export default function onBoarding(){
+/* Capitalised for the same reason as ListPage: lowercase means React does not
+   see a component, the hooks rules go unchecked, and the React Compiler skips
+   the whole file. The route folder stays "onBoarding" — the URL is unaffected. */
+export default function OnBoarding(){
 
     const router = useRouter();
 
@@ -101,7 +105,10 @@ export default function onBoarding(){
             <div className={styles.card}>
                 <div className={styles.header}>
                     <span className={styles.iconCircle}>
-                        <img src="/pref.svg" alt="" />
+                        {/* A local static asset, so next/image is a straight win: it is served
+                            optimised and with intrinsic dimensions. The avatar <img> tags
+                            elsewhere deliberately are NOT converted — see next.config.ts. */}
+                        <Image src="/pref.svg" alt="" width={28} height={28} />
                     </span>
                     <h1 className={styles.title}>Curate Your Palate</h1>
                     <p className={styles.subtitle}>

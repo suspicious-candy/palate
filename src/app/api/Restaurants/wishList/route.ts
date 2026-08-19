@@ -1,3 +1,4 @@
+import { SAFE_USER_FIELDS } from "@/lib/userProjection";
 import User from "@/models/userModel.js"
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/withAuth";
@@ -33,7 +34,7 @@ export const PATCH = withAuth(async (request, user) => {
             userId,
             { $addToSet: { wishlist: rest._id } },
             { new: true, runValidators: true }
-        ).select("-password");
+        ).select(SAFE_USER_FIELDS);
 
         if(!updateUser){
             return NextResponse.json(
@@ -76,7 +77,7 @@ export const DELETE = withAuth(async (request, user) => {
             userId,
             { $pull: { wishlist: rest._id } },
             { new: true, runValidators: true }
-        ).select("-password");
+        ).select(SAFE_USER_FIELDS);
 
         if(!updateUser){
             return NextResponse.json(

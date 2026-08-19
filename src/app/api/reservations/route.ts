@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { NextResponse, after } from "next/server";
 import { withAuth, withVerified } from "@/lib/withAuth";
 import Restaurant from "@/models/restaurantModel.js";
@@ -9,11 +10,48 @@ import { sendMail } from "@/lib/mailer";
 import { reservationEmail, reservationCancelledEmail } from "@/lib/emailTemplates";
 import { buildReservationIcs, googleCalendarUrl } from "@/lib/calendar";
 
+/* How far ahead a table may be booked. Not a business rule so much as a
+   sanity bound — a reservation in 2087 is a typo or a probe, and it would sit
+   on the dashboard forever because nothing ever retires it. */
+const MAX_BOOKING_AHEAD_DAYS = 365;
+
 const bodySchema = z.object({
   fsqId: z.string(),
-  date: z.string(),
-  partySize: z.number().int().min(1),
-  notes: z.string().optional(),
+
+  /* z.coerce.date(), not z.string(). JSON has no date type so the value arrives
+     as a string, and the old z.string() passed "banana" straight through to
+     `new Date(date)` — an Invalid Date that Mongoose then rejected with a
+     CastError, reported by the catch below as a 500 for what is plainly a bad
+     request. coerce rejects it here, as a 400.
+
+     THE LOWER BOUND IS NOT COSMETIC. Without it a booking could be dated in the
+     past, and completeDueReservations — which runs on the next read — promptly
+     flips anything past into "completed". A user could therefore manufacture a
+     completed meal at a restaurant they have never visited and then review it,
+     which writes into palateRating and into the learned-taste signal the group
+     recommender reads. The validation gap and the review gate were separately
+     reasonable; together they were a way to forge history.
+
+     Refinements rather than .min(new Date()): a constant would be evaluated
+     once at module load, freezing the boundary at server-start time. Same
+     reasoning as the dob bounds in /api/user. */
+  date: z.coerce
+    .date()
+    .refine((d) => d.getTime() > Date.now(), "A table can only be booked in the future")
+    .refine(
+      (d) => d.getTime() < Date.now() + MAX_BOOKING_AHEAD_DAYS * 24 * 60 * 60 * 1000,
+      `A table can be booked at most ${MAX_BOOKING_AHEAD_DAYS} days ahead`
+    ),
+
+  /* An upper bound so the field cannot hold a number no restaurant could seat.
+     999999 was accepted before this. */
+  partySize: z.number().int().min(1).max(50),
+
+  /* The model declares `notes: String` with no maxlength, so 5000 characters
+     used to be stored verbatim and then rendered into the confirmation email
+     and the .ics DESCRIPTION. 500 is well past what anyone writes about a
+     dietary requirement. */
+  notes: z.string().trim().max(500).optional(),
 });
 const patchSchema = z.object({
   reservationId: z.string(),
@@ -56,7 +94,9 @@ export const POST = withVerified(async (request, user) => {
     const reservation = await Reservation.create({
       users: [user.id],
       restaurant: rest._id,
-      date: new Date(date),
+      // Already a Date — z.coerce.date() did the parsing, and re-wrapping it
+      // would only clone.
+      date,
       partySize,
       status: "confirmed",
       notes,
@@ -128,6 +168,13 @@ export const PATCH = withAuth(async (request, user) => {
         }
 
         const { reservationId, status } = result.data;
+
+        /* Zod only knows this is a string. A malformed one raises a CastError
+           inside findOneAndUpdate, which the catch below reports as a 500 for a
+           plainly bad request. Same guard, same reasoning, as POST /api/reviews. */
+        if (!mongoose.isValidObjectId(reservationId)) {
+            return NextResponse.json({ error: "Invalid reservation id" }, { status: 400 });
+        }
 
         /* Populated so the cancellation email has a restaurant name and address
            to work with — findOneAndUpdate alone returns the bare ObjectId ref. */

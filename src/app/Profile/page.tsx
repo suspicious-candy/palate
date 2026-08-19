@@ -234,6 +234,7 @@ export default function UserProfile() {
                     <div className={styles.identity}>
                         <div className={styles.avatar}>
                             {user.profilePic ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar host; see the images note in next.config.ts
                                 <img src={user.profilePic} alt="" className={styles.avatarImg} />
                             ) : (
                                 <span className={styles.avatarInitials}>{initials(user)}</span>

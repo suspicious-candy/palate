@@ -45,8 +45,16 @@ export const GET = withAuth(async (
            and the shortlist, so it is not public to anyone holding an id.
            Non-members get the same 404 as a group that does not exist; the PATCH
            below already set that convention, and it is what stops this being used
-           to probe which ids are real. */
-        const isMember = group?.participants.some((p) => p.user?._id === user.id);
+           to probe which ids are real.
+
+           .toString() on the id, which is the whole check. findGroupById returns
+           a .lean() document, so `_id` is a real ObjectId however FriendSummary
+           types it, and `===` against the hex string from the token is false for
+           everybody — including the group's own admin. Same spelling as
+           close/route.ts, which reads an identically populated group. */
+        const isMember = group?.participants.some(
+            (p) => p.user?._id?.toString() === user.id
+        );
         if (!group || !isMember) {
             return NextResponse.json({ error: "Group not found" }, { status: 404 });
         }

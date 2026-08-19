@@ -95,39 +95,11 @@
     transform: scale(0.99);
 }
 
-.divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 22px 0;
-    color: #9a9a9a;
-    font-size: 12px;
-}
-
-.divider::before,
-.divider::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: #ececec;
-}
-
-.social {
-    height: 50px;
-    border: 1px solid #e3e3e3;
-    border-radius: 14px;
-    background: #ffffff;
-    color: #3a3a3a;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: 12px;
-    transition: background 0.15s;
-}
-
-.social:hover {
-    background: #fafafa;
-}
+/* .divider and .social lived here for the "or / Continue with Google / Apple"
+   block. Those buttons were removed — they were inert, there is no OAuth in this
+   app — and the divider went with them, since it existed only to separate the
+   form from them. Removed rather than left in place: dead CSS in a module is
+   invisible, and the next person adding a divider would find two definitions. */
 
 .footer {
     text-align: center;

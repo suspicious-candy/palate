@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // A stale git worktree holding a full copy of this app. ESLint was scanning
+    // it as source, which doubled every reported count and made real problems
+    // harder to see.
+    ".claude/worktrees/**",
   ]),
   {
     rules: {

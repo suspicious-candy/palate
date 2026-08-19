@@ -15,7 +15,7 @@ const bodySchema = z.object({ token: z.string().min(1) });
    invisible to that. */
 export async function POST(request: NextRequest) {
     try {
-        const verdict = hit(`verifyemail:${clientKey(request)}`, LIMITS.verifyEmail);
+        const verdict = await hit(`verifyemail:${clientKey(request)}`, LIMITS.verifyEmail);
         if (!verdict.allowed) {
             return tooManyRequests(
                 verdict.retryAfterSeconds,
@@ -25,7 +25,14 @@ export async function POST(request: NextRequest) {
 
         await connect();
 
-        const parsed = bodySchema.safeParse(await request.json());
+        let body: unknown;
+        try {
+            body = await request.json();
+        } catch {
+            return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
+        }
+
+        const parsed = bodySchema.safeParse(body);
         if (!parsed.success) {
             return NextResponse.json({ error: "Missing token" }, { status: 400 });
         }

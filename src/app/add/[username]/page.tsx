@@ -37,6 +37,7 @@ export default async function AddFriendPage(
                 <span className={styles.brand}>Palate</span>
 
                 {inviter.profilePic ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar host; see the images note in next.config.ts
                     <img src={inviter.profilePic} alt="" className={styles.avatar} />
                 ) : (
                     <div className={styles.avatarFallback}>
