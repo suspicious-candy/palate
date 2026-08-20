@@ -10,7 +10,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript" />
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss" />
   <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb" />
-  <img alt="Status" src="https://img.shields.io/badge/status-WIP-orange" />
+  <img alt="Status" src="https://img.shields.io/badge/status-pre--deploy-yellow" />
 </p>
 
 ---
@@ -26,6 +26,8 @@
 - [Routes](#routes)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
+- [Deployment](#deployment)
+- [Security Posture](#security-posture)
 - [Available Scripts](#available-scripts)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -35,27 +37,47 @@
 
 ## Project Status
 
-> ⚠️ **Work in progress.** Every feature listed below runs on real data — auth, discovery, lists, reservations, friends, and the full group-dinner flow from invite link through voting to a booked table. What is missing is polish and proof: there are no tests, no CI, and no email. Note that the app needs the [recommender service](../restarunt-Rec) running to rank restaurants; without it nearby results silently degrade to distance order, and starting a group vote fails outright.
+> **Feature-complete for a first deploy, and hardened for one.** Every feature
+> below runs on real data — auth, email verification, discovery, lists,
+> reservations with calendar invites, friends, post-meal reviews, and the full
+> group-dinner flow from invite link through voting to a booked table. The
+> serverless-specific work is done too: connection pooling sized for many
+> isolates, distributed rate limiting, security headers, a startup check for the
+> environment variables that fail quietly.
+>
+> What is still missing is **automated testing in CI** (there is a thorough
+> manual smoke test, but nothing runs it on a push) and a handful of
+> pre-deploy chores listed in [Before the first deploy](#before-the-first-deploy).
+>
+> Ranking needs the [recommender service](https://github.com/suspicious-candy/Restaurant_Rec) reachable at
+> `RECOMMENDER_URL`. Without it, nearby results degrade to distance order after
+> a 3-second timeout and group shortlists return 503.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Mongoose data models | ✅ Implemented | `User`, `Restaurant`, `Reservation`, `Address` |
-| Database connection | ✅ Implemented | `src/dbConfig/dbConfig.ts` — cached connection, fail-fast timeout |
-| Auth API (signup / login) | ✅ Implemented | bcrypt hashing, Zod validation, JWT issued in an httpOnly `token` cookie |
-| Preferences API | ✅ Implemented | `PATCH /api/user/preferences`, authenticated via the JWT cookie |
-| Login / Signup pages | ✅ Wired | Post to the auth API, then redirect (signup → onboarding) |
+| Mongoose data models | ✅ Implemented | `User`, `Restaurant`, `Reservation`, `Review`, `Friendship`, `Matching`, `Address` |
+| Database connection | ✅ Implemented | `src/dbConfig/dbConfig.ts` — cached, fail-fast, `maxPoolSize` sized for serverless |
+| Auth API (signup / login / logout) | ✅ Implemented | bcrypt hashing, Zod validation, JWT in an httpOnly `token` cookie, `secure` in production |
+| Email verification | ✅ Implemented | `nodemailer`, POST-not-GET verify (mail scanners pre-fetch links), resend endpoint |
+| Authorization wrapper | ✅ Implemented | `withAuth` / `withVerified` — identity re-derived per request, `x-request-id` echoed |
+| Rate limiting | ✅ Implemented | `src/lib/rateLimit.ts` — Upstash Redis when configured, in-process Map otherwise |
+| Security headers + CSP | 🟡 Report-only | `next.config.ts` — HSTS, nosniff, frame-deny, Permissions-Policy enforced; CSP is `Report-Only` by design |
+| Route gate | ✅ Implemented | `src/proxy.ts` — UX redirect only; the real boundary is `withAuth` |
 | Onboarding (preferences) | ✅ Implemented | `src/app/onBoarding/page.tsx` — diet / allergens / cuisines |
-| User profile page | ✅ Implemented | `src/app/profile/page.tsx`, real DB reads via `useUser()` |
+| Profile + editing | ✅ Implemented | `PATCH /api/user` with an allowlist schema; saved-address CRUD |
 | Dashboard | ✅ Implemented | `src/app/dashboard/page.tsx` — "Bill of Fare" layout, live data |
-| Lists / wishlist | ✅ Implemented | `src/app/lists/page.tsx` + `/api/Restaurants/lists` |
-| Reservations | ✅ Implemented | `src/app/reservation/page.tsx` + `/api/reservations` |
+| Lists / wishlist | ✅ Implemented | `src/app/lists/page.tsx` + `/api/Restaurants/lists`, `/api/user/lists` |
+| Reservations | ✅ Implemented | Create / complete / cancel, confirmation email with an `.ics` attachment |
+| Post-meal reviews | ✅ Implemented | `Review` model, prompt on next load, folded into `palateRating` + `tips[]` |
+| Learned taste | ✅ Implemented | `src/lib/tasteSignal.ts` — recent 4★+ visits feed the taste query |
 | Friends | ✅ Implemented | `/api/user/friends`, `FriendsModal`, invite links + QR |
 | Group matching | ✅ Implemented | Create, invite, approve, vote, close, book — see below |
-| Group join by link | ✅ Implemented | `/join/[code]`; friends of an admin auto-admit, strangers queue for approval |
-| Group booking | ✅ Implemented | `POST /api/user/matching/[groupId]/reservation` — one reservation, every participant |
-| Restaurant detail page | 🔴 Not built | Nothing renders `photos`, `hours`, `tips` or `menuUrl` |
-| Auth middleware / `/api/user/me` | 🟡 Partial | `proxy.ts` gates pages; `/api/user/dashboard` doubles as the session read |
-| Home page | ✅ Implemented | `/` redirects to `/dashboard` — the dashboard is the front door |
+| Multiple groups | ✅ Implemented | `/matching/group` lists them; `/matching/group/[groupId]` is the detail view |
+| Geo discovery | ✅ Implemented | `2dsphere` `$near`, paginated Foursquare sync, recommender re-rank |
+| API smoke test | ✅ Implemented | `npm run test:api` — every endpoint, against a running dev server |
+| Automated tests in CI | 🔴 Not built | The smoke test is manual. Nothing runs on push. |
+| Restaurant detail page | 🔴 Not built | `photos`, `hours` and `menuUrl` are stored and never rendered |
+| Notifications | 🔴 Not built | Nothing tells an admin a join request is waiting, or a joiner they were approved |
 
 This README documents both what exists today and the intended direction, so a new contributor can pick up work without reverse-engineering the codebase.
 
@@ -65,16 +87,18 @@ This README documents both what exists today and the intended direction, so a ne
 
 **Available now:**
 
-- 🔐 **Authentication** — working signup and login: passwords hashed with bcrypt, requests validated with Zod, and a signed JWT stored in an httpOnly `token` cookie. Login accepts either an email or a username as the identifier. (Plus placeholder "Continue with Google / Apple" buttons.)
-- 🎯 **Taste onboarding** — after signup, users pick dietary needs, allergens, and favourite cuisines; preferences are saved to their account through a cookie-authenticated API. Only diet and cuisines feed ranking — allergens are stored for the user's own reference and the screen says so, because matching free text against cuisine names would look like allergen safety while providing none.
-- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites (top‑rated places visited), personal info, saved addresses, and reservation history.
-
+- 🔐 **Authentication** — signup and login: passwords hashed with bcrypt, requests validated with Zod, a signed JWT stored in an httpOnly `token` cookie (`secure` in production, `sameSite: lax`, 1-day expiry matching the JWT). Login accepts either an email or a username. Rate limited two ways at once — by IP, and more loosely by account, because the per-account key is a weapon anyone can point at a stranger.
+- ✉️ **Email verification** — a verification mail on signup, a resend endpoint capped at three an hour, and a `withVerified` wrapper on the actions that reach other people: booking a table, creating a group, joining one. The verify endpoint is a **POST** issued by the landing page, not a GET on the link itself, because corporate mail scanners pre-fetch links and would silently consume the token before the user ever clicked.
+- 🎯 **Taste onboarding** — dietary needs, allergens, and favourite cuisines, saved through a cookie-authenticated API. Only diet and cuisines feed ranking; allergens are stored for the user's own reference and the screen says so, because matching free text against cuisine names would look like allergen safety while providing none.
+- 👤 **User profile** — avatar/initials, Star Member badge, upcoming reservations, favourites, personal info, saved addresses, reservation history. Editing goes through an allowlist schema: every field absent from it — `Role`, `isVerified`, `numVisits`, `password` — is a field a user cannot change about themselves.
 - 📊 **Dashboard** — "Bill of Fare" home: tonight's feature, recommendations, wishlist and custom lists, friends rail, invite by link/QR.
-- 🗺️ **Geo discovery** — "restaurants near me" via MongoDB `2dsphere` queries, seeded from Foursquare Places and re-ranked by the recommender service.
-- 📅 **Reservations** — create, complete, and cancel bookings, plus a prompt that catches a booking after you follow a Maps link.
+- 🗺️ **Geo discovery** — "restaurants near me" via MongoDB `2dsphere` queries, seeded from Foursquare Places and re-ranked by the recommender. Cold areas are synced on demand, rate limited **per ~1km grid cell rather than per caller**, so ten neighbours opening the app in a new area cost one Foursquare sync between them instead of ten.
+- 📅 **Reservations** — create, complete, and cancel bookings; a confirmation email carrying a real iCalendar (`.ics`) attachment; and a prompt that catches a booking after you follow a Maps link.
+- ⭐ **Post-meal reviews** — after a meal completes, a prompt asks for 1–5 stars and optional text. One review per person per *meal* (enforced by a unique index, not a find-then-insert, which races), so going back in July after loving it in March is two verdicts. Each review is folded into the restaurant's `palateRating` and `tips[]`, then the recommender is asked to re-embed that place — which is how the index gets richer as the app is used.
+- 🧠 **Learned taste** — the taste query sent to the recommender is built from stated cuisines and diet *plus* the cuisines you have actually gone out and rated 4★ or better recently, capped so eight reviews cannot drown out three stated preferences.
 - 👥 **Friends** — request / accept / decline, invite links and QR.
 - 🤝 **Group dinners** — the whole flow, end to end:
-  - **Create** a group from your friends list, with a share code minted at creation.
+  - **Create** a group from your friends list, with a share code minted at creation. You can be in several at once.
   - **Join by link** (`/join/[code]`). Friends of an admin are admitted straight
     away; anyone else queues for approval, which is what stops a forwarded link
     from being a leaked group. Admins can freeze the guest list at any point.
@@ -86,14 +110,16 @@ This README documents both what exists today and the intended direction, so a ne
     rather than picking a favourite. Live tally, and a deadline 90 minutes before
     the table that closes the vote whether or not anyone opens the page.
   - **Book** — one reservation carrying every participant, landing on all of
-    their accounts at once.
+    their accounts at once. Note that unlike a solo booking, this sends **no
+    confirmation email and no calendar invite** to anyone; the group screen is
+    currently the only place the result appears.
 
 **Planned:**
 
-- ⭐ **Post-meal reviews** — prompt after a reservation completes, to supply the
-  "did you actually like it" signal and enrich restaurant text.
 - 🔔 **Notifications** — nothing currently tells an admin that someone is waiting
   in the join queue, or tells a joiner they were approved.
+- 🏠 **Restaurant detail page** — `photos`, `hours` and `menuUrl` are synced and
+  never shown.
 
 ---
 
@@ -103,17 +129,20 @@ This README documents both what exists today and the intended direction, so a ne
 | --- | --- |
 | Framework | [Next.js 16](https://nextjs.org) (App Router, React Server Components) |
 | UI library | [React 19](https://react.dev) with the [React Compiler](https://react.dev/learn/react-compiler) enabled |
-| Language | [TypeScript 5](https://www.typescriptlang.org/) (models are JavaScript) |
-| Styling | [Tailwind CSS v4](https://tailwindcss.com) via `@tailwindcss/postcss`, plus scoped `styled-jsx` on auth pages |
-| Fonts | [Geist Sans & Geist Mono](https://vercel.com/font) via `next/font` |
+| Language | [TypeScript 5](https://www.typescriptlang.org/) (Mongoose models are JavaScript) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) via `@tailwindcss/postcss`, plus **CSS Modules** per screen |
+| Fonts | Geist Sans/Mono, Hanken Grotesk, Cormorant Garamond, IBM Plex Mono — self-hosted through `next/font` |
+| Icons | [Phosphor Icons](https://phosphoricons.com/) (web font) |
 | Database | [MongoDB](https://www.mongodb.com/) with [Mongoose 9](https://mongoosejs.com/) |
 | Auth | [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) (httpOnly cookie) + [bcryptjs](https://github.com/dcodeIO/bcrypt.js) |
 | Validation | [Zod](https://zod.dev/) on every API route |
-| Email (planned) | [nodemailer](https://nodemailer.com/) |
-| Notifications | [react-hot-toast](https://react-hot-toast.com/) |
+| Email | [nodemailer](https://nodemailer.com/) — verification and reservation confirmations, with hand-rolled iCalendar |
+| Rate limiting | [Upstash Redis](https://upstash.com/) over its REST API, with an in-memory fallback |
+| Recommendations | [restarunt-Rec](https://github.com/suspicious-candy/Restaurant_Rec) — FastAPI + Chroma, called server-side |
+| Notifications (UI) | [react-hot-toast](https://react-hot-toast.com/) |
 | Linting | ESLint 9 + `eslint-config-next` |
 
-> **Restaurant data shape:** the `Restaurant` model is modelled on the [Foursquare Places API](https://docs.foursquare.com/developer/reference/places-api-overview) response (`fsqId`, categories, tips, tastes, photo `prefix`/`suffix`, etc.), making it straightforward to sync from Foursquare later.
+> **Restaurant data shape:** the `Restaurant` model is modelled on the [Foursquare Places API](https://docs.foursquare.com/developer/reference/places-api-overview) response (`fsqId`, categories, tips, tastes, photo `prefix`/`suffix`, etc.).
 
 > ⚠️ **Heads-up for contributors (`AGENTS.md`):** this project pins a build of Next.js whose APIs, conventions, and file structure may differ from older releases. For example, dynamic route `params` are now a `Promise` that must be `await`ed. When in doubt, consult the docs bundled in `node_modules/next/dist/docs/` for the exact installed version.
 
@@ -125,21 +154,27 @@ This README documents both what exists today and the intended direction, so a ne
 Browser
   │  (httpOnly `token` cookie rides along with requests)
   ▼
+proxy.ts ── UX gate: "is there a cookie?" → redirect. NOT an auth boundary.
+  ▼
 Next.js App Router (src/app)
-  ├─ Route Handlers ────────────► Mongoose models (src/models) ──► MongoDB
-  │   (api/user/signup, login,                 ▲
-  │    preferences)                            │
-  ├─ Server Components ─────────────────► dbConfig (cached shared connection)
-  │   (e.g. dashboard, profile)                ▲
-  │                                            │
-  └─ Client Components ── fetch /api ──────────┘
-      (login, signup, onBoarding, registry)
+  ├─ Route Handlers ──► withAuth / withVerified ──► Mongoose models ──► MongoDB
+  │                      (verifies the JWT, per request, every time)
+  │        │
+  │        ├──► Upstash Redis (REST)      rate-limit counters, shared across instances
+  │        ├──► SMTP (nodemailer)         verification + reservation mail (+ .ics)
+  │        ├──► Foursquare Places API     on-demand sync of a cold area
+  │        └──► FastAPI recommender       POST /recommend · /recommend/group · /index/missing
+  │
+  ├─ Server Components ──────► dbConfig (cached, pooled Mongoose connection)
+  └─ Client Components ── fetch /api ──┘
+      (auth, onboarding, dashboard, group screens, modals)
 ```
 
-- **Rendering:** pages are React Server Components by default; interactive screens (auth, onboarding) opt into the client with `"use client"`.
-- **Data access:** route handlers under `src/app/api` call the shared, hot-reload-safe Mongoose connection (`src/dbConfig/dbConfig.ts`) and read/write through the models in `src/models`.
-- **Auth:** signup/login hash with bcrypt and issue a JWT (`jsonwebtoken`) set as an httpOnly `token` cookie. Protected routes (e.g. preferences) read and verify that cookie server-side rather than trusting any client-supplied id.
-- **Styling:** Tailwind utility classes app‑wide; `src/app/registry.tsx` wires up a `styled-jsx` registry so the scoped styles on the auth pages render correctly with SSR.
+- **Rendering:** pages are React Server Components by default; interactive screens opt into the client with `"use client"`.
+- **Data access:** route handlers call the shared, hot-reload-safe Mongoose connection (`src/dbConfig/dbConfig.ts`) and read/write through the models in `src/models`.
+- **Authorization** lives in `src/lib/withAuth.ts`, not in `proxy.ts`. Proxy only checks that a cookie *named* `token` exists, never verifies its signature, and its matcher excludes `/api` entirely — so it decides where to send a browser and nothing more. Handing the verified `user` in as a handler parameter is the point: there is no signature in which a handler holds a user without the check having run, so a new route cannot be born unauthenticated by omission.
+- **Session death** is handled at the transport layer (`src/lib/sessionExpiry.ts`), not in ~22 call sites, because a dead session is not a fact about the request that discovered it — it is a change in global state every later request will also hit.
+- **The recommender is reached server-side only.** The browser never calls it, which is why `connect-src` in the CSP can stay `'self'`.
 
 ---
 
@@ -147,54 +182,63 @@ Next.js App Router (src/app)
 
 ```
 palate/
-├─ public/                     # Static assets (svg icons, resturant.jpg hero)
+├─ public/                     # Static assets
+├─ scripts/                    # One-off and maintenance jobs (see Available Scripts)
+│  ├─ syncFoursquareAreas.mjs  # Bulk city sync, paginated
+│  ├─ seedRestaurants.mjs      # Yelp-derived seed load
+│  ├─ apiSmokeTest.mjs         # End-to-end HTTP test of every endpoint
+│  └─ backfillReviewEnrichment.mjs
 ├─ src/
+│  ├─ instrumentation.ts       # Runs once per server process — the startup env check
+│  ├─ proxy.ts                 # Route gate: redirects signed-out users, carries ?next=
 │  ├─ app/                     # Next.js App Router
-│  │  ├─ layout.tsx            # Root layout (fonts, styled-jsx registry)
+│  │  ├─ layout.tsx            # Root layout (fonts, providers, Toaster)
 │  │  ├─ page.tsx              # Home — redirects to /dashboard
 │  │  ├─ globals.css           # Tailwind import + CSS theme variables
-│  │  ├─ registry.tsx          # styled-jsx SSR registry (client component)
 │  │  ├─ api/
-│  │  │  ├─ Restaurants/            # nearby (geo + recommender), search, lists, wishList
+│  │  │  ├─ Restaurants/            # nearby (geo + sync + rank), search, lists, wishList
 │  │  │  ├─ reservations/route.ts   # GET/POST/PATCH — bookings, auto-complete on read
+│  │  │  ├─ reviews/                # POST a review · GET the pending queue
 │  │  │  └─ user/
-│  │  │     ├─ signup, login, logout, preferences, dashboard, lists, friends
+│  │  │     ├─ route.ts             # PATCH — edit your own profile (allowlist schema)
+│  │  │     ├─ signup, login, logout, verifyemail, resend-verification
+│  │  │     ├─ preferences, dashboard, lists, friends, addresses, visitedResturant
 │  │  │     └─ matching/
-│  │  │        ├─ route.ts                    # GET active group · POST create
+│  │  │        ├─ route.ts                    # GET groups · POST create
 │  │  │        ├─ join/route.ts               # POST — redeem an invite code
 │  │  │        └─ [groupId]/
-│  │  │           ├─ route.ts                 # PATCH — lock/unlock the guest list
+│  │  │           ├─ route.ts                 # GET one group · PATCH lock/unlock roster
 │  │  │           ├─ requests/route.ts        # POST — approve or deny a join request
 │  │  │           ├─ location/route.ts        # PATCH — this member's location
 │  │  │           ├─ shortlist/route.ts       # POST — build the ballot, open voting
 │  │  │           ├─ vote/route.ts            # PUT  — replace this member's approvals
 │  │  │           ├─ close/route.ts           # POST — close the vote early
 │  │  │           └─ reservation/route.ts     # POST — book the winner for everyone
-│  │  ├─ login/page.tsx        # Login screen (wired to API)
-│  │  ├─ signup/page.tsx       # Signup screen (wired to API)
-│  │  ├─ onBoarding/page.tsx   # Taste onboarding (diet/allergens/cuisines)
-│  │  ├─ dashboard/page.tsx    # Dashboard ("Bill of Fare")
-│  │  ├─ lists/page.tsx        # Wishlist + custom lists
-│  │  ├─ reservation/page.tsx  # Reservations
+│  │  ├─ login/ signup/ verifyemail/          # Auth screens
+│  │  ├─ onBoarding/           # Taste onboarding (diet/allergens/cuisines)
+│  │  ├─ dashboard/            # "Bill of Fare"
+│  │  ├─ lists/ reservation/ profile/
 │  │  ├─ add/[username]/       # Friend-add landing for invite links
 │  │  ├─ join/[code]/          # Public group-invite landing
-│  │  ├─ matching/group/page.tsx  # The group screen (roster, ballot, winner)
-│  │  ├─ profile/page.tsx      # User profile
-│  ├─ components/              # Nav, modals (search, friends, invite, create group)
-│  ├─ lib/                     # Pure logic + shared hooks — see below
-│  ├─ dbConfig/
-│  │  └─ dbConfig.ts           # Shared, cached Mongoose connection
-│  ├─ proxy.ts                 # Route gate: redirects signed-out users, carries ?next=
+│  │  └─ matching/group/       # Group index + [groupId] detail (roster, ballot, winner)
+│  ├─ components/              # Nav, modals, review + reservation prompts
+│  ├─ lib/                     # Pure logic, shared hooks, and the cross-cutting concerns:
+│  │  ├─ withAuth.ts           #   the authorization boundary
+│  │  ├─ rateLimit.ts          #   Redis-or-memory limiter + every tuning
+│  │  ├─ recommender.ts        #   the recommender's address and credentials, in one place
+│  │  ├─ env.ts                #   startup check for variables that fail quietly
+│  │  ├─ mailer.ts             #   one nodemailer transport, port-derived TLS
+│  │  ├─ emailTemplates.ts     #   inline-styled HTML, the subset every mail client agrees on
+│  │  ├─ calendar.ts           #   RFC 5545 .ics generation
+│  │  ├─ tasteQuery.ts         #   what a person's taste "sounds like" to the recommender
+│  │  └─ tasteSignal.ts        #   cuisines learned from recent high-rated visits
+│  ├─ dbConfig/dbConfig.ts     # Shared, cached, pool-sized Mongoose connection
 │  └─ models/                  # Mongoose schemas
-│     ├─ userModel.js
-│     ├─ restaurantModel.js
-│     ├─ reservationModel.js
-│     ├─ friendshipModel.js
-│     ├─ matching.js
-│     └─ addressModel.js
+│     ├─ userModel.js  restaurantModel.js  reservationModel.js
+│     └─ reviewModel.js  friendshipModel.js  matching.js  addressModel.js
 ├─ .env                        # Local secrets (gitignored)
-├─ .env.example                # Template for required env vars
-├─ next.config.ts              # Next config (React Compiler on)
+├─ .env.example                # Template for required env vars — the deploy checklist
+├─ next.config.ts              # React Compiler, image allowlist, security headers, CSP
 ├─ tsconfig.json               # TS config (@/* → src/*)
 ├─ eslint.config.mjs
 └─ postcss.config.mjs
@@ -204,7 +248,11 @@ palate/
 
 ## Data Models
 
-All models live in `src/models` and guard against hot‑reload recompilation with the `mongoose.models.X || mongoose.model(...)` pattern.
+All models live in `src/models` and guard against hot-reload recompilation with the `mongoose.models.X || mongoose.model(...)` pattern.
+
+> ⚠️ **Restart the dev server after editing anything in `src/models/`.** The
+> guard above returns the *already compiled* model, so a newly added field is
+> silently dropped by strict mode until the process restarts.
 
 ### `User` — `users`
 Diner profile and relationships.
@@ -213,38 +261,76 @@ Diner profile and relationships.
 | --- | --- | --- |
 | `username` | String | required, unique |
 | `email` | String | required, unique |
+| `password` | String | required, bcrypt hash |
 | `firstName`, `lastName`, `favDish`, `profilePic` | String | optional |
 | `phone` | String | stored as string to keep `+`, spaces, leading zeros |
 | `dob`, `firstOrderDate` | Date | |
+| `timeZone` | String | the browser's IANA zone, so server-side time maths matches the user's evening |
 | `StarmembershipStatus` | Boolean | loyalty flag |
 | `numVisits` | Number | |
 | `Role` | enum | `user` \| `admin` (default `user`) — included in the JWT payload |
-| `isVerified` | Boolean | email-verification flag (default `false`) |
-| `preferences` | Object | `likedCuisines[]` (`fsqid`, `name`), `allergines[]`, `diet[]` — set via onboarding. Only `likedCuisines` and `diet` build the taste query; `allergines` is stored for the user's reference only. A `disliked[]` field existed and was removed — old documents may still carry it, inertly. |
+| `isVerified` | Boolean | default `false`. Read from the **database**, never from the JWT — the token is minted at signup while the flag is still false and lives for a day |
+| `verifyToken`, `verifyTokenExpiry` | String / Date | email verification |
+| `forgotPasswordToken`, `forgotPasswordTokenExpiry` | String / Date | reserved; reset flow not built |
+| `preferences` | Object | `likedCuisines[]` (`fsqid`, `name`), `allergines[]`, `diet[]`. Only `likedCuisines` and `diet` build the taste query; `allergines` is stored for the user's reference only. A `disliked[]` field existed and was removed — old documents may still carry it, inertly. |
+| `matchingGroup` | Object | the soonest group, denormalised for the dashboard |
 | `reservations` | `[ObjectId → reservations]` | active/upcoming |
 | `reservationHistory` | `[ObjectId → reservations]` | past |
 | `visitedResturants` | `[ObjectId → restaurants]` | |
 | `savedAddresses` | `[ObjectId → address]` | |
 
 ### `Restaurant` — `restaurants`
-Foursquare‑shaped place document.
+Foursquare-shaped place document.
 
 - Identity: `fsqId` (required, unique, indexed), `name`, `description`, `categories[]`, `cuisine[]`.
-- Location: `location` (formatted address, locality, region, etc.), `geocodes`, and a GeoJSON `geo` **Point** with a **`2dsphere` index** for `$near` / `$geoWithin` queries (coordinates are `[lng, lat]`).
+- Location: `location`, `geocodes`, and a GeoJSON `geo` **Point** with a **`2dsphere` index** for `$near` / `$geoWithin` queries (coordinates are `[lng, lat]`).
 - Contact: `tel`, `email`, `website`, `socialMedia`.
-- Signals: `rating` (0–10), `popularity` (0–1), `price` (1–4), `stats`.
-- Content: `hours`, `photos[]` (`prefix`+`<size>`+`suffix`), `tips[]`, `tastes[]`, flexible `features` (Mixed), `menuUrl`.
-- Bookkeeping: `verified`, `dateClosed`, `lastFetchedAt`, timestamps.
+- Signals: `rating` (0–10), `popularity` (0–1), `price` (1–4), `stats`, and `palateRating` (`{ avg, count }`) — this app's own aggregate, recomputed from the reviews collection on every write and deliberately left on the raw 1–5 star scale, unlike `rating`'s 0–10. The mismatch is the reminder that averaging the two would be meaningless.
+- Content: `hours`, `photos[]` (`prefix`+`<size>`+`suffix`), `tips[]`, `tastes[]`, flexible `features` (Mixed), `menuUrl`. Tips carry their own `source` (`foursquare` \| `palate`), because Foursquare tips and Palate reviews share one array and nothing could recompute one without clobbering the other.
+- Bookkeeping: `source` (`foursquare` \| `yelp_seed`), `verified`, `dateClosed`, `lastFetchedAt`, timestamps.
+
+> `source` is what separates the two populations. The recommender's index and
+> the group shortlist both select on `source: "foursquare"`, so a row written
+> without it is invisible to ranking.
 
 ### `Reservation` — `reservations`
 | Field | Type | Notes |
 | --- | --- | --- |
-| `user` | `ObjectId → users` | required, indexed |
+| `users` | `[ObjectId → users]` | An **array**, not a single owner — a group booking is one reservation landing on every participant's account. Indexed with `date` as `{users: 1, date: -1}`. |
 | `restaurant` | `ObjectId → restaurants` | required, indexed |
 | `date` | Date | booked date + time |
 | `partySize` | Number | required, min 1 |
-| `status` | enum | `pending` \| `confirmed` \| `cancelled` \| `completed` |
+| `status` | enum | `confirmed` (default) \| `cancelled` \| `completed`. `GET /api/reservations` promotes past bookings to `completed` on read, which is what makes a meal reviewable without a scheduled job. |
 | `notes` | String | optional |
+
+### `Review` — `reviews`
+| Field | Type | Notes |
+| --- | --- | --- |
+| `user` | `ObjectId → users` | required |
+| `restaurant` | `ObjectId → restaurants` | denormalised from the reservation, never from the request body |
+| `reservation` | `ObjectId → reservations` | required |
+| `rating` | Number | 1–5, whole stars (Mongoose has no integer type, so a validator enforces it) |
+| `text` | String | ≤ 999 chars |
+
+Indexes: `{user, reservation}` **unique** (one verdict per meal, enforced by the
+database so a double-tapped button 409s instead of double-inserting),
+`{user, createdAt: -1}` (the taste signal), `{restaurant, createdAt: -1}` (the
+enrichment side).
+
+### `Matching` — `matching`
+A group dinner.
+
+| Field | Notes |
+| --- | --- |
+| `name`, `date`, `createdBy` | The dinner itself. `date` also drives the voting deadline — 90 minutes before the table. |
+| `participants[]` | Per member: `user`, `hasVoted`, `approvals[]`, `votedAt`, `location` (a GeoJSON Point) and `locationAt`. |
+| `admins[]` | Who may start the vote, close it, approve joiners, and book. Each of those is irreversible for the whole group. |
+| `status` | `open` → `voting` → `closed`. |
+| `membershipOpen` | The roster lock, **orthogonal to `status`** — an admin can freeze the guest list at any point without moving the group forward. |
+| `inviteCode` | Unique and **sparse**, so groups without one do not collide on `null`. |
+| `pendingRequests[]` | The approval queue. Friends of an admin skip it; strangers do not, which is what stops a forwarded link from being a leaked group. |
+| `restaurants[]` | The generated ballot — 7 places, frozen when voting opens. |
+| `winner`, `reservation` | The result, and the single booking it produced. |
 
 ### `Address` — `address`
 Structured address with a `label` enum (`Home` / `Office`) and a nested `address` object (`aptNumber`, `streetAddress`, `city`, `state`, `country`, `pincode`).
@@ -255,37 +341,51 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 
 ### Pages
 
-| Path | Type | Description | State |
-| --- | --- | --- | --- |
-| `/` | Page | Redirects to `/dashboard` | Implemented |
-| `/login` | Page | Sign in | Wired to API |
-| `/signup` | Page | Create account | Wired to API |
-| `/onBoarding` | Page | Taste onboarding | Implemented |
-| `/dashboard` | Page | Personalized home ("Bill of Fare") | Implemented |
-| `/lists` | Page | Wishlist and custom lists | Implemented |
-| `/reservation` | Page | Reservations | Implemented |
-| `/add/[username]` | Page | Friend-add landing for invite links | Implemented |
-| `/profile` | Page | A user's dining profile | Implemented |
-| `/matching/group` | Page | The group screen — roster, join queue, ballot, winner, booking | Implemented |
-| `/join/[code]` | Page | Public invite landing for a group | Implemented |
+| Path | Description | Gate |
+| --- | --- | --- |
+| `/` | Redirects to `/dashboard` | — |
+| `/login`, `/signup` | Auth | Public (redirects away if signed in) |
+| `/verifyemail` | Landing page for the emailed link; POSTs the token | Public |
+| `/onBoarding` | Taste onboarding | Protected |
+| `/dashboard` | Personalized home ("Bill of Fare") | Protected |
+| `/lists` | Wishlist and custom lists | Protected |
+| `/reservation` | Reservations | Protected |
+| `/profile` | A user's dining profile | Protected |
+| `/matching/group` | Every group you are in | Protected |
+| `/matching/group/[groupId]` | Roster, join queue, ballot, winner, booking | Protected |
+| `/add/[username]` | Friend-add landing for invite links | Public |
+| `/join/[code]` | Public invite landing for a group | Public |
+
+Protection is prefix-matched from one list in `src/lib/protectedRoutes.ts`, read by both `proxy.ts` (no cookie) and `sessionExpiry.ts` (dead session).
 
 ### API (Route Handlers)
 
 | Method & Path | Description | Auth |
 | --- | --- | --- |
-| `POST /api/user/signup` | Create an account; returns `userId` and sets the `token` cookie | Public |
-| `POST /api/user/login` | Authenticate by email **or** username; sets the `token` cookie | Public |
-| `PATCH /api/user/preferences` | Save dietary needs, allergens, and favourite cuisines | JWT cookie |
-| `GET /api/user/dashboard` | The signed-in user, populated, plus their active group | JWT cookie |
+| `POST /api/user/signup` | Create an account, send verification mail, set the `token` cookie | Public · rate limited |
+| `POST /api/user/login` | Authenticate by email **or** username | Public · rate limited by IP + account |
+| `POST /api/user/logout` | Clear the cookie | Public |
+| `POST /api/user/verifyemail` | Redeem an emailed token | Public · rate limited |
+| `POST /api/user/resend-verification` | Re-send the mail (3/hour) | JWT cookie |
+| `PATCH /api/user` | Edit your own profile — allowlist schema | JWT cookie |
+| `PATCH /api/user/preferences` | Save dietary needs, allergens, cuisines | JWT cookie |
+| `GET /api/user/dashboard` | The signed-in user, populated, plus active groups | JWT cookie |
+| `POST/PATCH/DELETE /api/user/addresses` | Saved-address CRUD | JWT cookie |
 | `GET/POST/DELETE /api/user/friends` | List, request/accept, decline/cancel | JWT cookie |
-| `GET /api/Restaurants/nearby` | Geo search, re-ranked by the recommender | Optional |
-| `GET /api/Restaurants/search` | Lexical name search within 70km | Public |
-| `GET/POST/PATCH /api/reservations` | Bookings; GET also completes past ones | JWT cookie |
-| `GET/POST /api/user/matching` | The active group; create a group | JWT cookie |
-| `POST /api/user/matching/join` | Redeem an invite code — admits or queues | JWT cookie |
-| `PATCH /api/user/matching/[groupId]` | Lock or reopen the guest list | Admin |
+| `PATCH/DELETE /api/user/lists` | Create/rename/remove a custom list | JWT cookie |
+| `PATCH/DELETE /api/Restaurants/lists` | Add/remove a restaurant on a list | JWT cookie |
+| `PATCH/DELETE /api/Restaurants/wishList` | Wishlist toggle | JWT cookie |
+| `PATCH /api/user/visitedResturant` | Record a visit | JWT cookie |
+| `GET /api/Restaurants/nearby` | Geo search, on-demand Foursquare sync, recommender re-rank | Optional · rate limited |
+| `GET /api/Restaurants/search` | Lexical name search within 70km | Public · rate limited |
+| `GET/POST/PATCH /api/reservations` | Bookings; GET also completes past ones | JWT cookie · **POST requires a verified email** |
+| `GET /api/reviews/pending` | Meals awaiting a verdict | JWT cookie |
+| `POST /api/reviews` | Rate a completed meal | JWT cookie |
+| `GET/POST /api/user/matching` | Your groups; create a group | JWT cookie · **POST requires a verified email** |
+| `POST /api/user/matching/join` | Redeem an invite code — admits or queues | **Verified** |
+| `GET/PATCH /api/user/matching/[groupId]` | Read one group · lock or reopen the roster | JWT cookie / Admin |
 | `POST /api/user/matching/[groupId]/requests` | `{ targetId, action }` — approve or deny | Admin |
-| `PATCH /api/user/matching/[groupId]/location` | Report this member's location once | Member |
+| `PATCH /api/user/matching/[groupId]/location` | Report this member's location | Member |
 | `POST /api/user/matching/[groupId]/shortlist` | Build the ballot, move to `voting` | Admin |
 | `PUT /api/user/matching/[groupId]/vote` | Replace this member's approvals | Member |
 | `POST /api/user/matching/[groupId]/close` | Close the vote early | Admin |
@@ -297,6 +397,12 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 > gated — and every one of them re-derives identity from the JWT rather than
 > trusting `proxy.ts`, which only checks that a cookie named `token` exists.
 
+> **Why some routes require a verified email.** The line is drawn at actions
+> that reach *other people* or commit a real-world resource: booking a table,
+> forming a group, joining someone else's. Reading your own dashboard does not.
+> The check reads `isVerified` from the database rather than the token, because
+> a claim that can go stale must not be the thing an authorization check reads.
+
 ---
 
 ## Getting Started
@@ -306,6 +412,7 @@ Structured address with a `label` enum (`Home` / `Office`) and a nested `address
 - **Node.js** ≥ 18.18 (Node 20+ recommended)
 - **npm** (or yarn / pnpm / bun)
 - A **MongoDB** connection string — either a local `mongod` instance or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
+- Python 3.12 and the sibling [`restarunt-Rec/`](https://github.com/suspicious-candy/Restaurant_Rec) checkout, for ranking
 
 ### 1. Clone
 
@@ -322,31 +429,36 @@ npm install
 
 ### 3. Configure environment
 
-Copy the template and fill in your values:
-
 ```bash
 cp .env.example .env
 ```
 
-Then set `mongo_url` to your MongoDB connection string (see [Environment Variables](#environment-variables)).
+Only two are needed to boot: `mongo_url` and `TOKEN_SECRET`. Everything else has
+a development fallback — that is deliberate, and it is also why
+[the deploy checklist matters](#deployment): the same fallbacks are silently
+wrong in production. `.env.example` documents each one and what breaks.
+
+```bash
+openssl rand -hex 32
+```
 
 ### 4. Start the recommender service
 
-**`npm run dev` alone is not enough.** Restaurant ranking lives in a separate
-FastAPI service in the sibling [`restarunt-Rec/`](../restarunt-Rec) repo, and
-`/api/Restaurants/nearby` calls it on every request:
+**`npm run dev` alone is not enough for ranking.** Restaurant ranking lives in a
+separate FastAPI service in the sibling [`restarunt-Rec/`](https://github.com/suspicious-candy/Restaurant_Rec)
+repo:
 
 ```bash
-cd ../restarunt-Rec
-./.venv/Scripts/python.exe -m uvicorn service:app --port 8000
+cd ../restarunt-Rec && ./.venv/Scripts/python.exe -m uvicorn service:app --port 8000
 ```
 
-Run it from that directory — its Chroma store is a relative path. Port 8000 is
-what `RECOMMENDER_URL` defaults to.
+Run it from that directory — its Chroma store defaults to a relative path. Port
+8000 is what `RECOMMENDER_URL` falls back to.
 
-Without it, nearby requests log `ECONNREFUSED` and **silently** fall back to an
-unranked distance-ordered list. The page still renders, so the only symptom is
-worse recommendations. See that repo's README for the index and its rebuild.
+Without it, nearby requests time out after 3 seconds and fall back to an
+unranked distance-ordered list (the page still renders, so the only symptom is
+worse recommendations), while starting a group vote returns 503 outright. See
+that repo's README for the index and its rebuild.
 
 ### 5. Run the dev server
 
@@ -354,32 +466,227 @@ worse recommendations. See that repo's README for the index and its rebuild.
 npm run dev
 ```
 
-Open **[http://localhost:3000](http://localhost:3000)**. The app hot‑reloads as you edit files.
+Open **[http://localhost:3000](http://localhost:3000)**.
+
+### 6. (Optional) Check every endpoint still works
+
+```bash
+npm run test:api
+```
+
+Requires the dev server running. The recommender section reports SKIP rather
+than FAIL if nothing answers on `RECOMMENDER_URL`.
 
 ---
 
 ## Environment Variables
 
-Environment variables are read from `.env` (gitignored). A committed `.env.example` documents the required keys.
+Read from `.env` in development (gitignored) and from the platform's environment
+in production. `.env.example` is the committed template.
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `mongo_url` | ✅ | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/palate` or an Atlas SRV URI. |
-| `TOKEN_SECRET` | ✅ | Secret used to sign and verify auth JWTs. Required for signup, login, and cookie-protected routes. Generate a long random value, e.g. `openssl rand -hex 32`. |
+**Every variable below fails quietly.** Forget one and the app still boots,
+still serves pages, and still looks correct — the damage shows up later and
+somewhere else. That is exactly why `src/lib/env.ts` exists: it runs once per
+server process via `instrumentation.ts` and logs, in production only, which of
+these are missing and what each one will break. It deliberately does **not**
+throw, because an app that will not start is a worse outage than one running
+without a cache.
 
-> **Note:** the JWT secret is read as `TOKEN_SECRET` (not `JWT_SECRET`). Without it, signup/login/preferences return `500 Server misconfigured`.
+| Variable | Dev | Prod | Description, and the failure mode |
+| --- | :---: | :---: | --- |
+| `mongo_url` | ✅ | ✅ | MongoDB connection string. Every request that touches the database fails without it. |
+| `TOKEN_SECRET` | ✅ | ✅ | Signs and verifies auth JWTs. **The only fatal one** — `withAuth` answers 500 rather than 401, because a server that cannot verify a session is broken, and a 401 would send the whole userbase round a login loop that cannot succeed. |
+| `APP_URL` | — | ✅ | Origin used to build absolute links in outgoing mail. Unset, every verification and reservation link points at `localhost`. No `NEXT_PUBLIC_` prefix: only the server builds these. |
+| `RECOMMENDER_URL` | — | ✅ | Base URL of the FastAPI recommender. Falls back to `http://localhost:8000`, where nothing answers on a host — nearby silently degrades, group shortlists 503. |
+| `RECOMMENDER_TOKEN` | — | ✅ | Shared secret for the recommender's write endpoint, sent as `x-recommender-token`. Must match the value set on the service. Wrong or missing → `/index/missing` 401s, and since `fetch` does not reject on 4xx, new restaurants simply never get vectors. |
+| `UPSTASH_REDIS_REST_URL` | — | ✅ | Distributed rate-limit counters. |
+| `UPSTASH_REDIS_REST_TOKEN` | — | ✅ | Paired with the above. Without both, limits are per-instance — which on serverless, where each invocation may get a fresh isolate, is approximately **no rate limiting at all** while continuing to look correct. |
+| `SMTP_HOST` | — | ✅ | Mail server. Without it signup still succeeds and nobody can ever verify. |
+| `SMTP_PORT` | — | ✅ | `465` = implicit TLS, `587`/`2525` = STARTTLS. `mailer.ts` derives `secure` from this value so the two cannot disagree. Getting it wrong does not error — the socket just hangs until it times out. |
+| `SMTP_USER` / `SMTP_PASS` | — | ✅ | Credentials. Gmail needs an **App Password**, not the account password, with 2-Step Verification on. |
+| `MAIL_FROM` | — | ✅ | A bare address, no display name — the "Palate" label is added in code, and env-file quoting rules are inconsistent enough that `"Palate" <a@b.com>` can parse as just `Palate`. Must be an address the SMTP account may send as. |
+| `FOURSQUARE_API_KEY` | ✅ | ✅ | Used by `/api/Restaurants/nearby` for cold areas and by `npm run seed:foursquare`. |
+| `FOURSQUARE_API_VERSION` | ✅ | ✅ | Sent as the `X-Places-Api-Version` header. |
 
-| `FOURSQUARE_API_KEY` | ✅ | Foursquare Places key. Used at runtime by `/api/Restaurants/nearby` when an area has no cached restaurants, and by `npm run seed:foursquare`. |
-| `FOURSQUARE_API_VERSION` | ✅ | Sent as the `X-Places-Api-Version` header. |
-| `RECOMMENDER_URL` | — | Base URL of the FastAPI recommender. Defaults to `http://localhost:8000`; set it if the service runs elsewhere. |
+Script-only knobs: `MIN_POPULATION`, `MAX_PAGES`, `DRY_RUN` (`seed:foursquare`),
+and `BASE_URL` (`test:api`).
 
-**Planned** (as email lands):
+> 🔒 Never commit real secrets. `.env*` is gitignored, with an explicit
+> exception for `.env.example`.
 
-| Variable | Purpose |
-| --- | --- |
-| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Transactional email (`nodemailer`) |
+For local development, [ethereal.email](https://ethereal.email) generates a
+throwaway inbox instantly and delivers nothing — `sendMail` logs a preview URL
+to the **server terminal** instead:
 
-> 🔒 Never commit real secrets. `.env*` is gitignored (with an explicit exception for `.env.example`).
+```
+SMTP_HOST=smtp.ethereal.email
+SMTP_PORT=587
+```
+
+---
+
+## Deployment
+
+Target is **Vercel** for this app and **Google Cloud Run** for the recommender.
+Nothing here is Vercel-specific by construction, but the serverless-shaped
+decisions in the code — connection pool size, Redis-backed rate limits, the two
+`maxDuration` exports — were made for that shape.
+
+### Deploy order
+
+The order matters, because two of the values Vercel needs do not exist until the
+other pieces do.
+
+1. **MongoDB Atlas** — create the cluster and the database user. Note that the
+   app's data historically lives in a database literally called `test` (the URI
+   carried no name and Node's driver defaulted); the recommender's `MONGO_DB`
+   must match whatever you use.
+2. **Upstash Redis** — create a database, copy the **REST** URL and token (not
+   the `redis://` connection string; the limiter uses HTTP so it works from an
+   isolate that cannot hold a socket open).
+3. **SMTP** — a provider and a verified sender address. See the deliverability
+   note below.
+4. **The recommender** — deploy it to Cloud Run first and note its URL. See
+   [`restarunt-Rec/README.md`](https://github.com/suspicious-candy/Restaurant_Rec#deployment).
+5. **This app** — import the repo into Vercel, set every variable from the table
+   above, and deploy.
+
+### Network access
+
+Both Vercel and Cloud Run have **dynamic egress IPs**. Atlas's default posture
+is an IP allowlist, so either allow `0.0.0.0/0` (acceptable when the connection
+string is itself the credential and lives only in the platform's environment) or
+put both services behind static IPs and allowlist those. Getting this wrong
+produces a `MongoServerSelectionError` five seconds into every request, which
+reads like an outage rather than a firewall.
+
+### What is already sized for serverless
+
+These are done — listed so nobody "fixes" them later without knowing why:
+
+- **`maxPoolSize: 10`**, not Mongoose's default of 100. The connection cache is
+  per-isolate, so every concurrent instance opens its own pool. Against a
+  cluster that allows 500 connections, five cold instances answering a traffic
+  spike can exhaust it between them — and the failure arrives exactly when
+  traffic is highest and looks like a database outage. Revisit this number only
+  alongside the cluster tier: **pool size × instance ceiling must stay under the
+  connection limit.**
+- **`maxIdleTimeMS: 60_000`**, so a frozen instance does not keep connections
+  checked out at the cluster while doing nothing.
+- **`serverSelectionTimeoutMS: 5000`** — fail fast rather than let model calls
+  buffer.
+- **Redis-backed rate limits**, with a documented fallback that degrades to
+  per-instance rather than to unlimited or to locked-out.
+- **Two `maxDuration` exports**, both sized *above* their own internal timeouts,
+  because Vercel kills a function at `maxDuration` — and if the platform limit
+  were the lower of the two it would abort the handler before its own
+  `AbortSignal` fired, turning a slow dependency into a 504 with no log line and
+  no chance to return the 503 the `catch` was written to produce:
+
+  | Route | Internal timeout | `maxDuration` | Why |
+  | --- | --- | --- | --- |
+  | `/api/Restaurants/nearby` | 3s on the recommender | 30 | Degrades invisibly to distance order, so waiting is the worst option. The 30 covers three paginated Foursquare requests plus a bulk upsert on a cold area. |
+  | `…/[groupId]/shortlist` | 60s on the recommender | 90 | **Cannot** degrade — it freezes a ballot people then vote on. Sized for a recommender cold start (measured at 14s locally, slower on a shared vCPU). |
+
+  Vercel's Hobby plan allows up to 300s, so neither is near a ceiling.
+
+### Email deliverability
+
+This is the part most likely to look broken on launch day. `MAIL_FROM` must be
+an address the SMTP account is actually authorised to send as, on a domain with
+SPF and DKIM published — otherwise verification mail lands in spam or is
+rejected outright, and since signup succeeds regardless, the symptom is "nobody
+can verify" with nothing in the logs. Send yourself a verification and a
+reservation confirmation from the deployed app before announcing it, and check
+the `.ics` attachment opens in a real calendar client.
+
+### Before the first deploy
+
+- [ ] **`export const metadata` in `src/app/layout.tsx` still says "Create Next
+      App".** It is the browser tab title and the link preview on every share —
+      and this app's whole growth loop is people sending each other invite links.
+- [ ] Set every variable in the table above, then **read the first production
+      log line**: `lib/env.ts` prints exactly which ones you missed.
+- [ ] Decide on `--min-instances` for the recommender. At 0 it scales to zero
+      and the first dashboard load after an idle period is unranked; at 1 that
+      never happens and you pay for an always-on instance.
+- [ ] Rebuild the recommender's index so the deployed image is current.
+- [ ] Run `npm run test:api` against a staging deploy (`BASE_URL=...`), not just
+      locally. It creates real accounts and real reservations, so point it at a
+      database you are willing to have rows in — teardown deletes by run tag, but
+      `--keep` exists for a reason.
+- [ ] Confirm the recommender's write endpoint answers **401** without a token.
+- [ ] Add a `LICENSE` file. Until one exists, all rights are reserved and nobody
+      can legally use or contribute to this.
+- [ ] Decide on the CSP — see below.
+
+### After deploying
+
+- [ ] Sign up with a real address end to end: mail arrives, `/verifyemail`
+      accepts the token, `isVerified` flips, and a booking that previously 403'd
+      now succeeds.
+- [ ] Open the dashboard twice. The first load may be unranked (recommender cold
+      start); the second should not be.
+- [ ] Start a group vote. This is the one flow with no graceful degradation, so
+      it is the real test that `RECOMMENDER_URL` is correct.
+- [ ] Fail a login 11 times from one address. The 11th should be a 429 carrying
+      a `Retry-After` header. Note this proves the limiter *runs*, not that it is
+      **shared** — the in-memory fallback produces the same result on a single
+      instance. The proof that Upstash is actually wired up is the absence of the
+      `[rateLimit] UPSTASH_REDIS_REST_URL/TOKEN are not set` line in the boot log.
+- [ ] Walk every screen with the console open and collect the CSP violation
+      reports. That list is the input to enforcement.
+
+---
+
+## Security Posture
+
+Worth stating plainly before going public, including the parts that are
+deliberately incomplete.
+
+**In place:**
+
+- Passwords hashed with bcrypt; login compares in constant time.
+- JWT in an httpOnly, `sameSite: lax` cookie, `secure` whenever
+  `NODE_ENV === "production"`, expiring in a day to match the token.
+- Identity re-derived from the token on **every** authenticated request. The
+  proxy is a UX gate, not a boundary.
+- Zod on every route; the profile-edit schema is an **allowlist**, so `Role`,
+  `isVerified`, `numVisits` and `password` are unreachable from it.
+- Ownership expressed in query **filters** rather than in `if` statements after
+  the fact, and concurrency-sensitive transitions (vote start, close, join,
+  booking, reviewing) done as compare-and-set or guarded by unique indexes.
+- Rate limits on every unauthenticated endpoint and on outbound email, with
+  tunings and their reasoning in `src/lib/rateLimit.ts`. No
+  `X-RateLimit-Remaining` header — on an auth endpoint that is a live readout of
+  how hard an attacker may push.
+- Security headers on every response: HSTS (one year in production, **not**
+  `preload` and **not** `includeSubDomains`, both of which are hard to undo),
+  `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`,
+  `Permissions-Policy`.
+- A correlation id (`x-request-id`) on every authenticated response, tying a
+  user's bug report to a stack trace.
+
+**Deliberately not yet:**
+
+- **CSP is `Content-Security-Policy-Report-Only`.** The browser evaluates it and
+  logs violations but blocks nothing. Shipping an untested CSP straight to
+  enforcement is how you white-screen production. Walk every screen, fix what it
+  reports, *then* rename the header.
+- **No nonce**, so `script-src` carries `'unsafe-inline'`. A nonce must be
+  unique per request, which forces every page to render dynamically — static
+  optimization, ISR and PPR all stop applying, and nine routes are currently
+  static. That is a trade worth making deliberately, not as a side effect of
+  turning CSP on.
+- **`img-src` allows `https:`.** Profile pictures are arbitrary remote URLs in
+  plain `<img>` tags. The tighter fix is to stop storing foreign URLs — upload
+  to storage this app controls — which would also let `next/image` handle them
+  without turning the image optimiser into an open proxy. See the long note in
+  `next.config.ts`.
+- **No password reset.** The token fields exist on the model; the flow does not.
+- **No CI, and no automated tests.** `npm run test:api` covers every endpoint,
+  but a human has to run it. The concurrency-sensitive paths are exactly the
+  kind of thing that only fails under two simultaneous users.
 
 ---
 
@@ -391,6 +698,14 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 | `npm run build` | Create an optimized production build |
 | `npm run start` | Serve the production build (run `build` first) |
 | `npm run lint` | Run ESLint |
+| `npm run test:api` | End-to-end HTTP smoke test of every endpoint. `--only=auth,reviews`, `--keep`, `--no-ratelimit` |
+| `npm run seed:foursquare` | Bulk-sync every US/India city above `MIN_POPULATION` from Foursquare. Paginated — `MAX_PAGES` (default 10) is the real coverage ceiling |
+| `npm run seed:restaurants` | Load the Yelp-derived seed file |
+| `npm run seed:testmeal` | Create a completed meal, for exercising the review prompt |
+| `npm run inspect:reviews` | Report on review data |
+| `npm run fix:reviews` | Backfill `palateRating` / `tips[]` enrichment for reviews written before it existed |
+
+All scripts use `node --env-file=.env`, so they read the same `.env` the app does.
 
 ---
 
@@ -400,29 +715,38 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 - [x] Taste onboarding + cookie-authenticated preferences API
 - [x] Real DB reads with populated refs (profile, dashboard)
 - [x] Reservation create/manage flow, dashboard, lists/wishlist
-- [x] Foursquare Places sync job (`npm run seed:foursquare`)
+- [x] Foursquare Places sync job, paginated
 - [x] Friends: requests, accept/decline, invite links and QR
 - [x] Recommender wired into nearby (filter-then-rank against the vector index)
 - [x] Group aggregation in the recommender (`POST /recommend/group`, least-misery)
 - [x] Group creation, invite links, join-by-code with an approval queue
 - [x] Roster lock, shortlist generation, approval voting, vote close
 - [x] Group booking — one reservation across every participant
-- [x] `/` redirects to the dashboard
-- [ ] **Tests and CI** — there are none, and the concurrency-sensitive parts
-      (compare-and-set on vote start, close, join and booking) are exactly the
-      kind of thing that only fails under two simultaneous users
+- [x] Multiple simultaneous groups, with a detail route per group
+- [x] Post-meal reviews → `palateRating`, `tips[]`, and re-embedding
+- [x] Learned taste from recent high-rated visits
+- [x] Email verification, resend, and reservation confirmations with `.ics`
+- [x] Profile editing and saved-address CRUD
+- [x] Distributed rate limiting, security headers, startup environment check
+- [x] Serverless-sized connection pooling and function timeouts
+- [x] End-to-end API smoke test
+- [ ] **CI** — run `test:api` and `lint` on every push. The concurrency-sensitive
+      paths only fail under two simultaneous users, which is the case nobody
+      reproduces by hand
+- [ ] **Enforce the CSP** once the console is clean on every screen
+- [ ] **Confirmation mail for group bookings.** `POST /api/reservations` sends an
+      email with an `.ics`; the group booking route writes the same reservation
+      onto every participant and sends nothing. The mailer, template and
+      calendar builder all already exist
 - [ ] Notifications — nothing tells an admin a join request is waiting, or tells
       a joiner they were approved
-- [ ] Restaurant detail page — `photos`, `hours`, `tips`, `price` and `menuUrl`
-      are stored and never rendered
+- [ ] Restaurant detail page — `photos`, `hours` and `menuUrl` are stored and
+      never rendered
+- [ ] Password reset (the model fields exist; the flow does not)
 - [ ] Per-person taste vectors feeding `/recommend/group` (the endpoint already
       accepts them; nothing builds them)
-- [ ] Post-meal review prompt (rating + optional text)
-- [ ] Paginate the Foursquare sync — a hardcoded `limit=50` in two places is
-      what caps coverage, not geography
-- [ ] Profile editing, saved-address CRUD, and the dead "Book Again" button
-- [ ] Email verification & notifications via nodemailer
-- [ ] A `LICENSE` file
+- [ ] Self-hosted avatars, so `img-src` can tighten from `https:` to `'self'`
+- [ ] Real page metadata, a `LICENSE`, and a `robots.txt`
 
 ---
 
@@ -430,13 +754,14 @@ Environment variables are read from `.env` (gitignored). A committed `.env.examp
 
 1. Create a feature branch off `main`: `git checkout -b feat/your-feature`
 2. Make your changes; run `npm run lint` before committing.
-3. Keep commits focused and write clear messages.
-4. Open a pull request describing the change and its rationale.
+3. Run `npm run test:api` if you touched a route handler.
+4. Keep commits focused and write clear messages.
+5. Open a pull request describing the change and its rationale.
 
-Please read `AGENTS.md` before writing code — this repo uses a Next.js build whose APIs may differ from what you expect.
+Please read `AGENTS.md` before writing code — this repo uses a Next.js build whose APIs may differ from what you expect. And restart the dev server after editing anything under `src/models/`.
 
 ---
 
 ## License
 
-No license has been specified for this project yet. Until one is added, all rights are reserved by the authors. If you intend to open‑source it, consider adding an [MIT](https://choosealicense.com/licenses/mit/) `LICENSE` file.
+No license has been specified for this project yet. Until one is added, all rights are reserved by the authors. If you intend to open-source it, add an [MIT](https://choosealicense.com/licenses/mit/) `LICENSE` file — this is on the [pre-deploy checklist](#before-the-first-deploy) for a reason.

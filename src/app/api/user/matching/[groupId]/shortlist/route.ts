@@ -23,17 +23,34 @@ const SHORTLIST_SIZE = 7;
 
 /* The service is fast once warm but loads a sentence-transformer on its first
    request, so the ceiling is set by the cold start rather than the search. */
-const RECOMMENDER_TIMEOUT_MS = 20_000;
+/* Sized for a COLD START, not for a search.
 
-/* Vercel kills a serverless function at its maxDuration, and the platform
-   default is shorter than the timeout above — so on the default the platform
-   would abort this route BEFORE its own AbortSignal fired, turning a slow
-   recommender into a 504 with no log line from this handler and no chance to
-   answer the 503 the catch below is written to produce.
+   A warm response is well under a second. This number exists entirely because
+   the recommender runs on a scale-to-zero host: an instance that has been idle
+   has to start a container and load a sentence-transformer before it can answer
+   anything, measured at 14s locally and reasonably slower on a shared vCPU.
 
-   30 rather than exactly 20: the recommender call is the long pole, but the geo
-   query, the user lookup and the ballot write all happen around it. */
-export const maxDuration = 30;
+   20s was the old value and it was cutting it fine — a cold start that ran long
+   produced a 503 and a group that could not start its vote, which is the one
+   failure this route is written to avoid. 60s is generous enough that only a
+   genuinely broken service trips it, and Vercel's Hobby plan allows functions up
+   to 300s, so there is room above it.
+
+   Waiting is the right call here precisely because this route cannot degrade:
+   it freezes a ballot that people then vote on. The nearby route makes the
+   opposite choice for the opposite reason. */
+const RECOMMENDER_TIMEOUT_MS = 60_000;
+
+/* Must sit ABOVE RECOMMENDER_TIMEOUT_MS. Vercel kills a function at its
+   maxDuration, so if the platform's limit were the lower of the two it would
+   abort this route before its own AbortSignal fired — turning a slow recommender
+   into a 504 with no log line from this handler and no chance to return the 503
+   the catch below is written to produce.
+
+   90 against a 60s recommender timeout: the call is the long pole, but the geo
+   query, the user lookup, the learned-taste aggregation and the ballot write all
+   happen around it. Hobby allows up to 300s, so this is not near a ceiling. */
+export const maxDuration = 90;
 
 export const POST = withAuth(async (
     request,

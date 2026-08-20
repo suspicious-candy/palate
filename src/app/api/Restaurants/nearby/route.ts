@@ -12,6 +12,12 @@ import { RECOMMENDER_URL, indexMissing } from "@/lib/recommender";
 
 const radius = 20000;
 
+/* How long to wait on the recommender before serving distance order instead.
+   Three seconds is well above a warm response (measured at well under one) and
+   well below a cold start, which is the distinction that matters — see the note
+   at the call site. */
+const NEARBY_RECOMMEND_TIMEOUT_MS = 3_000;
+
 /* This route can run three paginated Foursquare requests, a bulk upsert and a
    recommender call in one invocation, which is comfortably past the platform's
    default function timeout on a cold area. Every one of those is already
@@ -158,10 +164,28 @@ export async function GET(request:NextRequest) {
                empty every time, so `ranked` was always empty and the ranking
                silently never applied. Sending the candidates instead makes the
                vector search order what the geo query already chose. */
+            /* A SHORT timeout, and deliberately the opposite of the shortlist
+               route's long one.
+
+               The two routes want opposite things from a slow recommender. This
+               one degrades invisibly and well: the catch below falls back to
+               distance order, which is a perfectly good list. So waiting is the
+               worst option — it makes a user stare at a spinner to get a result
+               barely different from the one available immediately.
+
+               The shortlist route cannot degrade, because it freezes a ballot
+               that people then vote on, so it waits out a cold start instead.
+
+               On a scale-to-zero host a cold instance takes tens of seconds to
+               load its model. Without this, that latency landed on whoever
+               opened the dashboard first. With it, they get their restaurants
+               now, the request warms the instance in the background, and the
+               ranking is there on the next load. */
             const recRes = await fetch(`${RECOMMENDER_URL}/recommend`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ query, k: candidateIds.length, candidateIds }),
+                signal: AbortSignal.timeout(NEARBY_RECOMMEND_TIMEOUT_MS),
             });
 
             if (recRes.ok) {
