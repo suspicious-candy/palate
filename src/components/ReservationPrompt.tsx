@@ -60,7 +60,18 @@ export function ReservationPrompt({
         toBook.map((c) =>
           axios.post("/api/reservations", {
             fsqId: c.fsqId,
-            date: entries[c.fsqId].date,
+            /* An INSTANT, not a wall clock. The input is datetime-local, so its
+               value carries no offset — "2026-08-20T14:29". JavaScript reads an
+               offset-less datetime as local time, and the server's local time is
+               UTC, so posting it raw moved every booking by the user's offset:
+               at GMT-5 a table for 14:29 arrived as 19:29 UTC, five hours in the
+               past, and the future-only refinement in the route rejected it as a
+               400 that named the date without explaining it.
+
+               new Date() here runs in the BROWSER, where the same string is
+               correctly read as local, and toISOString() then pins it to a real
+               moment the server cannot misread. */
+            date: new Date(entries[c.fsqId].date).toISOString(),
             partySize: entries[c.fsqId].partySize,
           })
         )
@@ -73,7 +84,19 @@ export function ReservationPrompt({
       onSaved?.();
       onClose();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Couldn't save — try again.");
+      /* The route answers a validation failure with zod's fieldErrors, which is
+         an OBJECT keyed by field. Passing that straight to toast made react-hot-
+         toast render it as a React child, React threw "Objects are not valid as
+         a React child", and with no error.tsx anywhere the whole tree unmounted
+         — so a 400 that should have been a toast presented as a dead page.
+
+         Narrowed rather than stringified: JSON in a toast is not an error
+         message, and the field name is already visible in the network tab for
+         anyone debugging. */
+      const detail = err?.response?.data?.error;
+      toast.error(
+        typeof detail === "string" ? detail : "Couldn't save — try again."
+      );
       setSaving(false);
     }
   }
