@@ -1,0 +1,32 @@
+<!-- Palate's mark. Next's App Router picks this up by filename: any `icon.*` at
+     the root of app/ becomes the icon link tag automatically, so nothing imports
+     it and nothing references its path.
+
+     Drawn as paths rather than as a text element. An SVG favicon renders in the
+     browser's own context with no access to the page's font-face rules, so text
+     here would fall back to whatever serif each machine happens to have and the
+     mark would change shape per visitor.
+
+     Geometric rather than a scaled-down Playfair P, which is a concession to
+     size rather than a style choice: the wordmark's serifs and thin strokes are
+     sub-pixel at 16px, so tracing them yields a smudge. A flat-topped stem and a
+     single half-round bowl survive the reduction. The brand tie is carried by
+     the colour, which does survive. Verified by rendering at 16/24/32/48/64/128
+     on both light and dark grounds.
+
+     Colours are the "Bill of Fare" tokens from dashboard.module.css: the red
+     #b02a2e on the cream #fbf6ec. (Written as literals because a favicon is
+     rendered outside the document and inherits none of its custom properties.)
+     A solid red tile reads on both light and dark browser chrome, which matters
+     because a favicon cannot answer prefers-color-scheme the way the app can.
+
+     NB: keep double hyphens out of this comment. They are illegal inside an XML
+     comment, and the token names they belong to would silently break the file. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Palate">
+  <rect width="64" height="64" rx="14" fill="#b02a2e"/>
+  <!-- stem -->
+  <path d="M17 14h9v36h-9z" fill="#fbf6ec"/>
+  <!-- bowl; the counter is the notch traced back along the inner arc, left open
+       at x=25 so the stem closes it -->
+  <path d="M25 14h9a13 13 0 0 1 0 26h-9v-8h8a5 5 0 0 0 0-10h-8z" fill="#fbf6ec"/>
+</svg>
