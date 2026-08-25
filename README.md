@@ -10,8 +10,11 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript" />
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss" />
   <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb" />
-  <img alt="Status" src="https://img.shields.io/badge/status-pre--deploy-yellow" />
+  <img alt="Status" src="https://img.shields.io/badge/status-live-brightgreen" />
+  <img alt="Deployed on Vercel" src="https://img.shields.io/badge/Vercel-deployed-black?logo=vercel" />
 </p>
+
+> **Live:** <https://palate-suspicious-candy.vercel.app/>
 
 ---
 
@@ -37,24 +40,35 @@
 
 ## Project Status
 
-> **Feature-complete for a first deploy, and hardened for one.** Every feature
-> below runs on real data — auth, email verification, discovery, lists,
-> reservations with calendar invites, friends, post-meal reviews, and the full
-> group-dinner flow from invite link through voting to a booked table. The
-> serverless-specific work is done too: connection pooling sized for many
-> isolates, distributed rate limiting, security headers, a startup check for the
-> environment variables that fail quietly.
+> **Shipped.** Palate is deployed on **Vercel**, with the
+> [recommender service](https://github.com/suspicious-candy/Restaurant_Rec)
+> running on **Google Cloud Run** and MongoDB Atlas behind both. Every feature
+> below runs on real data in production — auth, email verification, discovery,
+> lists, reservations with calendar invites, friends, post-meal reviews, and the
+> full group-dinner flow from invite link through voting to a booked table.
+>
+> The serverless-specific work landed before the first deploy: connection
+> pooling sized for many isolates, distributed rate limiting, security headers,
+> a startup check for the environment variables that fail quietly. The last pass
+> before going live fixed the three things a local dev server cannot show you —
+> a route that only 404s on a case-sensitive filesystem, a datetime that only
+> shifts when the server's clock is UTC, and an error object that only crashes
+> the tree when the API returns 400. All three are written up in
+> [What the first deploy broke](#what-the-first-deploy-broke), because each is
+> the kind of bug that reaches production precisely by working on a laptop.
 >
 > What is still missing is **automated testing in CI** (there is a thorough
-> manual smoke test, but nothing runs it on a push) and a handful of
-> pre-deploy chores listed in [Before the first deploy](#before-the-first-deploy).
+> manual smoke test, but nothing runs it on a push), an **enforced CSP** (it
+> ships `Report-Only`), and a `LICENSE`. Those and the rest are in
+> [Still open](#still-open).
 >
-> Ranking needs the [recommender service](https://github.com/suspicious-candy/Restaurant_Rec) reachable at
-> `RECOMMENDER_URL`. Without it, nearby results degrade to distance order after
-> a 3-second timeout and group shortlists return 503.
+> Ranking needs the recommender reachable at `RECOMMENDER_URL`. Without it,
+> nearby results degrade to distance order after a 3-second timeout and group
+> shortlists return 503.
 
 | Area | Status | Notes |
 | --- | --- | --- |
+| **Production deploy** | 🟢 Live | Vercel · recommender on Cloud Run · Atlas · Upstash Redis |
 | Mongoose data models | ✅ Implemented | `User`, `Restaurant`, `Reservation`, `Review`, `Friendship`, `Matching`, `Address` |
 | Database connection | ✅ Implemented | `src/dbConfig/dbConfig.ts` — cached, fail-fast, `maxPoolSize` sized for serverless |
 | Auth API (signup / login / logout) | ✅ Implemented | bcrypt hashing, Zod validation, JWT in an httpOnly `token` cookie, `secure` in production |
@@ -74,12 +88,15 @@
 | Group matching | ✅ Implemented | Create, invite, approve, vote, close, book — see below |
 | Multiple groups | ✅ Implemented | `/matching/group` lists them; `/matching/group/[groupId]` is the detail view |
 | Geo discovery | ✅ Implemented | `2dsphere` `$near`, paginated Foursquare sync, recommender re-rank |
+| Branding + metadata | ✅ Implemented | `src/app/icon.svg`, `apple-icon.png`, `favicon.ico`; `title` uses `default` + `template` so a future per-route title appends rather than replaces |
 | API smoke test | ✅ Implemented | `npm run test:api` — every endpoint, against a running dev server |
 | Automated tests in CI | 🔴 Not built | The smoke test is manual. Nothing runs on push. |
+| Error boundaries | 🔴 Not built | No `error.tsx` anywhere — a render-time throw unmounts the whole tree |
+| `LICENSE` | 🔴 Not added | Until one exists, all rights reserved — see [License](#license) |
 | Restaurant detail page | 🔴 Not built | `photos`, `hours` and `menuUrl` are stored and never rendered |
 | Notifications | 🔴 Not built | Nothing tells an admin a join request is waiting, or a joiner they were approved |
 
-This README documents both what exists today and the intended direction, so a new contributor can pick up work without reverse-engineering the codebase.
+This README documents what is running today, what it cost to get there, and where the work goes next — so a new contributor can pick that up without reverse-engineering either the codebase or the deploy.
 
 ---
 
@@ -192,9 +209,12 @@ palate/
 │  ├─ instrumentation.ts       # Runs once per server process — the startup env check
 │  ├─ proxy.ts                 # Route gate: redirects signed-out users, carries ?next=
 │  ├─ app/                     # Next.js App Router
-│  │  ├─ layout.tsx            # Root layout (fonts, providers, Toaster)
+│  │  ├─ layout.tsx            # Root layout (fonts, providers, Toaster, metadata)
 │  │  ├─ page.tsx              # Home — redirects to /dashboard
 │  │  ├─ globals.css           # Tailwind import + CSS theme variables
+│  │  ├─ icon.svg              # File-based metadata: Next generates the <link>
+│  │  ├─ apple-icon.png        #   tags from these filenames. No manifest to keep
+│  │  ├─ favicon.ico           #   in sync — the convention IS the wiring
 │  │  ├─ api/
 │  │  │  ├─ Restaurants/            # nearby (geo + sync + rank), search, lists, wishList
 │  │  │  ├─ reservations/route.ts   # GET/POST/PATCH — bookings, auto-complete on read
@@ -217,7 +237,9 @@ palate/
 │  │  ├─ login/ signup/ verifyemail/          # Auth screens
 │  │  ├─ onBoarding/           # Taste onboarding (diet/allergens/cuisines)
 │  │  ├─ dashboard/            # "Bill of Fare"
-│  │  ├─ lists/ reservation/ profile/
+│  │  ├─ lists/ reservation/ profile/       # all-lowercase — the directory name
+│  │  │                                     #   IS the URL, and Vercel builds on
+│  │  │                                     #   a case-sensitive filesystem
 │  │  ├─ add/[username]/       # Friend-add landing for invite links
 │  │  ├─ join/[code]/          # Public group-invite landing
 │  │  └─ matching/group/       # Group index + [groupId] detail (roster, ballot, winner)
@@ -460,6 +482,14 @@ unranked distance-ordered list (the page still renders, so the only symptom is
 worse recommendations), while starting a group vote returns 503 outright. See
 that repo's README for the index and its rebuild.
 
+**Or skip it and point at the deployed one.** Set `RECOMMENDER_URL` in your
+`.env` to the Cloud Run service URL — the read endpoints are open, so no token
+is needed to rank. Two things to know before you do: writes still need
+`RECOMMENDER_TOKEN`, so `/index/missing` will 401 silently without it; and
+you are then ranking against the **deployed** index, which is a snapshot in the
+image rather than whatever your local Mongo holds. Fine for working on the UI,
+misleading for working on ranking.
+
 ### 5. Run the dev server
 
 ```bash
@@ -497,7 +527,7 @@ without a cache.
 | `mongo_url` | ✅ | ✅ | MongoDB connection string. Every request that touches the database fails without it. |
 | `TOKEN_SECRET` | ✅ | ✅ | Signs and verifies auth JWTs. **The only fatal one** — `withAuth` answers 500 rather than 401, because a server that cannot verify a session is broken, and a 401 would send the whole userbase round a login loop that cannot succeed. |
 | `APP_URL` | — | ✅ | Origin used to build absolute links in outgoing mail. Unset, every verification and reservation link points at `localhost`. No `NEXT_PUBLIC_` prefix: only the server builds these. |
-| `RECOMMENDER_URL` | — | ✅ | Base URL of the FastAPI recommender. Falls back to `http://localhost:8000`, where nothing answers on a host — nearby silently degrades, group shortlists 503. |
+| `RECOMMENDER_URL` | — | ✅ | Base URL of the FastAPI recommender — in production, the Cloud Run service URL. Falls back to `http://localhost:8000`, where nothing answers on a host — nearby silently degrades, group shortlists 503. |
 | `RECOMMENDER_TOKEN` | — | ✅ | Shared secret for the recommender's write endpoint, sent as `x-recommender-token`. Must match the value set on the service. Wrong or missing → `/index/missing` 401s, and since `fetch` does not reject on 4xx, new restaurants simply never get vectors. |
 | `UPSTASH_REDIS_REST_URL` | — | ✅ | Distributed rate-limit counters. |
 | `UPSTASH_REDIS_REST_TOKEN` | — | ✅ | Paired with the above. Without both, limits are per-instance — which on serverless, where each invocation may get a fresh isolate, is approximately **no rate limiting at all** while continuing to look correct. |
@@ -527,10 +557,19 @@ SMTP_PORT=587
 
 ## Deployment
 
-Target is **Vercel** for this app and **Google Cloud Run** for the recommender.
-Nothing here is Vercel-specific by construction, but the serverless-shaped
-decisions in the code — connection pool size, Redis-backed rate limits, the two
-`maxDuration` exports — were made for that shape.
+**Live on [Vercel](https://palate-suspicious-candy.vercel.app/), with
+the recommender on Google Cloud Run.** Nothing here is Vercel-specific by
+construction, but the serverless-shaped decisions in the code — connection pool
+size, Redis-backed rate limits, the two `maxDuration` exports — were made for
+that shape, and the sections below are what they turned out to mean in practice.
+
+| Piece | Where | Notes |
+| --- | --- | --- |
+| Web app | Vercel | Next.js 16 App Router, one project, deploys on push |
+| Recommender | Google Cloud Run (`asia-south1`) | FastAPI + Chroma, scale-to-zero, index baked into the image — [details](https://github.com/suspicious-candy/Restaurant_Rec#deployment) |
+| Database | MongoDB Atlas | Database name is literally `test`; both services must agree |
+| Rate-limit store | Upstash Redis | REST API, so an isolate that cannot hold a socket still shares counters |
+| Mail | SMTP provider | Verification + reservation confirmations with `.ics` |
 
 ### Deploy order
 
@@ -590,6 +629,98 @@ These are done — listed so nobody "fixes" them later without knowing why:
 
   Vercel's Hobby plan allows up to 300s, so neither is near a ceiling.
 
+### What the first deploy broke
+
+Three bugs survived local development and surfaced on the first deployed build.
+They are worth writing down together because they share a shape: **each one is
+invisible on a laptop by construction.** Not "we forgot to test it" — the local
+environment cannot produce the condition. A dev server on Windows has a
+case-insensitive filesystem, a dev machine is rarely in UTC, and the happy path
+never returns a 400.
+
+**1 — A route that only exists in lowercase on Linux.**
+The directory was `src/app/Profile/`, so the route it generated was `/Profile`.
+Every link in the app pointed at `/profile`: `Nav.tsx`, and
+`lib/protectedRoutes.ts` which is what `proxy.ts` and `sessionExpiry.ts` both
+read. On Windows, NTFS is case-insensitive and module resolution follows it, so
+`/profile` resolved to the `Profile/` directory and the page loaded. Vercel
+builds on Linux, where it does not, and the profile page 404'd in production
+while working perfectly in dev.
+
+In the App Router **the directory name is the URL** — there is no route table to
+disagree with, which is normally the point and here is the trap. Two habits fall
+out of it: keep every route segment lowercase, and treat a path that renders
+locally as unverified until it has been requested from a Linux build.
+
+The fix has a second trap in it. `git mv Profile profile` on a case-insensitive
+filesystem is a no-op — git already believes the path matches — so the rename
+never reaches the repo and the next deploy 404s identically. Go through a
+temporary name:
+
+```bash
+git mv src/app/Profile src/app/profile-tmp && git mv src/app/profile-tmp src/app/profile
+```
+
+You can see the case-sensitivity directly against the deployment — `/profile`
+redirects a signed-out visitor to login, `/Profile` does not exist at all:
+
+```bash
+for p in /profile /Profile; do curl -s -o /dev/null -w "$p -> %{http_code}\n" "https://palate-suspicious-candy.vercel.app$p"; done
+```
+
+`307` and `404` respectively. Run the same loop against `localhost:3000` on
+Windows and both return `307` — which is the entire bug, reproduced in two
+lines.
+
+**2 — A booking time that shifted by the user's UTC offset.**
+`<input type="datetime-local">` produces a string with **no offset** —
+`"2026-08-20T14:29"`. That string was posted raw. `new Date()` reads an
+offset-less datetime as *local* time, and a Vercel function's local time is
+**UTC**, so the server read the user's wall clock as a UTC instant and every
+booking landed `offset` hours away from what was chosen. West of UTC that means
+*earlier*: at GMT−5, a table booked for this evening arrived five hours in the
+past, and the route's future-only refinement rejected it — a 400 that named the
+date and explained nothing, on a machine where the same click had always worked.
+
+The fix is to convert in the **browser**, where the same string is correctly
+read as local time, and send a real instant:
+
+```ts
+date: new Date(entries[c.fsqId].date).toISOString()
+```
+
+The rule: a `datetime-local` value is a *wall clock*, not a moment. It only
+becomes a moment when something that knows the user's offset resolves it, and
+the only participant that reliably knows is the browser. (This is separate from
+the `timeZone` field on `User` — that one exists so *server-side* time maths,
+like the 90-minute voting deadline, lands on the user's evening rather than the
+server's.)
+
+**3 — A 400 that unmounted the app.**
+Route handlers answer a validation failure with Zod's `fieldErrors`, which is an
+**object** keyed by field name. That object was handed straight to
+`toast.error()`, react-hot-toast rendered it as a React child, and React threw
+*"Objects are not valid as a React child"* — from inside a render, where a
+`try/catch` around the `await` cannot reach it.
+
+The blank screen is the part worth understanding. **There is no `error.tsx`
+anywhere in `src/app`**, so a throw during render has no boundary to stop at and
+React unmounts the whole tree. A recoverable, correctly-reported 400 presented
+as a dead page.
+
+The immediate fix narrows the value instead of stringifying it — JSON in a toast
+is not an error message, and the field name is already in the network tab for
+anyone debugging:
+
+```ts
+const detail = err?.response?.data?.error;
+toast.error(typeof detail === "string" ? detail : "Couldn't save — try again.");
+```
+
+The underlying cause is still open: **any render-time throw anywhere in this app
+is still a white screen.** An `error.tsx` per route group is in
+[Still open](#still-open) for that reason.
+
 ### Email deliverability
 
 This is the part most likely to look broken on launch day. `MAIL_FROM` must be
@@ -600,42 +731,68 @@ can verify" with nothing in the logs. Send yourself a verification and a
 reservation confirmation from the deployed app before announcing it, and check
 the `.ics` attachment opens in a real calendar client.
 
-### Before the first deploy
+### Verify after a deploy
 
-- [ ] **`export const metadata` in `src/app/layout.tsx` still says "Create Next
-      App".** It is the browser tab title and the link preview on every share —
-      and this app's whole growth loop is people sending each other invite links.
-- [ ] Set every variable in the table above, then **read the first production
-      log line**: `lib/env.ts` prints exactly which ones you missed.
-- [ ] Decide on `--min-instances` for the recommender. At 0 it scales to zero
-      and the first dashboard load after an idle period is unranked; at 1 that
-      never happens and you pay for an always-on instance.
-- [ ] Rebuild the recommender's index so the deployed image is current.
-- [ ] Run `npm run test:api` against a staging deploy (`BASE_URL=...`), not just
-      locally. It creates real accounts and real reservations, so point it at a
-      database you are willing to have rows in — teardown deletes by run tag, but
-      `--keep` exists for a reason.
-- [ ] Confirm the recommender's write endpoint answers **401** without a token.
-- [ ] Add a `LICENSE` file. Until one exists, all rights are reserved and nobody
-      can legally use or contribute to this.
-- [ ] Decide on the CSP — see below.
+Not a one-time list — these are the checks worth repeating, because each one
+covers a failure that reports success everywhere else.
 
-### After deploying
-
+- [ ] **Load `/profile`, `/lists`, `/reservation` and a group detail page on the
+      deployed URL**, not locally. Case-sensitivity and dynamic-route params only
+      fail on the Linux build. See
+      [What the first deploy broke](#what-the-first-deploy-broke).
+- [ ] **Book a table and check the stored time.** The `.ics` attachment should
+      open in a real calendar client at the hour the user chose — from a machine
+      that is *not* in UTC, or the bug this catches cannot occur.
+- [ ] **Read the first production log line.** `lib/env.ts` prints exactly which
+      environment variables are missing and what each one breaks. It never
+      throws, so nothing else tells you.
 - [ ] Sign up with a real address end to end: mail arrives, `/verifyemail`
       accepts the token, `isVerified` flips, and a booking that previously 403'd
       now succeeds.
-- [ ] Open the dashboard twice. The first load may be unranked (recommender cold
-      start); the second should not be.
+- [ ] Open the dashboard twice. The first load may be unranked — a recommender
+      cold start, if that service is scaled to zero; the second should not be.
 - [ ] Start a group vote. This is the one flow with no graceful degradation, so
       it is the real test that `RECOMMENDER_URL` is correct.
+- [ ] Confirm the recommender's write endpoint still answers **401** without a
+      token, and that `GET /health` on it returns a non-zero `count` — a deploy
+      whose image shipped without an index starts cleanly and returns nothing.
 - [ ] Fail a login 11 times from one address. The 11th should be a 429 carrying
       a `Retry-After` header. Note this proves the limiter *runs*, not that it is
       **shared** — the in-memory fallback produces the same result on a single
       instance. The proof that Upstash is actually wired up is the absence of the
       `[rateLimit] UPSTASH_REDIS_REST_URL/TOKEN are not set` line in the boot log.
-- [ ] Walk every screen with the console open and collect the CSP violation
-      reports. That list is the input to enforcement.
+- [ ] Run `npm run test:api` against the deployment (`BASE_URL=...`), not just
+      locally. It creates real accounts and real reservations, so point it at a
+      database you are willing to have rows in — teardown deletes by run tag, but
+      `--keep` exists for a reason.
+
+Rebuilding the recommender's index is a **separate** cadence from deploying this
+app: the index ships inside the Cloud Run image, so newly synced restaurants are
+unranked until `rebuild_index.py` runs and that service redeploys. Monthly, or
+after syncing a new city. See
+[its README](https://github.com/suspicious-candy/Restaurant_Rec#the-index-ships-inside-the-image).
+
+### Still open
+
+Live does not mean finished. Carried over, in rough order of how much each one
+would cost if it bit:
+
+- [ ] **No CI.** `npm run test:api` covers every endpoint and a human has to
+      remember to run it. The concurrency-sensitive paths — vote start, close,
+      join, booking, reviewing — only fail under two simultaneous users, which is
+      the case nobody reproduces by hand.
+- [ ] **No `error.tsx` anywhere.** A render-time throw unmounts the entire tree;
+      bug 3 above is what that looks like from the outside.
+- [ ] **CSP is still `Report-Only`.** Walk every screen with the console open,
+      collect the violation reports, fix them, *then* rename the header.
+- [ ] **No `LICENSE`.** Until one exists, all rights are reserved and nobody can
+      legally use or contribute to this.
+- [ ] **No `robots.txt` and no per-route metadata.** The root layout now sets a
+      real title and description; nothing sets Open Graph tags, so a shared
+      invite link previews as bare text — on an app whose growth loop *is* people
+      sending each other links.
+- [ ] Group bookings still send no confirmation email and no calendar invite,
+      though the mailer, template and `.ics` builder all exist.
 
 ---
 
@@ -684,6 +841,12 @@ deliberately incomplete.
   without turning the image optimiser into an open proxy. See the long note in
   `next.config.ts`.
 - **No password reset.** The token fields exist on the model; the flow does not.
+- **No error boundaries.** There is no `error.tsx` anywhere under `src/app`, so
+  a throw during render unmounts the whole tree rather than degrading to a
+  message. Not a vulnerability, but it turns any small client-side mistake into
+  a total outage for the user who hit it — which is exactly how a rendered
+  validation object presented as a blank page. See
+  [What the first deploy broke](#what-the-first-deploy-broke).
 - **No CI, and no automated tests.** `npm run test:api` covers every endpoint,
   but a human has to run it. The concurrency-sensitive paths are exactly the
   kind of thing that only fails under two simultaneous users.
@@ -730,9 +893,15 @@ All scripts use `node --env-file=.env`, so they read the same `.env` the app doe
 - [x] Distributed rate limiting, security headers, startup environment check
 - [x] Serverless-sized connection pooling and function timeouts
 - [x] End-to-end API smoke test
+- [x] Real page metadata, app icons, and a title `template` that survives a
+      future per-route title
+- [x] **Deployed** — Vercel + Cloud Run + Atlas + Upstash, and the three
+      first-deploy bugs found and fixed
 - [ ] **CI** — run `test:api` and `lint` on every push. The concurrency-sensitive
       paths only fail under two simultaneous users, which is the case nobody
       reproduces by hand
+- [ ] **`error.tsx` boundaries**, so a render-time throw degrades to a message
+      instead of unmounting the app
 - [ ] **Enforce the CSP** once the console is clean on every screen
 - [ ] **Confirmation mail for group bookings.** `POST /api/reservations` sends an
       email with an `.ics`; the group booking route writes the same reservation
@@ -746,7 +915,8 @@ All scripts use `node --env-file=.env`, so they read the same `.env` the app doe
 - [ ] Per-person taste vectors feeding `/recommend/group` (the endpoint already
       accepts them; nothing builds them)
 - [ ] Self-hosted avatars, so `img-src` can tighten from `https:` to `'self'`
-- [ ] Real page metadata, a `LICENSE`, and a `robots.txt`
+- [ ] A `LICENSE`, a `robots.txt`, and Open Graph tags so a shared invite link
+      previews as something other than bare text
 
 ---
 
@@ -764,4 +934,4 @@ Please read `AGENTS.md` before writing code — this repo uses a Next.js build w
 
 ## License
 
-No license has been specified for this project yet. Until one is added, all rights are reserved by the authors. If you intend to open-source it, add an [MIT](https://choosealicense.com/licenses/mit/) `LICENSE` file — this is on the [pre-deploy checklist](#before-the-first-deploy) for a reason.
+No license has been specified for this project yet. Until one is added, all rights are reserved by the authors. If you intend to open-source it, add an [MIT](https://choosealicense.com/licenses/mit/) `LICENSE` file — it is on the [Still open](#still-open) list for a reason: the app is public, and "public" and "reusable" are not the same permission.
